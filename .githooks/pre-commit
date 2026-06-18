@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Pre-commit: format and lint staged source files with oxfmt + oxlint.
+# Formatting fixes are applied and re-staged automatically; lint errors block
+# the commit. Honors the example/ and docs/ exclusions used by the project.
+
+set -e
+
+# Staged files (Added, Copied, Modified, Renamed) with lintable/formattable
+# extensions, excluding the template reference (example/) and prose (docs/).
+files=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|json|css)$' \
+  | grep -Ev '^(example|docs)/' || true)
+
+if [ -z "$files" ]; then
+  exit 0
+fi
+
+# Format and re-stage. oxfmt is a no-op on already-clean files.
+printf '%s\n' "$files" | xargs ./node_modules/.bin/oxfmt --write
+printf '%s\n' "$files" | xargs git add
+
+# Lint (does not auto-fix; surfaces errors so they can be reviewed).
+printf '%s\n' "$files" | xargs ./node_modules/.bin/oxlint
