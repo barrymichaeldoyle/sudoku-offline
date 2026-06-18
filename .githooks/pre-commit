@@ -20,5 +20,8 @@ fi
 printf '%s\n' "$files" | xargs ./node_modules/.bin/oxfmt --write
 printf '%s\n' "$files" | xargs git add
 
-# Lint (does not auto-fix; surfaces errors so they can be reviewed).
-printf '%s\n' "$files" | xargs ./node_modules/.bin/oxlint
+# Lint JS/TS only (oxlint does not lint JSON/CSS).
+lint_files=$(printf '%s\n' "$files" | grep -E '\.(ts|tsx|js|jsx|mjs|cjs)$' || true)
+if [ -n "$lint_files" ]; then
+  printf '%s\n' "$lint_files" | xargs ./node_modules/.bin/oxlint
+fi

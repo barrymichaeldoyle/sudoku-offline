@@ -16,6 +16,7 @@
     "format:check": "oxfmt --check .",
     "test": "jest",
     "test:watch": "jest --watch",
+    "typecheck": "tsc --noEmit",
     "generate:puzzles": "node ./scripts/generate-puzzles.mjs"
   },
   "dependencies": {
