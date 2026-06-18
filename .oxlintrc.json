@@ -34,5 +34,15 @@
       }
     ]
   },
-  "ignorePatterns": [".expo", "dist", "node_modules", "expo-env.d.ts", "android", "ios", "example"]
+  "ignorePatterns": [
+    ".expo",
+    ".agents",
+    ".claude",
+    "dist",
+    "node_modules",
+    "expo-env.d.ts",
+    "android",
+    "ios",
+    "example"
+  ]
 }

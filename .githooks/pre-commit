@@ -2,15 +2,15 @@
 #
 # Pre-commit: format and lint staged source files with oxfmt + oxlint.
 # Formatting fixes are applied and re-staged automatically; lint errors block
-# the commit. Honors the example/ and docs/ exclusions used by the project.
+# the commit. Skips vendored/reference dirs (example/, docs/, .agents/, .claude/).
 
 set -e
 
 # Staged files (Added, Copied, Modified, Renamed) with lintable/formattable
-# extensions, excluding the template reference (example/) and prose (docs/).
+# extensions, excluding template/prose/vendored-skill directories.
 files=$(git diff --cached --name-only --diff-filter=ACMR \
   | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|json|css)$' \
-  | grep -Ev '^(example|docs)/' || true)
+  | grep -Ev '^(example|docs|\.agents|\.claude)/' || true)
 
 if [ -z "$files" ]; then
   exit 0
