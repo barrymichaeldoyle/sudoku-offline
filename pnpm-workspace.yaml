@@ -1,0 +1,3 @@
+minimumReleaseAgeExclude:
+  - nanoid@3.3.13
+  - node-releases@2.0.48
