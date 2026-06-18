@@ -1,11 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
+import { AppState } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { GameControls } from "@/components/GameControls";
 import { NumberPad } from "@/components/NumberPad";
 import { Screen } from "@/components/Screen";
+import { formatDuration, useElapsedSeconds } from "@/state/useElapsedSeconds";
 import { useGameStore } from "@/state/useGameStore";
+import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, Text, View } from "@/tw";
 
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -23,12 +26,26 @@ export default function GameScreen() {
   const loading = useGameStore((s) => s.loading);
   const justCompleted = useGameStore((s) => s.justCompleted);
   const loadGame = useGameStore((s) => s.loadGame);
+  const flushAndPause = useGameStore((s) => s.flushAndPause);
 
   useEffect(() => {
     if (gameId) {
       void loadGame(gameId);
     }
   }, [gameId, loadGame]);
+
+  // Auto-pause (and persist) when the app leaves the foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") {
+        flushAndPause();
+      }
+    });
+    return () => {
+      sub.remove();
+      flushAndPause();
+    };
+  }, [flushAndPause]);
 
   if (!game) {
     return (
@@ -40,30 +57,74 @@ export default function GameScreen() {
     );
   }
 
+  const paused = game.status === "paused" && !justCompleted;
+
   return (
     <Screen className="flex-1 bg-white dark:bg-neutral-950">
       <View className="flex-1 gap-4 p-4">
-        {/* Header */}
-        <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="py-1 pr-4">
-            <Text className="text-base text-blue-600 dark:text-blue-400">‹ Home</Text>
-          </Pressable>
-          <Text className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-            {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
-          </Text>
-          <Text className="py-1 pl-4 text-base text-neutral-500">Mistakes: {game.mistakes}</Text>
-        </View>
-
+        <GameHeader onBack={() => router.back()} />
         <SudokuBoard />
-
         <View className="mt-auto gap-3">
           <GameControls />
           <NumberPad />
         </View>
       </View>
 
+      {paused ? <PausedOverlay /> : null}
       {justCompleted ? <CompletionOverlay /> : null}
     </Screen>
+  );
+}
+
+function GameHeader({ onBack }: { onBack: () => void }) {
+  const game = useGameStore((s) => s.game);
+  const running = useGameStore((s) => s.running);
+  const pause = useGameStore((s) => s.pause);
+  const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
+  const elapsed = useElapsedSeconds();
+
+  if (!game) {
+    return null;
+  }
+
+  return (
+    <View className="flex-row items-center justify-between">
+      <Pressable onPress={onBack} className="py-1 pr-4">
+        <Text className="text-base text-blue-600 dark:text-blue-400">‹ Home</Text>
+      </Pressable>
+
+      <View className="flex-row items-center gap-3">
+        <Text className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
+        </Text>
+        {timerEnabled ? (
+          <Text className="text-base text-neutral-500 tabular-nums">{formatDuration(elapsed)}</Text>
+        ) : null}
+      </View>
+
+      <View className="flex-row items-center gap-3">
+        <Text className="text-base text-neutral-500">✕ {game.mistakes}</Text>
+        {timerEnabled && running ? (
+          <Pressable onPress={pause} className="py-1 pl-1">
+            <Text className="text-base text-blue-600 dark:text-blue-400">Pause</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function PausedOverlay() {
+  const resume = useGameStore((s) => s.resume);
+  return (
+    <View className="absolute inset-0 items-center justify-center bg-black/60 p-8">
+      <View className="w-full items-center gap-4 rounded-2xl bg-white p-8 dark:bg-neutral-900">
+        <Text className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">Paused</Text>
+        <Pressable onPress={resume} className="w-full items-center rounded-xl bg-blue-600 py-4">
+          <Text className="text-lg font-semibold text-white">Resume</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -80,8 +141,9 @@ function CompletionOverlay() {
           Puzzle Complete
         </Text>
         <Text className="text-center text-neutral-500">
-          {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} · Mistakes: {game.mistakes} ·
-          Hints: {game.hintsUsed}
+          {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} ·{" "}
+          {formatDuration(game.elapsedSeconds)} · Mistakes: {game.mistakes} · Hints:{" "}
+          {game.hintsUsed}
         </Text>
         <Pressable
           onPress={() => router.replace("/")}

@@ -4,7 +4,7 @@ Living status doc for picking the work back up. Pairs with the full spec in
 [`mvp-handoff.md`](./mvp-handoff.md) (scope, schema, acceptance criteria) and the
 **Locked Decisions** section at the top of that file. Update this file as phases land.
 
-_Last updated: end of Phase 1 (2026-06-18). Branch: work directly on `main`._
+_Last updated: end of Phase 3 (2026-06-18). Branch: work directly on `main`._
 
 ---
 
@@ -29,11 +29,12 @@ _Last updated: end of Phase 1 (2026-06-18). Branch: work directly on `main`._
 
 ---
 
-## Current state — Phase 1 DONE ✅
+## Current state — Phases 1 & 3 DONE ✅  (Phase 2 was folded in)
 
 A user can launch the app, start a new game by difficulty (or the daily puzzle),
-play with cell-first or number-first input + notes, and complete a puzzle — fully
-offline. 57 unit tests pass.
+play with cell-first or number-first input + notes, undo, erase, use hints, watch a
+timer that auto-pauses on background, and complete a puzzle — fully offline. Board
+highlighting and mistake/duplicate flagging respect the settings. **66 unit tests pass.**
 
 ### What exists
 - **Domain** (`src/domain/sudoku/`): `types.ts`, `board.ts`, `notes.ts`, `validation.ts`
@@ -62,42 +63,37 @@ offline. 57 unit tests pass.
   Components: `Board/SudokuBoard`, `Board/SudokuCell`, `NumberPad`, `GameControls`,
   `Screen`.
 
-### Known gaps / shortcuts taken in Phase 1 (revisit in later phases)
-- **No timer** — `elapsedSeconds` stays 0; header shows mistakes only.
-- **No undo, no hints** — `GameAction` type exists but no undo stack; `hintsUsed` always 0.
-- **No haptics**, no auto-pause on background.
-- **Save is immediate per action**, not debounced (spec wants debounce — Phase 3).
-- **Mistake-checking / highlight toggles** not wired to settings (board always shows
-  conflicts + peer/same-number highlight). Settings table exists but unused.
+### Added in Phase 3
+- **Settings**: `src/domain/settings.ts` (+ `DEFAULT_SETTINGS`, `normalizeSettings`),
+  `settingsRepository` (single JSON blob in `settings` table), `useSettingsStore`
+  (hydrated on boot). No Settings **screen** yet (Phase 6) — values are defaults until then.
+- **Hints**: `domain/sudoku/hints.ts` (`computeCandidates`, `findHintCell`) + store
+  `hint()` + Hint button. Reveals a correct cell, prefers naked singles, bumps `hintsUsed`.
+- **Undo**: in-memory `undoStack` of `GameAction`s; `undo()` reverses the last move.
+- **Timer**: committed `elapsedSeconds` + in-memory `lastStartedAt`; `useElapsedSeconds`
+  ticks the display. Auto-pause on background via `AppState`; resume overlay on tap.
+- **Haptics** (`src/services/haptics.ts`), gated by `hapticsEnabled`.
+- **Debounced autosave** (600ms) with flush on pause/background/complete.
+- **Settings-driven board**: peer/same-number highlight + mistake checking read settings;
+  duplicates always flagged; givens never shown as errors. `autoNoteCleanup` honored.
+
+### Known gaps (later phases)
+- **Undo doesn't restore peer notes** that `autoNoteCleanup` removed (the `GameAction`
+  type only stores the edited cell's notes — accepted limitation).
 - **Daily** starts a normal game from the daily puzzle; **no `daily_progress` write,
   no streak** yet (Phase 4).
-- **Completion overlay** is minimal (no time/share, no interstitial hook).
+- **Completion overlay** shows time/mistakes/hints but **no share text, no ad hook** yet.
+- **No Settings/Stats screens, no theme switching** yet (Phase 6 / Phase 4).
 
 ---
 
 ## Next phases (from the spec's build order)
 
-### Phase 2 — Core Sudoku polish / remaining input
-Mostly done. Remaining: confirm both input modes feel right; consider a lightweight
-`solver.ts` (candidate computation) now since hints (Phase 3) and smarter generation
-will want it.
+### Phase 2 & 3 — DONE (see "Added in Phase 3" above)
+`computeCandidates` in `hints.ts` covers the candidate logic a lightweight `solver.ts`
+would have provided; no separate solver needed yet.
 
-### Phase 3 — Game UX (the next big chunk)
-- **Timer**: store `elapsedSeconds` + in-memory `lastStartedAt`; `display = saved + now -
-  lastStartedAt`. Auto-pause on background (AppState), resume on user tap. Persist on
-  pause/background.
-- **Undo**: push `GameAction`s (already typed) onto a stack in the store; `undo()` reverses
-  the last value/note/erase.
-- **Haptics** (`expo-haptics`, already installed): place / invalid / complete / toggle —
-  gated by the `hapticsEnabled` setting.
-- **Debounced autosave**: replace per-action `saveGame` with debounce + flush on
-  pause/background/complete.
-- **Settings-driven highlighting / mistake checking**: read toggles instead of always-on.
-- **Hints** (`hintService` + `domain/sudoku/hints.ts`): reveal a safe correct cell, prefer
-  single-candidate; increment `hintsUsed`. Keep offline-only; leave a seam for the
-  rewarded-ad path.
-
-### Phase 4 — Retention
+### Phase 4 — Retention (next up)
 - `daily_progress` writes, daily **streak** logic (spec rules), completion screen with time
   + shareable result text, stats screen from `completed_games` (+ `statsService`,
   `statsRepository`).
@@ -114,6 +110,13 @@ will want it.
 ---
 
 ## Repos/tables not yet touched
-`settings`, `completed_games` (written but not read), `daily_progress`, `pending_events`,
-`entitlements`, `schema_meta`. Repositories for settings/stats/events/entitlements are
-specced in `mvp-handoff.md` but not yet created.
+`completed_games` (written but not read — Stats will read it), `daily_progress`,
+`pending_events`, `entitlements`, `schema_meta`. Repositories for stats/events/
+entitlements are specced in `mvp-handoff.md` but not yet created. (`settings` is now
+read/written via `settingsRepository`.)
+
+## Note: `knip` is wired up
+`knip.json` + `pnpm knip` detect unused files/deps. Its `entry` is currently only
+`scripts/**`, so it under-reports app usage and pruned several unused template deps
+(expo-image, @expo/ui, expo-device/font/glass-effect/status-bar/symbols). If you add a
+feature that needs one back, re-add it with `npx expo install <pkg>`.

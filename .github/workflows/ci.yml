@@ -30,4 +30,5 @@ jobs:
       - run: pnpm run format:check
       - run: pnpm run lint
       - run: pnpm run typecheck
+      - run: pnpm knip
       - run: pnpm test

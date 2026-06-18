@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { getPeerIndices, hasDuplicate, isGivenCell } from "@/domain/sudoku/board";
 import { BOARD_SIZE } from "@/domain/sudoku/types";
 import { useGameStore } from "@/state/useGameStore";
+import { useSettingsStore } from "@/state/useSettingsStore";
 import { View } from "@/tw";
 
 import { SudokuCell } from "./SudokuCell";
@@ -13,6 +14,9 @@ export function SudokuBoard() {
   const game = useGameStore((s) => s.game);
   const selectedCell = useGameStore((s) => s.selectedCell);
   const pressCell = useGameStore((s) => s.pressCell);
+  const highlightPeers = useSettingsStore((s) => s.settings.highlightPeers);
+  const highlightSameNumbers = useSettingsStore((s) => s.settings.highlightSameNumbers);
+  const mistakeChecking = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
 
   const peers = useMemo(
     () => (selectedCell == null ? new Set<number>() : new Set(getPeerIndices(selectedCell))),
@@ -32,17 +36,25 @@ export function SudokuBoard() {
           {ROWS.map((col) => {
             const index = row * BOARD_SIZE + col;
             const value = game.values[index];
+            const given = isGivenCell(game.givens, index);
+            // Always flag rule-breaking duplicates; flag wrong-vs-solution only
+            // when mistake checking is on. Givens are never shown as errors.
+            const isError =
+              !given &&
+              value != null &&
+              (hasDuplicate(game.values, index) ||
+                (mistakeChecking && value !== Number(game.solution[index])));
             return (
               <SudokuCell
                 key={index}
                 index={index}
                 value={value}
                 notes={game.notes[index]}
-                isGiven={isGivenCell(game.givens, index)}
+                isGiven={given}
                 isSelected={selectedCell === index}
-                isPeer={peers.has(index)}
-                isSameValue={value != null && value === selectedValue}
-                isConflict={value != null && hasDuplicate(game.values, index)}
+                isPeer={highlightPeers && peers.has(index)}
+                isSameValue={highlightSameNumbers && value != null && value === selectedValue}
+                isConflict={isError}
                 onPress={pressCell}
               />
             );

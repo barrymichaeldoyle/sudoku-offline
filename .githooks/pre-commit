@@ -1,8 +1,9 @@
 #!/bin/sh
 #
-# Pre-commit: format and lint staged source files with oxfmt + oxlint.
-# Formatting fixes are applied and re-staged automatically; lint errors block
-# the commit. Skips vendored/reference dirs (example/, docs/, .agents/, .claude/).
+# Pre-commit: format and lint staged source files with oxfmt + oxlint, then
+# run knip when source or dependency files changed. Formatting fixes are applied
+# and re-staged automatically; lint/knip errors block the commit. Skips
+# vendored/reference dirs (example/, docs/, .agents/, .claude/).
 
 set -e
 
@@ -24,4 +25,11 @@ printf '%s\n' "$files" | xargs git add
 lint_files=$(printf '%s\n' "$files" | grep -E '\.(ts|tsx|js|jsx|mjs|cjs)$' || true)
 if [ -n "$lint_files" ]; then
   printf '%s\n' "$lint_files" | xargs ./node_modules/.bin/oxlint
+fi
+
+# Knip analyzes the whole project; run when source or dependency config changed.
+knip_paths=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '^(src/|scripts/|package\.json|knip\.json|pnpm-lock\.yaml)' || true)
+if [ -n "$knip_paths" ]; then
+  ./node_modules/.bin/knip
 fi
