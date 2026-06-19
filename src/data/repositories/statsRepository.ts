@@ -73,3 +73,79 @@ export async function resetStats(): Promise<void> {
     await txn.runAsync("DELETE FROM daily_progress");
   });
 }
+
+/** Local "YYYY-MM-DD" key (mirrors services/dailyService.getLocalDateKey). */
+function localDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** How many completed games to seed per difficulty, with a base solve time (s). */
+const SEED_PER_DIFFICULTY: Record<Difficulty, { count: number; base: number }> = {
+  easy: { count: 12, base: 240 },
+  medium: { count: 8, base: 420 },
+  hard: { count: 5, base: 700 },
+  expert: { count: 3, base: 1100 },
+  extreme: { count: 2, base: 1500 },
+};
+
+/** Length of the daily streak the seeder fabricates, ending today. */
+const SEED_STREAK_DAYS = 7;
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * Dev-only: replace all stats with a realistic spread of completed games across
+ * difficulties plus a multi-day daily streak ending today, so the Stats screen
+ * and completion UI can be exercised without grinding puzzles. Clears first so
+ * repeated taps are deterministic. See components/DevTools.tsx.
+ */
+export async function seedSampleStats(): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync("DELETE FROM completed_games");
+    await txn.runAsync("DELETE FROM daily_progress");
+
+    let n = 0;
+    for (const difficulty of DIFFICULTIES) {
+      const { count, base } = SEED_PER_DIFFICULTY[difficulty];
+      for (let i = 0; i < count; i++) {
+        const elapsed = Math.max(60, base + i * 37 - (i % 3) * 50);
+        const mistakes = i % 4 === 0 ? 0 : i % 3;
+        await txn.runAsync(
+          `INSERT INTO completed_games
+             (id, game_id, puzzle_id, difficulty, date_key, elapsed_seconds, mistakes, hints_used, completed_at)
+           VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
+          `dev-${difficulty}-${i}`,
+          `dev-game-${n}`,
+          `dev-puzzle-${n}`,
+          difficulty,
+          elapsed,
+          mistakes,
+          i % 5,
+          now.toISOString(),
+        );
+        n++;
+      }
+    }
+
+    for (let i = 0; i < SEED_STREAK_DAYS; i++) {
+      const day = new Date(now.getTime() - i * MS_PER_DAY);
+      const dateKey = localDateKey(day);
+      await txn.runAsync(
+        `INSERT OR REPLACE INTO daily_progress
+           (date_key, track, puzzle_id, game_id, completed_at, elapsed_seconds, mistakes, hints_used)
+         VALUES (?, 'daily', ?, ?, ?, ?, ?, ?)`,
+        dateKey,
+        `dev-daily-${dateKey}`,
+        `dev-daily-game-${dateKey}`,
+        day.toISOString(),
+        300 + i * 20,
+        i % 2,
+        0,
+      );
+    }
+  });
+}

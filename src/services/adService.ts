@@ -1,23 +1,121 @@
+import mobileAds, {
+  AdEventType,
+  RewardedAd,
+  RewardedAdEventType,
+  TestIds,
+} from "react-native-google-mobile-ads";
+
 /**
- * Ad boundary. MVP ships stubs only — no ad SDK. By product decision there are
- * **no forced ads**: no interstitials, no banners, nothing during or between
- * puzzles. The only ads are user-initiated *rewarded* ads (extra hint, and the
- * planned streak-restore / challenge-unlock features) — the player always opts
- * in for a clear benefit. Premium ("Remove Ads") users skip these entirely and
- * get the perks for free. See docs/retention-monetization.md and docs/ASO.md.
+ * Ad boundary, backed by Google AdMob (react-native-google-mobile-ads). Product
+ * principle: **no intrusive ads during play** — no interstitials, nothing that
+ * blocks the board during or between puzzles. Non-intrusive native ads are fine
+ * on non-gameplay surfaces (e.g. the success screen), and *rewarded* ads are
+ * opt-in unlocks the player chooses for a clear benefit (extra hint, and the
+ * planned streak-restore / challenge-unlock features). Premium ("Remove Ads")
+ * removes the native ads and gets the rewarded perks free; for rewarded hints
+ * the game store short-circuits with hasRemoveAds() before reaching here.
+ *
+ * Currently wired to Google's TEST ad unit ID so it runs without an AdMob
+ * account. Once the AdMob app + ad units exist, replace REWARDED_HINT_AD_UNIT_ID
+ * with the real per-platform unit (e.g. via Platform.select). The web build uses
+ * adService.web.ts, which stubs all of this out. See docs/retention-monetization.md.
  */
 export type AdService = {
+  /** Initialize the SDK and warm a rewarded ad. Safe to call once at boot. */
+  initialize(): Promise<void>;
   isRewardedHintAvailable(): Promise<boolean>;
   showRewardedHintAd(): Promise<boolean>;
 };
 
+const REWARDED_HINT_AD_UNIT_ID = TestIds.REWARDED;
+
+let sdkReady: Promise<void> | null = null;
+/** The currently loaded/loading rewarded ad and its listener cleanups. */
+let pending: { ad: RewardedAd; cleanup: () => void } | null = null;
+let isLoaded = false;
+
+function ensureSdk(): Promise<void> {
+  if (!sdkReady) {
+    sdkReady = mobileAds()
+      .initialize()
+      .then(() => undefined);
+  }
+  return sdkReady;
+}
+
+/** Create and load a fresh rewarded ad, ready for the next request. */
+function preload(): void {
+  if (pending) {
+    return;
+  }
+  const ad = RewardedAd.createForAdRequest(REWARDED_HINT_AD_UNIT_ID, {
+    requestNonPersonalizedAdsOnly: true,
+  });
+  const unsubLoaded = ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
+    isLoaded = true;
+  });
+  const unsubError = ad.addAdEventListener(AdEventType.ERROR, () => {
+    teardown();
+  });
+  pending = {
+    ad,
+    cleanup: () => {
+      unsubLoaded();
+      unsubError();
+    },
+  };
+  ad.load();
+}
+
+/** Drop the current ad and its listeners; the next request re-preloads. */
+function teardown(): void {
+  pending?.cleanup();
+  pending = null;
+  isLoaded = false;
+}
+
 export const adService: AdService = {
-  async isRewardedHintAvailable() {
-    // No ad SDK in MVP.
-    return false;
+  async initialize() {
+    await ensureSdk();
+    preload();
   },
+
+  async isRewardedHintAvailable() {
+    await ensureSdk();
+    if (!pending) {
+      preload();
+    }
+    return isLoaded;
+  },
+
   async showRewardedHintAd() {
-    // No ad SDK in MVP — reward never granted.
-    return false;
+    await ensureSdk();
+    if (!pending || !isLoaded) {
+      // Nothing ready — start loading one for next time and report failure.
+      preload();
+      return false;
+    }
+    const { ad } = pending;
+    return new Promise<boolean>((resolve) => {
+      let earned = false;
+      const unsubEarned = ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
+        earned = true;
+      });
+      const finish = (granted: boolean) => {
+        unsubEarned();
+        unsubClosed();
+        unsubError();
+        teardown();
+        preload(); // get the next ad ready
+        resolve(granted);
+      };
+      const unsubClosed = ad.addAdEventListener(AdEventType.CLOSED, () => finish(earned));
+      const unsubError = ad.addAdEventListener(AdEventType.ERROR, () => finish(false));
+      try {
+        ad.show();
+      } catch {
+        finish(false);
+      }
+    });
   },
 };

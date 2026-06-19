@@ -7,6 +7,7 @@ import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
 import { GameControls } from "@/components/GameControls";
 import { InputModeToggle } from "@/components/InputModeToggle";
+import { NativeAdCard } from "@/components/NativeAdCard";
 import { NavBackButton } from "@/components/NavBackButton";
 import { NumberPad } from "@/components/NumberPad";
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
@@ -22,7 +23,7 @@ import { formatDuration, useElapsedSeconds } from "@/state/useElapsedSeconds";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
-import { Pressable, Text, View } from "@/tw";
+import { Pressable, ScrollView, Text, View } from "@/tw";
 
 const DIFFICULTY_LABELS: Record<string, string> = {
   easy: "Easy",
@@ -414,38 +415,42 @@ function CompletionOverlay() {
 
   return (
     <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
-      <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
-        <Text className="text-ink text-center text-2xl font-bold">{heading}</Text>
-        <Text className="text-ink-soft text-center">{completionSummary(game, settings)}</Text>
-        {daily?.streak && daily.streak.current > 0 ? (
-          <Text className="text-warning text-center text-base font-semibold">
-            🔥 {daily.streak.current} day streak
-          </Text>
-        ) : null}
+      <View className="border-line bg-surface max-h-full w-full overflow-hidden rounded-3xl border">
+        <ScrollView contentContainerClassName="gap-2 p-6" showsVerticalScrollIndicator={false}>
+          <Text className="text-center text-4xl">🏆</Text>
+          <Text className="text-ink text-center text-2xl font-bold">{heading}</Text>
+          <Text className="text-ink-soft text-center">{completionSummary(game, settings)}</Text>
+          {daily?.streak && daily.streak.current > 0 ? (
+            <Text className="text-warning text-center text-base font-semibold">
+              🔥 {daily.streak.current} day streak
+            </Text>
+          ) : null}
 
-        <OverlayButton
-          icon="share"
-          label="Share Result"
-          primary
-          onPress={onShare}
-          accessibilityLabel="Share result"
-          className="mt-4"
-        />
-        {canReplay ? (
           <OverlayButton
-            icon="plus"
-            label="New Game"
-            onPress={onNewGame}
-            accessibilityLabel="Start a new game"
+            icon="share"
+            label="Share Result"
+            primary
+            onPress={onShare}
+            accessibilityLabel="Share result"
+            className="mt-4"
           />
-        ) : null}
-        <OverlayButton
-          icon="home"
-          label="Back to Home"
-          onPress={() => router.replace("/")}
-          accessibilityLabel="Back to home"
-        />
-        <RemoveAdsButton source="completion" />
+          {canReplay ? (
+            <OverlayButton
+              icon="plus"
+              label="New Game"
+              onPress={onNewGame}
+              accessibilityLabel="Start a new game"
+            />
+          ) : null}
+          <OverlayButton
+            icon="home"
+            label="Back to Home"
+            onPress={() => router.replace("/")}
+            accessibilityLabel="Back to home"
+          />
+          <NativeAdCard className="mt-4" />
+          <RemoveAdsButton source="completion" variant="link" />
+        </ScrollView>
       </View>
     </View>
   );

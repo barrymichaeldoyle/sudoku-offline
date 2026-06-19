@@ -1,3 +1,4 @@
+import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
 import { applyThemePreference } from "@/services/theme";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
@@ -21,6 +22,9 @@ export function initializeApp(): Promise<void> {
       await useSettingsStore.getState().hydrate();
       applyThemePreference(useSettingsStore.getState().settings.theme);
       await useEntitlementStore.getState().hydrate();
+      // Best-effort: warm the ad SDK so a rewarded hint is ready when asked.
+      // Never block (or fail) offline boot on ads.
+      void adService.initialize().catch(() => undefined);
       void track("app_opened");
     })().catch((err) => {
       initPromise = null; // allow retry on next call

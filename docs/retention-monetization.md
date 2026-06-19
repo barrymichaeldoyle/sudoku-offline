@@ -3,11 +3,13 @@
 > Reward-ad mechanics targeting completionist users. **Not yet built** — all of
 > this depends on the Phase 5 `adService` (rewarded ads) + `entitlementRepository`.
 > Documented now so the daily/challenge schema is designed to support it without
-> rework. Core principle: **there are no forced ads** (no interstitials/banners,
-> dropped 2026-06-19) — the only ads are user-initiated rewarded ones, optional
-> side effects that never block offline play. Restore/unlock state is written
-> locally once a reward fires. Premium ("Remove Ads") skips the prompts and grants
-> the perks free/instant.
+> rework. Core principle: **no intrusive ads during play** — no interstitials,
+> and nothing during or between puzzles that blocks the board. Non-intrusive
+> **native ads are fine on non-gameplay surfaces** (e.g. the completion/success
+> screen), and **rewarded ads** are opt-in unlocks the player chooses for a clear
+> benefit; neither ever blocks offline play. Restore/unlock state is written
+> locally once a reward fires. Premium ("Remove Ads") removes the native ads and
+> grants the rewarded perks free/instant.
 
 Pairs with [`mvp-handoff.md`](./mvp-handoff.md) (scope/schema) and
 [`handover.md`](./handover.md) (phase status). Targets **Phase 5+ / post-ads**.
@@ -109,8 +111,9 @@ prompts the rewarded-ad flow.
 
 - **Remove Ads entitlement:** does owning `remove_ads` make restores/archive
   unlocks free and instant (no ad), or keep the flow with the ad skipped?
-  *Recommended:* premium users get them free/instant — a nice perk that keeps the
-  "no ads ever" promise intact.
+  *Recommended:* premium users get them free/instant — and premium also removes
+  the native ads (e.g. on the success screen), so "Remove Ads" is a clean,
+  ad-free experience.
 - **Offline behavior:** if no ad is available (offline), surface a graceful "try
   again later" — never hard-block. The restore/unlock are local writes once the
   reward fires.

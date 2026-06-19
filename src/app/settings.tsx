@@ -1,6 +1,7 @@
 import type { Settings, ThemePreference } from "@/domain/settings";
 
 import { useRouter } from "expo-router";
+import { lazy, Suspense } from "react";
 import { Alert, Switch } from "react-native";
 
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
@@ -11,6 +12,9 @@ import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
+
+// Dev-only tools, lazily loaded so they stay out of release bundles' hot path.
+const DevTools = __DEV__ ? lazy(() => import("@/components/DevTools")) : null;
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "System" },
@@ -190,6 +194,12 @@ export default function SettingsScreen() {
             <Text className="text-danger text-base font-medium">Reset Stats</Text>
           </Pressable>
         </View>
+
+        {DevTools ? (
+          <Suspense fallback={null}>
+            <DevTools />
+          </Suspense>
+        ) : null}
       </ScrollView>
     </Screen>
   );

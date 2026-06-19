@@ -11,8 +11,18 @@ import { Pressable, Text } from "@/tw";
  * "Remove Ads" purchase entry point. Renders nothing once the entitlement is
  * owned, so callers can drop it in unconditionally. `source` is recorded on the
  * `premium_upgrade_tapped` analytics event so we can compare surfaces.
+ *
+ * `variant` controls presentation: "button" (default) is a full bordered CTA;
+ * "link" is an understated text link for surfaces where the ad itself is the
+ * pitch (e.g. directly under a native ad on the success screen).
  */
-export function RemoveAdsButton({ source }: { source: string }) {
+export function RemoveAdsButton({
+  source,
+  variant = "button",
+}: {
+  source: string;
+  variant?: "button" | "link";
+}) {
   const isPremium = useEntitlementStore((s) => s.entitlements[ENTITLEMENT_REMOVE_ADS] === true);
   const purchaseRemoveAds = useEntitlementStore((s) => s.purchaseRemoveAds);
   const [busy, setBusy] = useState(false);
@@ -33,6 +43,22 @@ export function RemoveAdsButton({ source }: { source: string }) {
       setBusy(false);
     }
   };
+
+  if (variant === "link") {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Remove ads and skip hint prompts"
+        className={clsx("items-center py-1 active:opacity-60", busy && "opacity-50")}
+      >
+        <Text className="text-ink-soft text-sm font-medium underline">
+          {busy ? "Loading…" : "Remove ads"}
+        </Text>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
