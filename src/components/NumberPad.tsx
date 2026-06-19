@@ -34,6 +34,9 @@ export function NumberPad() {
           <Pressable
             key={num}
             onPress={() => pressNumber(num)}
+            accessibilityRole="button"
+            accessibilityLabel={`Number ${num}`}
+            accessibilityState={{ selected: isSelected }}
             className={clsx(
               "flex-1 items-center justify-center rounded-lg py-3",
               isSelected ? "bg-blue-600" : "bg-neutral-100 dark:bg-neutral-800",

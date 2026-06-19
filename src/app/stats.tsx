@@ -34,7 +34,12 @@ export default function StatsScreen() {
   return (
     <Screen className="flex-1 bg-white dark:bg-neutral-950">
       <View className="flex-row items-center px-4 pt-2">
-        <Pressable onPress={() => router.back()} className="py-1 pr-4">
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
+          className="py-1 pr-4"
+        >
           <Text className="text-base text-blue-600 dark:text-blue-400">‹ Home</Text>
         </Pressable>
         <Text className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Stats</Text>
@@ -43,6 +48,15 @@ export default function StatsScreen() {
       {stats == null ? (
         <View className="flex-1 items-center justify-center">
           <Text className="text-neutral-500">Loading…</Text>
+        </View>
+      ) : stats.totalCompleted === 0 ? (
+        <View className="flex-1 items-center justify-center gap-2 p-8">
+          <Text className="text-center text-lg font-medium text-neutral-900 dark:text-neutral-100">
+            No completed puzzles yet
+          </Text>
+          <Text className="text-center text-neutral-500">
+            Finish a puzzle to start tracking your times and streak.
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerClassName="gap-6 p-6">

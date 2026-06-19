@@ -15,6 +15,9 @@ function ControlButton({ label, active, disabled, onPress }: ControlButtonProps)
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled, selected: !!active }}
       className={clsx(
         "flex-1 items-center justify-center rounded-lg py-3",
         active ? "bg-blue-600" : "bg-neutral-100 dark:bg-neutral-800",

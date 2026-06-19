@@ -61,3 +61,15 @@ export async function getCompletedGameStats(): Promise<CompletedGameStats> {
 
   return { totalCompleted, mistakeFreeCompleted, byDifficulty };
 }
+
+/**
+ * Wipe all stats history: completed games and daily progress (which drives the
+ * streak). Active/paused games are left alone. Dev/settings affordance.
+ */
+export async function resetStats(): Promise<void> {
+  const db = await getDatabase();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync("DELETE FROM completed_games");
+    await txn.runAsync("DELETE FROM daily_progress");
+  });
+}

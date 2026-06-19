@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { loadSettings, saveSettings } from "@/data/repositories/settingsRepository";
 import { DEFAULT_SETTINGS, type Settings } from "@/domain/settings";
 import { track } from "@/services/analyticsService";
+import { applyThemePreference } from "@/services/theme";
 
 type SettingsStore = {
   settings: Settings;
@@ -23,6 +24,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setSetting(key, value) {
     const settings = { ...get().settings, [key]: value };
     set({ settings });
+    if (key === "theme") {
+      applyThemePreference(settings.theme);
+    }
     void saveSettings(settings).catch(() => {});
     void track("setting_changed", { setting: String(key), value });
   },

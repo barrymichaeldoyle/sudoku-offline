@@ -31,13 +31,19 @@ function background({
 }
 
 function SudokuCellComponent(props: SudokuCellProps) {
-  const { index, value, notes, isGiven, isConflict, onPress } = props;
+  const { index, value, notes, isGiven, isSelected, isConflict, onPress } = props;
   const row = getRowIndex(index);
   const col = getColIndex(index);
+  const a11yLabel =
+    `Row ${row + 1}, column ${col + 1}` +
+    (value != null ? `, ${value}${isGiven ? " given" : ""}` : ", empty");
 
   return (
     <Pressable
       onPress={() => onPress(index)}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityState={{ selected: isSelected }}
       className={clsx(
         "flex-1 items-center justify-center border-[0.5px] border-neutral-300 dark:border-neutral-700",
         // Thicker separators on 3x3 box boundaries.

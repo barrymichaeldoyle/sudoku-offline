@@ -104,7 +104,14 @@ export default function Home() {
           ))}
         </View>
 
-        <PrimaryButton label="Stats" variant="secondary" onPress={() => router.push("/stats")} />
+        <View className="gap-3">
+          <PrimaryButton label="Stats" variant="secondary" onPress={() => router.push("/stats")} />
+          <PrimaryButton
+            label="Settings"
+            variant="secondary"
+            onPress={() => router.push("/settings")}
+          />
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -121,6 +128,8 @@ function PrimaryButton({ label, onPress, variant = "primary" }: PrimaryButtonPro
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       className={
         isPrimary
           ? "items-center rounded-xl bg-blue-600 py-4"

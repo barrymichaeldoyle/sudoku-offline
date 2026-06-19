@@ -4,7 +4,7 @@ Living status doc for picking the work back up. Pairs with the full spec in
 [`mvp-handoff.md`](./mvp-handoff.md) (scope, schema, acceptance criteria) and the
 **Locked Decisions** section at the top of that file. Update this file as phases land.
 
-_Last updated: end of Phase 5 (2026-06-19). Branch: work directly on `main`._
+_Last updated: end of Phase 6 — MVP feature-complete (2026-06-19). Branch: work directly on `main`._
 
 ---
 
@@ -124,12 +124,30 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
   create-game + daily-progress + start analytics; used by Home and the completion screen's
   new **New Game** action (replays the same difficulty for ordinary games).
 
-### Known gaps (later phases)
+### Added in Phase 6 (Polish)
+- **Theme switching**: `services/theme.ts` `applyThemePreference` →
+  `Appearance.setColorScheme` ("system" → "unspecified"; `react-native-css` tracks
+  `Appearance`, driving `dark:` variants). Applied on boot (after settings hydrate) and on
+  the `theme` setting change. (No separate theme store — `Settings.theme` is the source.)
+- **Settings screen** (`app/settings.tsx`): theme segmented control, toggles for all six
+  gameplay settings (RN `Switch`), and **Reset Stats** (confirmed `Alert`) →
+  `statsRepository.resetStats` clears `completed_games` + `daily_progress`. Settings button
+  on Home.
+- **a11y**: `accessibilityRole`/`Label`/`State` on board cells, number pad, controls, and
+  all screen buttons.
+- **Stats empty state** when no completed games. (Board was already responsive via
+  `aspect-square w-full`, so small-phone layout needed no change.)
+- **Tests**: `services/theme.test.ts` + `state/useGameStore.test.ts` (reducer coverage:
+  place/clear/mistake/notes/erase+undo, with haptics/analytics/gameRepository mocked).
+  **91 tests pass.**
+
+### Known gaps (later phases / post-MVP)
 - **Undo doesn't restore peer notes** that `autoNoteCleanup` removed (the `GameAction`
   type only stores the edited cell's notes — accepted limitation).
 - **Analytics/ads/purchases are stubs**: no real SDKs, no event sink. `flushPendingEvents`,
   `purchaseRemoveAds`, and the rewarded-ad bodies are integration points only.
-- **No Settings screen, no theme switching** yet (Phase 6).
+- **`inputMode` lives in the game store** (per-session, toggled in GameControls), not in
+  `Settings` — so it isn't on the Settings screen. Move to `Settings` if persistence is wanted.
 
 ---
 
@@ -143,9 +161,12 @@ would have provided; no separate solver needed yet.
 
 ### Phase 5 — Offline hooks (stubs) — DONE ✅ (see "Added in Phase 5" above)
 
-### Phase 6 — Polish (next up)
-- Settings screen + theme store, empty/error states, a11y labels, small-phone layout,
-  broaden test coverage (streak logic, store reducers).
+### Phase 6 — Polish — DONE ✅ (see "Added in Phase 6" above)
+
+**All six build-order phases are complete.** The MVP is feature-complete per
+`mvp-handoff.md`'s Definition of Done: installable, fully playable offline, daily +
+challenge, stats/streaks, settings + theme, and clean service boundaries for the
+(stubbed) ads/purchases/analytics.
 
 ---
 

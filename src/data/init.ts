@@ -1,4 +1,5 @@
 import { track } from "@/services/analyticsService";
+import { applyThemePreference } from "@/services/theme";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 
@@ -18,6 +19,7 @@ export function initializeApp(): Promise<void> {
       await getDatabase();
       await importBundledPacksIfNeeded();
       await useSettingsStore.getState().hydrate();
+      applyThemePreference(useSettingsStore.getState().settings.theme);
       await useEntitlementStore.getState().hydrate();
       void track("app_opened");
     })().catch((err) => {

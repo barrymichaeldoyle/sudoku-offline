@@ -96,7 +96,12 @@ function GameHeader({ onBack }: { onBack: () => void }) {
 
   return (
     <View className="flex-row items-center justify-between">
-      <Pressable onPress={onBack} className="py-1 pr-4">
+      <Pressable
+        onPress={onBack}
+        accessibilityRole="button"
+        accessibilityLabel="Back to home"
+        className="py-1 pr-4"
+      >
         <Text className="text-base text-blue-600 dark:text-blue-400">‹ Home</Text>
       </Pressable>
 
@@ -112,7 +117,12 @@ function GameHeader({ onBack }: { onBack: () => void }) {
       <View className="flex-row items-center gap-3">
         <Text className="text-base text-neutral-500">✕ {game.mistakes}</Text>
         {timerEnabled && running ? (
-          <Pressable onPress={pause} className="py-1 pl-1">
+          <Pressable
+            onPress={pause}
+            accessibilityRole="button"
+            accessibilityLabel="Pause game"
+            className="py-1 pl-1"
+          >
             <Text className="text-base text-blue-600 dark:text-blue-400">Pause</Text>
           </Pressable>
         ) : null}
@@ -127,7 +137,12 @@ function PausedOverlay() {
     <View className="absolute inset-0 items-center justify-center bg-black/60 p-8">
       <View className="w-full items-center gap-4 rounded-2xl bg-white p-8 dark:bg-neutral-900">
         <Text className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">Paused</Text>
-        <Pressable onPress={resume} className="w-full items-center rounded-xl bg-blue-600 py-4">
+        <Pressable
+          onPress={resume}
+          accessibilityRole="button"
+          accessibilityLabel="Resume game"
+          className="w-full items-center rounded-xl bg-blue-600 py-4"
+        >
           <Text className="text-lg font-semibold text-white">Resume</Text>
         </Pressable>
       </View>
@@ -221,12 +236,19 @@ function CompletionOverlay() {
           </Text>
         ) : null}
 
-        <Pressable onPress={onShare} className="mt-4 items-center rounded-xl bg-blue-600 py-4">
+        <Pressable
+          onPress={onShare}
+          accessibilityRole="button"
+          accessibilityLabel="Share result"
+          className="mt-4 items-center rounded-xl bg-blue-600 py-4"
+        >
           <Text className="text-lg font-semibold text-white">Share Result</Text>
         </Pressable>
         {canReplay ? (
           <Pressable
             onPress={onNewGame}
+            accessibilityRole="button"
+            accessibilityLabel="Start a new game"
             className="items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"
           >
             <Text className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
@@ -236,6 +258,8 @@ function CompletionOverlay() {
         ) : null}
         <Pressable
           onPress={() => router.replace("/")}
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
           className="items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"
         >
           <Text className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
