@@ -1,14 +1,16 @@
 import type { DailyTrack } from "@/domain/daily";
 
 import { clsx } from "clsx";
-import { useFocusEffect, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
+import { Alert } from "react-native";
 
 import { Screen } from "@/components/Screen";
 import { SimpleIcon } from "@/components/SimpleIcon";
 import { getDailyProgress } from "@/data/repositories/dailyRepository";
-import { getActiveGame, getGameById } from "@/data/repositories/gameRepository";
+import { abandonGame, getActiveGame, getGameById } from "@/data/repositories/gameRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
+import { isGivenCell } from "@/domain/sudoku/board";
 import {
   CELL_COUNT,
   NEW_GAME_DIFFICULTIES,
@@ -58,6 +60,8 @@ export default function Home() {
   const router = useRouter();
   const setGame = useGameStore((s) => s.setGame);
   const settings = useSettingsStore((s) => s.settings);
+  const hydrated = useSettingsStore((s) => s.hydrated);
+  const onboardingComplete = useSettingsStore((s) => s.onboardingComplete);
   const [activeGame, setActiveGame] = useState<GameState | null>(null);
   const [dailyCards, setDailyCards] = useState<Record<DailyTrack, DailyCardState>>({
     daily: { game: null, completed: false },
@@ -122,6 +126,48 @@ export default function Home() {
     [busy, openGame],
   );
 
+  // Start a fresh (non-daily) game. If a game is already in progress, confirm
+  // first and abandon it (which never touches stats).
+  const requestNewGame = useCallback(
+    (loadPuzzle: () => Promise<Puzzle | null>) => {
+      const inProgress =
+        activeGame && activeGame.status !== "completed" && activeGame.status !== "abandoned";
+      const start = async () => {
+        if (busy) return;
+        setBusy(true);
+        try {
+          if (inProgress) {
+            await abandonGame(activeGame.id);
+          }
+          const game = await launchPuzzle(loadPuzzle);
+          if (game) {
+            openGame(game);
+          }
+        } finally {
+          setBusy(false);
+        }
+      };
+      if (inProgress) {
+        Alert.alert(
+          "Start a new game?",
+          "Your current game will be abandoned. This won't affect your stats.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Start new", style: "destructive", onPress: () => void start() },
+          ],
+        );
+        return;
+      }
+      void start();
+    },
+    [activeGame, busy, openGame],
+  );
+
+  // First launch: send the player to the minimal-vs-full setup screen.
+  if (hydrated && !onboardingComplete) {
+    return <Redirect href="/onboarding" />;
+  }
+
   return (
     <Screen className="bg-canvas flex-1">
       <ScrollView contentContainerClassName="gap-7 px-5 pt-6 pb-10">
@@ -176,7 +222,7 @@ export default function Home() {
             {NEW_GAME_DIFFICULTIES.map((difficulty, i) => (
               <Pressable
                 key={difficulty}
-                onPress={() => startFromPuzzle(() => getRandomPuzzleByDifficulty(difficulty))}
+                onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
                 accessibilityRole="button"
                 accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
                 className={clsx(
@@ -273,24 +319,45 @@ function DailyCard({
   settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean };
   onPress: () => void;
 }) {
-  const meta = progress.completed
+  const completed = progress.completed;
+  const inProgress = progress.game != null;
+  const meta = completed
     ? "Completed today"
-    : progress.game
-      ? progressText(progress.game, settings)
+    : inProgress
+      ? `Resume · ${progressDetail(progress.game as GameState, settings)}`
       : subtitle;
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={completed}
       accessibilityRole="button"
-      accessibilityLabel={title}
-      className="border-line bg-surface flex-1 gap-2 rounded-2xl border p-4 active:opacity-80"
+      accessibilityState={{ disabled: completed }}
+      accessibilityLabel={completed ? `${title}, completed today` : title}
+      className={clsx(
+        "border-line bg-surface flex-1 gap-2 rounded-2xl border p-4",
+        completed ? "opacity-70" : "active:opacity-80",
+      )}
     >
-      <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
+      <View className="flex-row items-center justify-between">
+        <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
+        {completed ? <Text className="text-success text-sm font-bold">✓</Text> : null}
+      </View>
       <View className="gap-0.5">
         <Text className="text-ink text-base font-semibold">{title}</Text>
-        <Text className="text-ink-soft text-sm">{meta}</Text>
+        <Text className={clsx("text-sm", completed ? "text-success font-medium" : "text-ink-soft")}>
+          {meta}
+        </Text>
       </View>
+      {/* Slim progress bar for an in-progress daily — a nudge to come back. */}
+      {!completed && inProgress ? (
+        <View className="bg-surface-muted h-1 overflow-hidden rounded-full">
+          <View
+            className={clsx("h-full rounded-full", accent)}
+            style={{ width: `${completionPercent(progress.game as GameState)}%` }}
+          />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -317,15 +384,30 @@ function MiniButton({
   );
 }
 
-function progressText(
+/** Percent of the *blank* (non-given) cells the player has filled, so a fresh
+ * puzzle reads 0% regardless of how many clues it started with. */
+function completionPercent(game: GameState): number {
+  let blanks = 0;
+  let filled = 0;
+  for (let i = 0; i < CELL_COUNT; i++) {
+    if (isGivenCell(game.givens, i)) {
+      continue;
+    }
+    blanks += 1;
+    if (game.values[i] != null) {
+      filled += 1;
+    }
+  }
+  return blanks === 0 ? 100 : Math.round((filled / blanks) * 100);
+}
+
+/** Progress without the difficulty (used where difficulty is already implied,
+ * e.g. the daily cards): "62% · 03:21 · 1 mistake". */
+function progressDetail(
   game: GameState,
   settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean },
 ): string {
-  const filled = game.values.filter((value) => value != null).length;
-  const parts = [
-    `${DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}`,
-    `${filled}/${CELL_COUNT}`,
-  ];
+  const parts = [`${completionPercent(game)}%`];
   if (settings.timerEnabled) {
     parts.push(formatDuration(game.elapsedSeconds));
   }
@@ -333,6 +415,14 @@ function progressText(
     parts.push(`${game.mistakes} mistake${game.mistakes > 1 ? "s" : ""}`);
   }
   return parts.join(" · ");
+}
+
+/** Progress prefixed with the difficulty, for the generic Continue card. */
+function progressText(
+  game: GameState,
+  settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean },
+): string {
+  return `${DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} · ${progressDetail(game, settings)}`;
 }
 
 function SectionLabel({ children }: { children: string }) {

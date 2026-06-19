@@ -29,3 +29,24 @@ export async function saveSettings(settings: Settings): Promise<void> {
     JSON.stringify(settings),
   );
 }
+
+// Whether the first-launch onboarding (minimal vs full) has been completed.
+const ONBOARDING_KEY = "onboarding_complete";
+
+export async function loadOnboardingComplete(): Promise<boolean> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM settings WHERE key = ?",
+    ONBOARDING_KEY,
+  );
+  return row?.value === "true";
+}
+
+export async function setOnboardingComplete(): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+    ONBOARDING_KEY,
+    "true",
+  );
+}

@@ -160,6 +160,8 @@ offline. Board highlighting and mistake/duplicate flagging respect the settings.
   `purchaseRemoveAds`, and the rewarded-ad bodies are integration points only.
 - **`inputMode` lives in the game store** (per-session, toggled in GameControls), not in
   `Settings` — so it isn't on the Settings screen. Move to `Settings` if persistence is wanted.
+- **Push notifications are planned only**: see `docs/push-notifications.md` for the
+  opt-in daily puzzle reminder plan based on local `expo-notifications` scheduling.
 
 ---
 

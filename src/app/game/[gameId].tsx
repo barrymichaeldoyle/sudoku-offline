@@ -1,3 +1,4 @@
+import type { DailyTrack } from "@/domain/daily";
 import type { PropsWithChildren } from "react";
 
 import { clsx } from "clsx";
@@ -15,6 +16,7 @@ import { NumberPad } from "@/components/NumberPad";
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { SimpleIcon, type SimpleIconName } from "@/components/SimpleIcon";
+import { getDailyForGame } from "@/data/repositories/dailyRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import { formatShareText } from "@/domain/shareText";
 import { NEW_GAME_DIFFICULTIES, type GameState } from "@/domain/sudoku/types";
@@ -148,9 +150,38 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   const mistakeCheckingEnabled = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
   const elapsed = useElapsedSeconds();
 
+  // Daily puzzles surface their track ("Daily Puzzle"/"Daily Challenge") in place
+  // of the raw difficulty, so the player can see they're on the special game.
+  const [dailyTrack, setDailyTrack] = useState<DailyTrack | null>(null);
+  const gameId = game?.id;
+  useEffect(() => {
+    if (!gameId) {
+      setDailyTrack(null);
+      return;
+    }
+    let cancelled = false;
+    getDailyForGame(gameId).then((d) => {
+      if (!cancelled) {
+        setDailyTrack(d?.track ?? null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId]);
+
   if (!game) {
     return null;
   }
+
+  // Daily games show "Daily" as the label with "Puzzle"/"Challenge" as the value
+  // (single words, so they never wrap); regular games show their difficulty.
+  const difficultyLabel =
+    dailyTrack === "daily"
+      ? "Puzzle"
+      : dailyTrack === "challenge"
+        ? "Challenge"
+        : (DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty);
 
   return (
     <View className="gap-4">
@@ -173,13 +204,12 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
         </View>
       </View>
 
-      {/* Stats stacked label-above-value: a small uppercase label over a bold
-          value. tabular-nums keeps the timer/mistakes from shifting. */}
-      <View className="gap-3">
-        <StatItem label="Difficulty">
-          <Text className="text-ink text-xl font-bold">
-            {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
-          </Text>
+      {/* Stats as an evenly-spaced label-above-value row: a small uppercase
+          label over a bold value, each column centered. tabular-nums keeps the
+          timer/mistakes from shifting. */}
+      <View className="flex-row">
+        <StatItem label={dailyTrack ? "Daily" : "Difficulty"}>
+          <Text className="text-ink text-center text-xl font-bold">{difficultyLabel}</Text>
         </StatItem>
         {timerEnabled ? (
           <StatItem label="Time">
@@ -204,7 +234,10 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
         ) : null}
         {mistakeCheckingEnabled ? (
           <StatItem label="Mistakes">
-            <Text className="text-ink text-xl font-bold" style={{ fontVariant: ["tabular-nums"] }}>
+            <Text
+              className={clsx("text-xl font-bold", game.mistakes > 0 ? "text-danger" : "text-ink")}
+              style={{ fontVariant: ["tabular-nums"] }}
+            >
               {game.mistakes}
             </Text>
           </StatItem>
@@ -214,10 +247,11 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   );
 }
 
-/** One game stat: a small uppercase label above its value. */
+/** One game stat: a small uppercase label above its value, centered and
+ * equal-width so a row of them is evenly spaced. */
 function StatItem({ label, children }: PropsWithChildren<{ label: string }>) {
   return (
-    <View className="gap-0.5">
+    <View className="flex-1 items-center gap-0.5">
       <Text className="text-ink-soft text-xs font-semibold tracking-widest uppercase">{label}</Text>
       {children}
     </View>
@@ -333,18 +367,19 @@ function HintPromptOverlay() {
         <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
         <Text className="text-ink-soft text-center">Watch a short ad to reveal one hint.</Text>
 
+        {/* Icon pinned left, label centered in the remaining space. */}
         <Pressable
           onPress={onWatch}
           disabled={busy}
           accessibilityRole="button"
           accessibilityLabel="Watch ad to reveal a hint"
           className={clsx(
-            "mt-4 flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4 active:opacity-80",
+            "mt-4 flex-row items-center rounded-2xl bg-primary px-5 py-4 active:opacity-80",
             busy && "opacity-50",
           )}
         >
           <SimpleIcon name="play" tone="onPrimary" />
-          <Text className="text-on-primary text-lg font-semibold">
+          <Text className="text-on-primary flex-1 text-center text-lg font-semibold">
             {busy ? "Loading…" : "Watch Ad"}
           </Text>
         </Pressable>
@@ -356,12 +391,14 @@ function HintPromptOverlay() {
           accessibilityRole="button"
           accessibilityLabel="Remove ads and skip hint prompts"
           className={clsx(
-            "mt-2 flex-row items-center justify-center gap-2 rounded-2xl border border-primary py-4 active:opacity-80",
+            "mt-2 flex-row items-center rounded-2xl border border-primary px-5 py-4 active:opacity-80",
             busy && "opacity-50",
           )}
         >
           <SimpleIcon name="plus" tone="primary" />
-          <Text className="text-primary text-base font-semibold">Remove Ads</Text>
+          <Text className="text-primary flex-1 text-center text-base font-semibold">
+            Remove Ads
+          </Text>
         </Pressable>
 
         <Pressable

@@ -77,7 +77,11 @@ function SudokuCellComponent(props: SudokuCellProps) {
     >
       {value != null ? (
         <Text
-          className={clsx("text-2xl", isGiven ? "font-bold" : "font-semibold", numberColor(props))}
+          className={clsx(
+            "text-2xl",
+            isGiven || props.isConflict ? "font-bold" : "font-semibold",
+            numberColor(props),
+          )}
         >
           {value}
         </Text>

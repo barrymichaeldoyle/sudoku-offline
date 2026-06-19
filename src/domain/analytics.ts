@@ -15,6 +15,7 @@ export type AnalyticsEventName =
   | "daily_started"
   | "daily_completed"
   | "setting_changed"
+  | "onboarding_completed"
   | "share_result_tapped";
 
 export type AnalyticsPayload = Record<string, string | number | boolean | null>;

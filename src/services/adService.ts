@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import mobileAds, {
   AdEventType,
   RewardedAd,
@@ -15,9 +16,8 @@ import mobileAds, {
  * removes the native ads and gets the rewarded perks free; for rewarded hints
  * the game store short-circuits with hasRemoveAds() before reaching here.
  *
- * Currently wired to Google's TEST ad unit ID so it runs without an AdMob
- * account. Once the AdMob app + ad units exist, replace REWARDED_HINT_AD_UNIT_ID
- * with the real per-platform unit (e.g. via Platform.select). The web build uses
+ * iOS uses the real AdMob rewarded-hint unit. Android stays on Google's test
+ * unit until the Android AdMob app and ad units exist. The web build uses
  * adService.web.ts, which stubs all of this out. See docs/retention-monetization.md.
  */
 export type AdService = {
@@ -27,7 +27,10 @@ export type AdService = {
   showRewardedHintAd(): Promise<boolean>;
 };
 
-const REWARDED_HINT_AD_UNIT_ID = TestIds.REWARDED;
+const REWARDED_HINT_AD_UNIT_ID = Platform.select({
+  ios: "ca-app-pub-3482457944656598/5403777597",
+  default: TestIds.REWARDED,
+});
 
 let sdkReady: Promise<void> | null = null;
 /** The currently loaded/loading rewarded ad and its listener cleanups. */

@@ -65,8 +65,8 @@
   --color-cell-selected-ink: #1f2937; /* number on the bright selected cell */
 
   /* Board numbers */
-  --color-num-given: #1f2937;
-  --color-num-user: #2f3a5f;
+  --color-num-given: #1f2937; /* near-black: the fixed clues */
+  --color-num-user: #2563eb; /* clear blue: the player's entries, distinct from givens */
   --color-num-note: #667085;
   --color-num-error: #c75c5c;
 

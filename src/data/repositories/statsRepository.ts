@@ -13,6 +13,8 @@ export type DifficultyStat = {
 export type CompletedGameStats = {
   totalCompleted: number;
   mistakeFreeCompleted: number;
+  /** Total time spent on completed games, in seconds. */
+  totalSeconds: number;
   byDifficulty: Record<Difficulty, DifficultyStat>;
 };
 
@@ -21,6 +23,7 @@ type AggregateRow = {
   completed: number;
   best: number | null;
   avg: number | null;
+  total: number | null;
   mistake_free: number;
 };
 
@@ -38,6 +41,7 @@ export async function getCompletedGameStats(): Promise<CompletedGameStats> {
             COUNT(*) AS completed,
             MIN(elapsed_seconds) AS best,
             AVG(elapsed_seconds) AS avg,
+            SUM(elapsed_seconds) AS total,
             SUM(CASE WHEN mistakes = 0 THEN 1 ELSE 0 END) AS mistake_free
        FROM completed_games
       GROUP BY difficulty`,
@@ -46,10 +50,12 @@ export async function getCompletedGameStats(): Promise<CompletedGameStats> {
   const byDifficulty = emptyByDifficulty();
   let totalCompleted = 0;
   let mistakeFreeCompleted = 0;
+  let totalSeconds = 0;
 
   for (const row of rows) {
     totalCompleted += row.completed;
     mistakeFreeCompleted += row.mistake_free;
+    totalSeconds += row.total ?? 0;
     if ((DIFFICULTIES as readonly string[]).includes(row.difficulty)) {
       byDifficulty[row.difficulty as Difficulty] = {
         completed: row.completed,
@@ -59,7 +65,7 @@ export async function getCompletedGameStats(): Promise<CompletedGameStats> {
     }
   }
 
-  return { totalCompleted, mistakeFreeCompleted, byDifficulty };
+  return { totalCompleted, mistakeFreeCompleted, totalSeconds, byDifficulty };
 }
 
 /**

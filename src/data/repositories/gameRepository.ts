@@ -107,6 +107,9 @@ export async function getActiveGame(): Promise<GameState | null> {
   const row = await db.getFirstAsync<GameRow>(
     `SELECT * FROM games
        WHERE status IN ('active', 'paused')
+         AND id NOT IN (
+           SELECT game_id FROM daily_progress WHERE game_id IS NOT NULL
+         )
        ORDER BY updated_at DESC LIMIT 1`,
   );
   return row ? rowToGame(row) : null;
@@ -154,4 +157,17 @@ export async function completeGame(game: GameState): Promise<GameState> {
   });
 
   return completed;
+}
+
+/**
+ * Mark a resumable game abandoned so it no longer surfaces as the active game.
+ * Nothing is written to completed_games, so stats are unaffected.
+ */
+export async function abandonGame(id: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    "UPDATE games SET status = 'abandoned', updated_at = ? WHERE id = ? AND status IN ('active', 'paused')",
+    new Date().toISOString(),
+    id,
+  );
 }

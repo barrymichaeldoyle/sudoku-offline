@@ -50,6 +50,11 @@ const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
     label: "Auto-clear notes",
     hint: "Remove notes a placed number rules out",
   },
+  {
+    key: "showRemainingCounts",
+    label: "Remaining counts",
+    hint: "Show how many of each number are left under the number pad",
+  },
   { key: "hapticsEnabled", label: "Haptics", hint: "Vibration feedback on actions" },
 ];
 

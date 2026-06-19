@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { useEffect, useState } from "react";
-import { Image, StyleSheet } from "react-native";
+import { Image, Platform, StyleSheet } from "react-native";
 import {
   NativeAd,
   NativeAdView,
@@ -14,10 +14,13 @@ import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { Text, View } from "@/tw";
 
-// Test native unit ID — swap for the real per-platform unit once the AdMob app
-// exists (e.g. via Platform.select). Requested non-personalized per the app's
-// ad policy (no ATT prompt). See src/services/adService.ts and docs/retention-monetization.md.
-const NATIVE_AD_UNIT_ID = TestIds.NATIVE;
+// iOS uses the real AdMob native-completion unit. Android stays on Google's
+// test unit until the Android AdMob app and ad units exist. Requested
+// non-personalized per the app's ad policy (no ATT prompt).
+const NATIVE_AD_UNIT_ID = Platform.select({
+  ios: "ca-app-pub-3482457944656598/9438235844",
+  default: TestIds.NATIVE,
+});
 
 /**
  * A non-intrusive native ad styled to match the app, for non-gameplay surfaces
