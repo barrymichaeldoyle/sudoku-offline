@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 20.3.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "metadataPath": "./store.config.js"
   },
   "build": {
     "base": {
@@ -23,6 +24,10 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APPLE_ID"
+      }
+    }
   }
 }

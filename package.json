@@ -19,7 +19,9 @@
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "generate:puzzles": "node ./scripts/generate-puzzles.mjs",
-    "generate:icons": "node ./scripts/generate-icons.mjs"
+    "generate:icons": "node ./scripts/generate-icons.mjs",
+    "metadata:pull": "eas metadata:pull",
+    "metadata:push": "eas metadata:push"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.1",

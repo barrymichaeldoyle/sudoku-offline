@@ -4,6 +4,7 @@
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{js,mjs}"],
   "ignoreFiles": ["src/domain/sudoku/index.ts", "src/tw/animated.tsx"],
   "ignoreDependencies": ["expo-updates"],
+  "ignoreBinaries": ["eas"],
   "exclude": ["exports", "types", "enumMembers", "nsExports", "nsTypes"],
   "ignoreExportsUsedInFile": true
 }
