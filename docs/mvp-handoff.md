@@ -50,8 +50,10 @@ Core product promise: **A fast, clean Sudoku app that respects your concentratio
   result text.
 - **Settings:** dark/light/system theme; toggle timer; toggle mistake checking; toggle
   same-number highlighting; toggle haptics; toggle auto-note cleanup; reset stats (dev).
-- **Monetisation hooks (stubs):** interstitial after completion only; rewarded ad for
-  extra hint; Remove Ads entitlement; no gameplay dependency on network.
+- **Monetisation hooks (stubs):** **no forced ads** — no interstitials or banners, ever.
+  Only user-initiated rewarded ads (extra hint, plus planned streak-restore / challenge
+  unlock); Premium ("Remove Ads") entitlement skips those and grants the perks free; no
+  gameplay dependency on network.
 - **Analytics:** local offline event queue only. Events: `app_opened`, `puzzle_started`,
   `puzzle_completed`, `puzzle_abandoned`, `hint_used`, `daily_started`, `daily_completed`,
   `setting_changed`, `share_result_tapped`.
@@ -196,7 +198,7 @@ premium / free hints / rewarded ad — never block core offline gameplay.
 ## Ads & Purchases (stubs first)
 ```ts
 export type AdService = {
-  maybeShowPostCompletionInterstitial(): Promise<void>;
+  // No interstitials/banners. Only user-initiated rewarded ads.
   isRewardedHintAvailable(): Promise<boolean>;
   showRewardedHintAd(): Promise<boolean>;
 };
@@ -207,8 +209,10 @@ export type PurchaseService = {
   restorePurchases(): Promise<void>;
 };
 ```
-Never show ads during gameplay; interstitials only post-completion; no ads for
-`remove_ads`; use cached entitlement offline.
+**No forced ads, ever** — no interstitials, no banners, nothing during or between
+puzzles. Ads are only the rewarded kind the player chooses to watch for a clear
+benefit (extra hint, streak restore, challenge unlock). Premium (`remove_ads`)
+removes those prompts and grants the perks free. Use cached entitlement offline.
 
 ## Analytics (local queue only)
 ```ts

@@ -12,14 +12,19 @@ The product promise is:
 
 > A clean, offline-first Sudoku app with no ads while you play.
 
-Important: if ads are included, do **not** describe the app as "ad-free".
-Use wording like:
+Ad model (decided 2026-06-19): there are **no forced ads** — no interstitials, no
+banners, nothing during or between puzzles. The only ads are user-initiated
+*rewarded* ads the player chooses to watch for a clear benefit (e.g. an extra
+hint). Premium ("Remove Ads") removes those prompts entirely.
 
-> No ads while solving.
+Important: because optional rewarded ads still exist, do **not** describe the app
+as "ad-free" or "no ads". Use accurate, stronger-than-before wording like:
+
+> No interstitial ads.
 
 or:
 
-> No ads during gameplay.
+> No ads while solving — ads only when you choose to watch one.
 
 ---
 
@@ -714,6 +719,9 @@ Works offline
 No Wi-Fi needed
 No ads while you play
 No ads during gameplay
+No interstitial ads
+No banner ads
+Ads only when you choose to watch one
 Daily puzzles
 Pencil notes
 Dark mode
@@ -733,7 +741,8 @@ Expert-approved
 Award-winning
 ```
 
-If the app uses ads after puzzle completion, never say:
+The app shows no forced ads but does include optional rewarded ads, so never
+claim fully ad-free:
 
 ```text
 No ads
@@ -744,8 +753,9 @@ Ad-free
 Instead say:
 
 ```text
+No interstitial ads
 No ads while you play
-No ads during puzzles
+Ads only when you choose to watch one
 No interruptions while solving
 ```
 

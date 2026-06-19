@@ -1,24 +1,17 @@
-import { hasRemoveAds } from "@/state/useEntitlementStore";
-
 /**
- * Ad boundary. MVP ships stubs only — no ad SDK — so nothing ever blocks
- * gameplay. Per the product rules, interstitials appear only *after* completion
- * and never for users who own "Remove Ads". Rewarded hints are the integration
- * point for the planned reward-ad features (see docs/retention-monetization.md).
+ * Ad boundary. MVP ships stubs only — no ad SDK. By product decision there are
+ * **no forced ads**: no interstitials, no banners, nothing during or between
+ * puzzles. The only ads are user-initiated *rewarded* ads (extra hint, and the
+ * planned streak-restore / challenge-unlock features) — the player always opts
+ * in for a clear benefit. Premium ("Remove Ads") users skip these entirely and
+ * get the perks for free. See docs/retention-monetization.md and docs/ASO.md.
  */
 export type AdService = {
-  maybeShowPostCompletionInterstitial(): Promise<void>;
   isRewardedHintAvailable(): Promise<boolean>;
   showRewardedHintAd(): Promise<boolean>;
 };
 
 export const adService: AdService = {
-  async maybeShowPostCompletionInterstitial() {
-    if (hasRemoveAds()) {
-      return;
-    }
-    // No ad SDK in MVP — this is where a post-completion interstitial would show.
-  },
   async isRewardedHintAvailable() {
     // No ad SDK in MVP.
     return false;

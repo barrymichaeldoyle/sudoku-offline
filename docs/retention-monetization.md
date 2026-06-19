@@ -3,8 +3,11 @@
 > Reward-ad mechanics targeting completionist users. **Not yet built** — all of
 > this depends on the Phase 5 `adService` (rewarded ads) + `entitlementRepository`.
 > Documented now so the daily/challenge schema is designed to support it without
-> rework. Core principle unchanged: ads are optional side effects and never block
-> offline play; restore/unlock state is written locally once a reward fires.
+> rework. Core principle: **there are no forced ads** (no interstitials/banners,
+> dropped 2026-06-19) — the only ads are user-initiated rewarded ones, optional
+> side effects that never block offline play. Restore/unlock state is written
+> locally once a reward fires. Premium ("Remove Ads") skips the prompts and grants
+> the perks free/instant.
 
 Pairs with [`mvp-handoff.md`](./mvp-handoff.md) (scope/schema) and
 [`handover.md`](./handover.md) (phase status). Targets **Phase 5+ / post-ads**.

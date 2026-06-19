@@ -116,9 +116,10 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
   `useEntitlementStore` (hydrated on boot, `hasRemoveAds()` non-reactive read).
 - **Purchase stub**: `services/purchaseService.ts` (`PurchaseService` shape;
   `purchaseRemoveAds` returns false, refresh/restore no-op — no store SDK in MVP).
-- **Ad stub**: `services/adService.ts` (`maybeShowPostCompletionInterstitial` — early-returns
-  for `remove_ads`, called only from the completion overlay; rewarded-hint methods return
-  false). Never runs during play.
+- **Ad stub**: `services/adService.ts` — **no forced ads** (no interstitials/banners;
+  the post-completion interstitial was dropped 2026-06-19 as too intrusive). Only
+  user-initiated rewarded ads: `isRewardedHintAvailable`/`showRewardedHintAd` (return false,
+  no SDK). Premium ("Remove Ads") will skip rewarded prompts and grant perks free.
 - **Shared launcher**: `services/gameLauncher.ts` `launchPuzzle()` centralizes
   create-game + daily-progress + start analytics; used by Home and the completion screen's
   new **New Game** action (replays the same difficulty for ordinary games).
@@ -127,7 +128,7 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
 - **Undo doesn't restore peer notes** that `autoNoteCleanup` removed (the `GameAction`
   type only stores the edited cell's notes — accepted limitation).
 - **Analytics/ads/purchases are stubs**: no real SDKs, no event sink. `flushPendingEvents`,
-  `purchaseRemoveAds`, and the rewarded-ad/interstitial bodies are integration points only.
+  `purchaseRemoveAds`, and the rewarded-ad bodies are integration points only.
 - **No Settings screen, no theme switching** yet (Phase 6).
 
 ---

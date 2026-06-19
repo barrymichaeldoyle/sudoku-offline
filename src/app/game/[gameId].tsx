@@ -9,7 +9,6 @@ import { Screen } from "@/components/Screen";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import { formatShareText } from "@/domain/shareText";
 import { NEW_GAME_DIFFICULTIES } from "@/domain/sudoku/types";
-import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
 import { launchPuzzle } from "@/services/gameLauncher";
 import { getDailyCompletionInfo, type DailyCompletionInfo } from "@/services/statsService";
@@ -142,11 +141,6 @@ function CompletionOverlay() {
   const setGame = useGameStore((s) => s.setGame);
   const [daily, setDaily] = useState<DailyCompletionInfo | null>(null);
   const [busy, setBusy] = useState(false);
-
-  // Post-completion ad hook (no-op stub in MVP; ads never run during play).
-  useEffect(() => {
-    void adService.maybeShowPostCompletionInterstitial();
-  }, []);
 
   useEffect(() => {
     if (!game) {
