@@ -85,11 +85,22 @@ export async function getPuzzleById(id: string): Promise<Puzzle | null> {
 /** A random difficulty-pool puzzle (never one from a daily/challenge pool). */
 export async function getRandomPuzzleByDifficulty(difficulty: Difficulty): Promise<Puzzle | null> {
   const db = await getDatabase();
+  const countRow = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM puzzles
+       WHERE difficulty = ? AND id NOT LIKE 'daily_%' AND id NOT LIKE 'challenge_%'`,
+    difficulty,
+  );
+  const count = countRow?.count ?? 0;
+  if (count === 0) {
+    return null;
+  }
+  const offset = Math.floor(Math.random() * count);
   const row = await db.getFirstAsync<PuzzleRow>(
     `SELECT * FROM puzzles
        WHERE difficulty = ? AND id NOT LIKE 'daily_%' AND id NOT LIKE 'challenge_%'
-       ORDER BY RANDOM() LIMIT 1`,
+       ORDER BY id LIMIT 1 OFFSET ?`,
     difficulty,
+    offset,
   );
   return row ? rowToPuzzle(row) : null;
 }

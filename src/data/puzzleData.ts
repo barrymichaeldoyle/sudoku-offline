@@ -24,7 +24,7 @@ export type BundledPack = {
   puzzles: BundledPuzzle[];
 };
 
-export const PACK_VERSION = 1;
+export const PACK_VERSION = 2;
 
 export const BUNDLED_PACKS: readonly BundledPack[] = [
   { id: "easy", version: PACK_VERSION, daily: false, puzzles: easyPack as BundledPuzzle[] },

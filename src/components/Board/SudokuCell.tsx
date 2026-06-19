@@ -4,7 +4,7 @@ import { clsx } from "clsx";
 import { memo } from "react";
 
 import { getColIndex, getRowIndex } from "@/domain/sudoku/board";
-import { notesToNumbers } from "@/domain/sudoku/notes";
+import { hasNote } from "@/domain/sudoku/notes";
 import { Pressable, Text, View } from "@/tw";
 
 type SudokuCellProps = {
@@ -18,6 +18,8 @@ type SudokuCellProps = {
   isConflict: boolean;
   onPress: (index: number) => void;
 };
+
+const NOTE_NUMBERS = Array.from({ length: 9 }, (_, i) => i + 1);
 
 // Cell background follows the state priority from the design guidelines:
 // error > selected > same-number > peer > given > default.
@@ -87,7 +89,7 @@ function SudokuCellComponent(props: SudokuCellProps) {
         </Text>
       ) : notes ? (
         <View className="h-full w-full flex-row flex-wrap p-[1px]">
-          {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => (
+          {NOTE_NUMBERS.map((n) => (
             <View key={n} className="h-1/3 w-1/3 items-center justify-center">
               <Text
                 className={clsx(
@@ -95,7 +97,7 @@ function SudokuCellComponent(props: SudokuCellProps) {
                   isSelected ? "text-cell-selected-ink" : "text-num-note",
                 )}
               >
-                {notesToNumbers(notes).includes(n) ? n : ""}
+                {hasNote(notes, n) ? n : ""}
               </Text>
             </View>
           ))}

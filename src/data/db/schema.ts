@@ -123,6 +123,13 @@ DROP TABLE daily_progress;
 ALTER TABLE daily_progress_v2 RENAME TO daily_progress;
 `,
   },
+  {
+    // Speed up home/completion lookups that map a game back to daily progress.
+    version: 3,
+    up: `
+CREATE INDEX IF NOT EXISTS idx_daily_progress_game_id ON daily_progress (game_id);
+`,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

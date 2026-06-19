@@ -19,17 +19,17 @@ const SEED = Number(process.env.PUZZLE_SEED ?? 0x5eed1234);
 
 // Approximate difficulty by number of clues (givens). Lower clues => harder.
 const CONFIG = {
-  easy: { count: 60, minClues: 40, maxClues: 45 },
-  medium: { count: 60, minClues: 33, maxClues: 38 },
-  hard: { count: 50, minClues: 28, maxClues: 32 },
-  expert: { count: 40, minClues: 24, maxClues: 27 },
+  easy: { count: 200, minClues: 40, maxClues: 45 },
+  medium: { count: 200, minClues: 33, maxClues: 38 },
+  hard: { count: 200, minClues: 28, maxClues: 32 },
+  expert: { count: 200, minClues: 24, maxClues: 27, symmetric: false },
 };
 // Daily pool: a single rotating set selected by date index in the app.
-const DAILY = { count: 120, difficulty: "medium", minClues: 33, maxClues: 38 };
+const DAILY = { count: 365, difficulty: "medium", minClues: 33, maxClues: 38 };
 // Challenge pool: a second daily track of extreme puzzles (very few clues), for
 // the optional "Daily Challenge". Harder than expert and hint-friendly.
 const CHALLENGE = {
-  count: 120,
+  count: 365,
   difficulty: "extreme",
   minClues: 22,
   maxClues: 25,
@@ -171,6 +171,7 @@ function digPuzzle(solution, minClues, maxClues, rng, symmetric = true) {
     const mirror = 80 - pos;
     const cells = symmetric && pos !== mirror ? [pos, mirror] : [pos];
     if (cells.some((c) => puzzle[c] === 0)) continue;
+    if (clues - cells.length < minClues) continue;
 
     const removed = cells.map((c) => puzzle[c]);
     for (const c of cells) puzzle[c] = 0;
@@ -242,6 +243,8 @@ function buildPack({ difficulty, count, minClues, maxClues, idPrefix, symmetric 
     const solution = generateSolution(rng);
     const puzzle = digPuzzle(solution, minClues, maxClues, rng, symmetric);
     const givens = gridToString(puzzle);
+    const clueCount = givens.replace(/0/g, "").length;
+    if (clueCount < minClues || clueCount > maxClues) continue;
     if (seen.has(givens)) continue;
 
     const solutionStr = gridToString(solution);

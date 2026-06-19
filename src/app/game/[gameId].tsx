@@ -119,7 +119,8 @@ export default function GameScreen() {
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
             // Reserve room for the input-mode toggle row above the grid.
-            setBoardSize(Math.floor(Math.min(width, height - 44)));
+            const nextSize = Math.floor(Math.min(width, height - 44));
+            setBoardSize((current) => (current === nextSize ? current : nextSize));
           }}
         >
           {boardSize > 0 ? (
