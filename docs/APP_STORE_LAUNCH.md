@@ -35,23 +35,21 @@ Last reviewed: 2026-06-20.
   No ATT prompt is shown — the app requests non-personalized ads only
   (`requestNonPersonalizedAdsOnly: true`), so no IDFA access and no
   `NSUserTrackingUsageDescription` is required.
+- **App Store Connect app record created** — `eas.json`
+  `submit.production.ios.ascAppId` set to `6782209083`
+  (bundle `com.barrymichaeldoyle.sudokuoffline`).
+- **App Privacy questionnaire completed** in App Store Connect — declared the
+  AdMob + `expo-insights` data (Identifiers, Coarse Location, Usage Data,
+  Diagnostics), all *not linked to identity* and *not used for tracking*,
+  consistent with non-personalized-ads / no-ATT. If personalized ads or IDFA are
+  ever enabled, this declaration must be updated and an ATT prompt added.
 
 ---
 
 ## 🚫 Blockers — must resolve before submission
 
-### 1. App Store Connect — App Privacy declaration (dashboard task, no code)
-Fill in **App Privacy → Data Collected** to match Google AdMob (typically
-Identifiers / Usage Data / Diagnostics, "used for tracking" = No since we serve
-non-personalized ads only). Nothing to change in the repo; this is the App Store
-Connect questionnaire. If you later enable personalized ads/IDFA, you must add
-`NSUserTrackingUsageDescription` + present an ATT prompt
-(e.g. `expo-tracking-transparency`) and update this declaration.
-
-### 2. `eas.json` submit config placeholder
-`submit.production.ios.ascAppId` is still
-`"REPLACE_WITH_APP_STORE_CONNECT_APPLE_ID"`. Set the numeric App Store Connect
-app ID (available once the app record exists in ASC) before `eas submit`.
+None outstanding. All code/config and App Store Connect setup blockers are
+resolved. Remaining work is listing assets and QA (below).
 
 ---
 
@@ -71,10 +69,10 @@ app ID (available once the app record exists in ASC) before `eas submit`.
 
 - **TestFlight on real hardware** — verify rewarded-hint ad flow, daily
   notifications, SQLite persistence/migrations, and offline behavior.
-- **Verify AdMob app ID after prebuild** — `app.json` has the real iOS
-  `iosAppId` (`...3482457944656598~1647375735`). The local `ios/` is stale and
-  still shows Google's test ID; a fresh EAS Build prebuild generates the correct
-  value. Verify in the production build, then confirm real ads serve.
+- **Confirm real ads serve in the production build** — the correct iOS
+  `GADApplicationIdentifier` (`...3482457944656598~1647375735`) was already
+  verified in the generated `Info.plist` via `expo prebuild -p ios`. Just confirm
+  live ads actually render on a TestFlight/production build.
 - **Android AdMob still on test IDs** — `androidAppId` and the rewarded unit use
   `TestIds`. Not an App Store blocker; fix before any Play Store launch.
 - **Monetization story matches the listing** — `docs/retention-monetization.md`

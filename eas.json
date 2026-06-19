@@ -2,7 +2,7 @@
   "cli": {
     "version": ">= 20.3.0",
     "appVersionSource": "remote",
-    "metadataPath": "./store.config.js"
+    "promptToConfigurePushNotifications": false
   },
   "build": {
     "base": {
@@ -26,7 +26,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APPLE_ID"
+        "ascAppId": "6782209083",
+        "metadataPath": "./store.config.js"
       }
     }
   }
