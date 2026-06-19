@@ -96,6 +96,33 @@ CREATE TABLE IF NOT EXISTS entitlements (
 );
 `,
   },
+  {
+    // Add a second daily "track" (normal + challenge). daily_progress is now
+    // keyed by (date_key, track); existing rows are the normal "daily" track.
+    // SQLite can't alter a primary key in place, so rebuild the table.
+    version: 2,
+    up: `
+CREATE TABLE daily_progress_v2 (
+  date_key TEXT NOT NULL,
+  track TEXT NOT NULL DEFAULT 'daily',
+  puzzle_id TEXT NOT NULL,
+  game_id TEXT,
+  completed_at TEXT,
+  elapsed_seconds INTEGER,
+  mistakes INTEGER,
+  hints_used INTEGER,
+  PRIMARY KEY (date_key, track)
+);
+
+INSERT INTO daily_progress_v2
+  (date_key, track, puzzle_id, game_id, completed_at, elapsed_seconds, mistakes, hints_used)
+  SELECT date_key, 'daily', puzzle_id, game_id, completed_at, elapsed_seconds, mistakes, hints_used
+    FROM daily_progress;
+
+DROP TABLE daily_progress;
+ALTER TABLE daily_progress_v2 RENAME TO daily_progress;
+`,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

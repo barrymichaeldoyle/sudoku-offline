@@ -1,5 +1,7 @@
 import type { Difficulty, Puzzle, PuzzleSource } from "@/domain/sudoku/types";
 
+import { type DailyTrack, trackIdPrefix } from "@/domain/daily";
+
 import { getDatabase } from "../db/client";
 import { BUNDLED_PACKS } from "../puzzleData";
 
@@ -77,38 +79,42 @@ export async function getPuzzleById(id: string): Promise<Puzzle | null> {
   return row ? rowToPuzzle(row) : null;
 }
 
-/** A random non-daily puzzle of the given difficulty. */
+/** A random difficulty-pool puzzle (never one from a daily/challenge pool). */
 export async function getRandomPuzzleByDifficulty(difficulty: Difficulty): Promise<Puzzle | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<PuzzleRow>(
     `SELECT * FROM puzzles
-       WHERE difficulty = ? AND id NOT LIKE 'daily_%'
+       WHERE difficulty = ? AND id NOT LIKE 'daily_%' AND id NOT LIKE 'challenge_%'
        ORDER BY RANDOM() LIMIT 1`,
     difficulty,
   );
   return row ? rowToPuzzle(row) : null;
 }
 
-export async function getDailyPoolCount(): Promise<number> {
+/** Number of puzzles in a daily track's rotating pool. */
+export async function getDailyPoolCount(track: DailyTrack): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ count: number }>(
-    "SELECT COUNT(*) AS count FROM puzzles WHERE id LIKE 'daily_%'",
+    "SELECT COUNT(*) AS count FROM puzzles WHERE id LIKE ?",
+    `${trackIdPrefix(track)}%`,
   );
   return row?.count ?? 0;
 }
 
 /**
- * The daily-pool puzzle at a stable index (ordered by id). The caller derives
- * the index from the calendar date; `dateKey` is attached to the result for
- * progress/streak tracking but does not affect selection.
+ * The puzzle at a stable index within a daily track's pool (ordered by id). The
+ * caller derives the index from the calendar date; `dateKey` is attached to the
+ * result for progress/streak tracking but does not affect selection.
  */
 export async function getDailyPuzzleByIndex(
+  track: DailyTrack,
   index: number,
   dateKey?: string | null,
 ): Promise<Puzzle | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<PuzzleRow>(
-    "SELECT * FROM puzzles WHERE id LIKE 'daily_%' ORDER BY id LIMIT 1 OFFSET ?",
+    "SELECT * FROM puzzles WHERE id LIKE ? ORDER BY id LIMIT 1 OFFSET ?",
+    `${trackIdPrefix(track)}%`,
     index,
   );
   return row ? rowToPuzzle(row, dateKey) : null;

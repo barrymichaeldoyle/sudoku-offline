@@ -4,7 +4,7 @@ Living status doc for picking the work back up. Pairs with the full spec in
 [`mvp-handoff.md`](./mvp-handoff.md) (scope, schema, acceptance criteria) and the
 **Locked Decisions** section at the top of that file. Update this file as phases land.
 
-_Last updated: end of Phase 3 (2026-06-18). Branch: work directly on `main`._
+_Last updated: end of Phase 4 (2026-06-19). Branch: work directly on `main`._
 
 ---
 
@@ -77,13 +77,38 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
 - **Settings-driven board**: peer/same-number highlight + mistake checking read settings;
   duplicates always flagged; givens never shown as errors. `autoNoteCleanup` honored.
 
+### Added in Phase 4 (Retention)
+- **Daily progress + streak**: `dailyRepository` (`startDailyProgress`,
+  `getDailyProgress`, `getCompletedDailyDateKeys`, `completeDailyForGame`,
+  `getDailyForGame`). Home calls `startDailyProgress` when a daily puzzle (carries
+  `dateKey`) is started. `gameRepository.completeGame` now, inside its transaction, calls
+  `completeDailyForGame` to stamp `daily_progress` complete and carry the `date_key` onto
+  the `completed_games` row (NULL for ordinary games). Replays never clobber a recorded
+  daily result (the update is gated on `completed_at IS NULL`).
+- **Two daily tracks**: `domain/daily.ts` (`DailyTrack = "daily" | "challenge"`,
+  `trackIdPrefix`). The normal **Daily Puzzle** drives the streak; the **Daily Challenge**
+  is an optional extreme puzzle (no streak). `daily_progress` is keyed by
+  `(date_key, track)` via **migration v2**. The generator emits a `challenge` pack
+  (`extreme` difficulty, 22–27 clues, asymmetric dig); `getDailyPuzzle(track)` and the
+  pool helpers select by track id-prefix. Streak reads only `track = 'daily'`. The new
+  `extreme` difficulty is in `DIFFICULTIES` (stats) but not `NEW_GAME_DIFFICULTIES` (Home),
+  so it's only reachable via the challenge. A future reward-ad story for both tracks is
+  sketched in `docs/retention-monetization.md`.
+- **Streak logic**: pure `domain/streak.ts` (`computeStreak`) — current run counts
+  consecutive days ending today or yesterday; longest tracks the best historical run.
+- **Stats**: `statsRepository.getCompletedGameStats` (aggregates from `completed_games`),
+  `services/statsService.ts` (`getGameStats` = aggregates + streak; `getDailyCompletionInfo`
+  for the completion screen). New `app/stats.tsx` screen + a Stats button on Home.
+- **Completion screen**: shows daily streak when applicable and a **Share** button
+  (RN `Share`) using pure `domain/shareText.ts` (`formatShareText`, tested).
+- **Time util**: `domain/time.ts` `formatDuration` (re-exported from `useElapsedSeconds`).
+
 ### Known gaps (later phases)
 - **Undo doesn't restore peer notes** that `autoNoteCleanup` removed (the `GameAction`
   type only stores the edited cell's notes — accepted limitation).
-- **Daily** starts a normal game from the daily puzzle; **no `daily_progress` write,
-  no streak** yet (Phase 4).
-- **Completion overlay** shows time/mistakes/hints but **no share text, no ad hook** yet.
-- **No Settings/Stats screens, no theme switching** yet (Phase 6 / Phase 4).
+- **Completion overlay** has share text but **no ad hook** yet (Phase 5
+  `maybeShowPostCompletionInterstitial`).
+- **No Settings screen, no theme switching** yet (Phase 6).
 
 ---
 
@@ -93,12 +118,9 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
 `computeCandidates` in `hints.ts` covers the candidate logic a lightweight `solver.ts`
 would have provided; no separate solver needed yet.
 
-### Phase 4 — Retention (next up)
-- `daily_progress` writes, daily **streak** logic (spec rules), completion screen with time
-  + shareable result text, stats screen from `completed_games` (+ `statsService`,
-  `statsRepository`).
+### Phase 4 — Retention — DONE ✅ (see "Added in Phase 4" above)
 
-### Phase 5 — Offline hooks (stubs)
+### Phase 5 — Offline hooks (stubs) (next up)
 - `analyticsService` (local `pending_events` queue; `flushPendingEvents` no-op),
   `adService` + `purchaseService` interfaces (no real SDKs), `entitlementRepository`
   cache. Never block gameplay; ads only post-completion.
@@ -110,10 +132,9 @@ would have provided; no separate solver needed yet.
 ---
 
 ## Repos/tables not yet touched
-`completed_games` (written but not read — Stats will read it), `daily_progress`,
-`pending_events`, `entitlements`, `schema_meta`. Repositories for stats/events/
-entitlements are specced in `mvp-handoff.md` but not yet created. (`settings` is now
-read/written via `settingsRepository`.)
+`pending_events`, `entitlements`, `schema_meta`. Repositories for events/entitlements are
+specced in `mvp-handoff.md` but not yet created (Phase 5). (`completed_games`,
+`daily_progress`, and `settings` are now all read/written.)
 
 ## Note: `knip` is wired up
 `knip.json` + `pnpm knip` detect unused files/deps. Its `entry` is currently only

@@ -1,10 +1,18 @@
+import type { DailyTrack } from "@/domain/daily";
+
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 
 import { Screen } from "@/components/Screen";
+import { startDailyProgress } from "@/data/repositories/dailyRepository";
 import { createGame, getActiveGame } from "@/data/repositories/gameRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
-import { DIFFICULTIES, type Difficulty, type GameState, type Puzzle } from "@/domain/sudoku/types";
+import {
+  NEW_GAME_DIFFICULTIES,
+  type Difficulty,
+  type GameState,
+  type Puzzle,
+} from "@/domain/sudoku/types";
 import { getDailyPuzzle } from "@/services/dailyService";
 import { useGameStore } from "@/state/useGameStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
@@ -14,6 +22,7 @@ const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   medium: "Medium",
   hard: "Hard",
   expert: "Expert",
+  extreme: "Extreme",
 };
 
 export default function Home() {
@@ -43,13 +52,19 @@ export default function Home() {
   );
 
   const startFromPuzzle = useCallback(
-    async (loadPuzzle: () => Promise<Puzzle | null>) => {
+    async (loadPuzzle: () => Promise<Puzzle | null>, dailyTrack?: DailyTrack) => {
       if (busy) return;
       setBusy(true);
       try {
         const puzzle = await loadPuzzle();
         if (puzzle) {
-          openGame(await createGame(puzzle));
+          const game = await createGame(puzzle);
+          // Daily/challenge puzzles carry a dateKey; record progress on the
+          // right track so completion can update streaks/stats.
+          if (dailyTrack && puzzle.dateKey) {
+            await startDailyProgress(puzzle.dateKey, dailyTrack, puzzle.id, game.id);
+          }
+          openGame(game);
         }
       } finally {
         setBusy(false);
@@ -72,7 +87,12 @@ export default function Home() {
           <PrimaryButton
             label="Daily Puzzle"
             variant="secondary"
-            onPress={() => startFromPuzzle(() => getDailyPuzzle())}
+            onPress={() => startFromPuzzle(() => getDailyPuzzle("daily"), "daily")}
+          />
+          <PrimaryButton
+            label="Daily Challenge"
+            variant="secondary"
+            onPress={() => startFromPuzzle(() => getDailyPuzzle("challenge"), "challenge")}
           />
         </View>
 
@@ -80,7 +100,7 @@ export default function Home() {
           <Text className="text-sm font-medium tracking-wide text-neutral-500 uppercase">
             New Game
           </Text>
-          {DIFFICULTIES.map((difficulty) => (
+          {NEW_GAME_DIFFICULTIES.map((difficulty) => (
             <PrimaryButton
               key={difficulty}
               label={DIFFICULTY_LABELS[difficulty]}
@@ -89,6 +109,8 @@ export default function Home() {
             />
           ))}
         </View>
+
+        <PrimaryButton label="Stats" variant="secondary" onPress={() => router.push("/stats")} />
       </ScrollView>
     </Screen>
   );

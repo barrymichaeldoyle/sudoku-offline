@@ -1,5 +1,6 @@
 import type { Difficulty } from "@/domain/sudoku/types";
 
+import challengePack from "@/assets/puzzles/challenge.json";
 import dailyPack from "@/assets/puzzles/daily.json";
 import easyPack from "@/assets/puzzles/easy.json";
 import expertPack from "@/assets/puzzles/expert.json";
@@ -31,4 +32,10 @@ export const BUNDLED_PACKS: readonly BundledPack[] = [
   { id: "hard", version: PACK_VERSION, daily: false, puzzles: hardPack as BundledPuzzle[] },
   { id: "expert", version: PACK_VERSION, daily: false, puzzles: expertPack as BundledPuzzle[] },
   { id: "daily", version: PACK_VERSION, daily: true, puzzles: dailyPack as BundledPuzzle[] },
+  {
+    id: "challenge",
+    version: PACK_VERSION,
+    daily: true,
+    puzzles: challengePack as BundledPuzzle[],
+  },
 ];

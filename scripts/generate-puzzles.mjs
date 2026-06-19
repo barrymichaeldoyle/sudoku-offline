@@ -26,6 +26,15 @@ const CONFIG = {
 };
 // Daily pool: a single rotating set selected by date index in the app.
 const DAILY = { count: 120, difficulty: "medium", minClues: 33, maxClues: 38 };
+// Challenge pool: a second daily track of extreme puzzles (very few clues), for
+// the optional "Daily Challenge". Harder than expert and hint-friendly.
+const CHALLENGE = {
+  count: 120,
+  difficulty: "extreme",
+  minClues: 22,
+  maxClues: 25,
+  symmetric: false,
+};
 
 // --- Seedable PRNG (mulberry32) ---------------------------------------------
 function makeRng(seed) {
@@ -143,9 +152,11 @@ function generateSolution(rng) {
   return grid;
 }
 
-// Dig holes from a solved grid while keeping the solution unique. Uses central
-// symmetry (remove cell + its mirror together) for a cleaner look.
-function digPuzzle(solution, minClues, maxClues, rng) {
+// Dig holes from a solved grid while keeping the solution unique. Central
+// symmetry (remove cell + its mirror together) gives a cleaner look but can't
+// reach very low clue counts; the extreme/challenge pool digs asymmetrically
+// (`symmetric: false`) so it can strip down to genuinely hard puzzles.
+function digPuzzle(solution, minClues, maxClues, rng, symmetric = true) {
   const puzzle = Uint8Array.from(solution);
   const targetClues = minClues + Math.floor(rng() * (maxClues - minClues + 1));
   let clues = 81;
@@ -158,7 +169,7 @@ function digPuzzle(solution, minClues, maxClues, rng) {
   for (const pos of positions) {
     if (clues <= targetClues) break;
     const mirror = 80 - pos;
-    const cells = pos === mirror ? [pos] : [pos, mirror];
+    const cells = symmetric && pos !== mirror ? [pos, mirror] : [pos];
     if (cells.some((c) => puzzle[c] === 0)) continue;
 
     const removed = cells.map((c) => puzzle[c]);
@@ -219,7 +230,7 @@ function pad(n) {
   return String(n).padStart(6, "0");
 }
 
-function buildPack({ difficulty, count, minClues, maxClues, idPrefix }, rng) {
+function buildPack({ difficulty, count, minClues, maxClues, idPrefix, symmetric = true }, rng) {
   const puzzles = [];
   const seen = new Set();
   let attempts = 0;
@@ -229,7 +240,7 @@ function buildPack({ difficulty, count, minClues, maxClues, idPrefix }, rng) {
       throw new Error(`Could not generate ${count} ${idPrefix} puzzles (got ${puzzles.length})`);
     }
     const solution = generateSolution(rng);
-    const puzzle = digPuzzle(solution, minClues, maxClues, rng);
+    const puzzle = digPuzzle(solution, minClues, maxClues, rng, symmetric);
     const givens = gridToString(puzzle);
     if (seen.has(givens)) continue;
 
@@ -260,6 +271,12 @@ async function main() {
     { file: "hard.json", difficulty: "hard", idPrefix: "puzzle_hard", ...CONFIG.hard },
     { file: "expert.json", difficulty: "expert", idPrefix: "puzzle_expert", ...CONFIG.expert },
     { file: "daily.json", difficulty: DAILY.difficulty, idPrefix: "daily", ...DAILY },
+    {
+      file: "challenge.json",
+      difficulty: CHALLENGE.difficulty,
+      idPrefix: "challenge",
+      ...CHALLENGE,
+    },
   ];
 
   let seedOffset = 0;

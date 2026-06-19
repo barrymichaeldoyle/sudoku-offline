@@ -1,6 +1,12 @@
-export type Difficulty = "easy" | "medium" | "hard" | "expert";
+export type Difficulty = "easy" | "medium" | "hard" | "expert" | "extreme";
 
-export const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard", "expert"];
+/** All difficulty tiers, including the challenge-only "extreme" tier (used for
+ * stats iteration and exhaustive Record keys). */
+export const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard", "expert", "extreme"];
+
+/** Difficulties offered as ordinary "New Game" options. "extreme" is excluded —
+ * it is only reachable via the Daily Challenge. */
+export const NEW_GAME_DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard", "expert"];
 
 export type PuzzleSource = "bundled" | "downloaded" | "generated";
 

@@ -1,3 +1,4 @@
+import type { DailyTrack } from "@/domain/daily";
 import type { Puzzle } from "@/domain/sudoku/types";
 
 import { getDailyPoolCount, getDailyPuzzleByIndex } from "@/data/repositories/puzzleRepository";
@@ -27,13 +28,17 @@ export function dailyIndexForDate(dateKey: string, poolCount: number): number {
 }
 
 /**
- * The daily puzzle for a date, selected deterministically from the bundled pool
- * so it is identical on every device and works fully offline.
+ * The daily puzzle for a track and date, selected deterministically from that
+ * track's bundled pool so it is identical on every device and works fully
+ * offline. The "daily" track is the normal puzzle; "challenge" is the extreme one.
  */
-export async function getDailyPuzzle(dateKey: string = getLocalDateKey()): Promise<Puzzle | null> {
-  const count = await getDailyPoolCount();
+export async function getDailyPuzzle(
+  track: DailyTrack = "daily",
+  dateKey: string = getLocalDateKey(),
+): Promise<Puzzle | null> {
+  const count = await getDailyPoolCount(track);
   if (count === 0) {
     return null;
   }
-  return getDailyPuzzleByIndex(dailyIndexForDate(dateKey, count), dateKey);
+  return getDailyPuzzleByIndex(track, dailyIndexForDate(dateKey, count), dateKey);
 }

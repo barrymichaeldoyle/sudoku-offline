@@ -1,11 +1,13 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect } from "react";
-import { AppState } from "react-native";
+import { useEffect, useState } from "react";
+import { AppState, Share } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { GameControls } from "@/components/GameControls";
 import { NumberPad } from "@/components/NumberPad";
 import { Screen } from "@/components/Screen";
+import { formatShareText } from "@/domain/shareText";
+import { getDailyCompletionInfo, type DailyCompletionInfo } from "@/services/statsService";
 import { formatDuration, useElapsedSeconds } from "@/state/useElapsedSeconds";
 import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
@@ -131,25 +133,73 @@ function PausedOverlay() {
 function CompletionOverlay() {
   const router = useRouter();
   const game = useGameStore((s) => s.game);
+  const [daily, setDaily] = useState<DailyCompletionInfo | null>(null);
+
+  useEffect(() => {
+    if (!game) {
+      return;
+    }
+    let cancelled = false;
+    getDailyCompletionInfo(game.id).then((info) => {
+      if (!cancelled) setDaily(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [game]);
+
   if (!game) {
     return null;
   }
+
+  const onShare = () => {
+    void Share.share({
+      message: formatShareText({
+        difficulty: game.difficulty,
+        elapsedSeconds: game.elapsedSeconds,
+        mistakes: game.mistakes,
+        hintsUsed: game.hintsUsed,
+        daily: daily
+          ? { kind: daily.track, dateKey: daily.dateKey, streak: daily.streak?.current ?? 0 }
+          : null,
+      }),
+    }).catch(() => {});
+  };
+
+  const heading =
+    daily?.track === "challenge"
+      ? "Challenge Complete"
+      : daily
+        ? "Daily Complete"
+        : "Puzzle Complete";
+
   return (
     <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
       <View className="w-full gap-2 rounded-2xl bg-white p-6 dark:bg-neutral-900">
         <Text className="text-center text-2xl font-bold text-neutral-900 dark:text-neutral-50">
-          Puzzle Complete
+          {heading}
         </Text>
         <Text className="text-center text-neutral-500">
           {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} ·{" "}
           {formatDuration(game.elapsedSeconds)} · Mistakes: {game.mistakes} · Hints:{" "}
           {game.hintsUsed}
         </Text>
+        {daily?.streak && daily.streak.current > 0 ? (
+          <Text className="text-center text-base font-semibold text-orange-500">
+            🔥 {daily.streak.current} day streak
+          </Text>
+        ) : null}
+
+        <Pressable onPress={onShare} className="mt-4 items-center rounded-xl bg-blue-600 py-4">
+          <Text className="text-lg font-semibold text-white">Share Result</Text>
+        </Pressable>
         <Pressable
           onPress={() => router.replace("/")}
-          className="mt-4 items-center rounded-xl bg-blue-600 py-4"
+          className="items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"
         >
-          <Text className="text-lg font-semibold text-white">Back to Home</Text>
+          <Text className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
+            Back to Home
+          </Text>
         </Pressable>
       </View>
     </View>

@@ -4,6 +4,7 @@ import { parseValuesString, valuesToString } from "@/domain/sudoku/board";
 import { CELL_COUNT, type GameState, type GameStatus, type Puzzle } from "@/domain/sudoku/types";
 
 import { getDatabase } from "../db/client";
+import { completeDailyForGame } from "./dailyRepository";
 
 type GameRow = {
   id: string;
@@ -128,14 +129,23 @@ export async function completeGame(game: GameState): Promise<GameState> {
       completedAt,
       game.id,
     );
+    // If this game is the tracked daily, mark its progress complete and carry
+    // the date_key onto the completed_games row (NULL for ordinary games).
+    const dateKey = await completeDailyForGame(txn, game.id, {
+      completedAt,
+      elapsedSeconds: game.elapsedSeconds,
+      mistakes: game.mistakes,
+      hintsUsed: game.hintsUsed,
+    });
     await txn.runAsync(
       `INSERT OR REPLACE INTO completed_games
          (id, game_id, puzzle_id, difficulty, date_key, elapsed_seconds, mistakes, hints_used, completed_at)
-       VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       Crypto.randomUUID(),
       game.id,
       game.puzzleId,
       game.difficulty,
+      dateKey,
       game.elapsedSeconds,
       game.mistakes,
       game.hintsUsed,
