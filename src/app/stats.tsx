@@ -5,6 +5,7 @@ import { Screen } from "@/components/Screen";
 import { DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
 import { getGameStats, type GameStats } from "@/services/statsService";
+import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -17,6 +18,7 @@ const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 
 export default function StatsScreen() {
   const router = useRouter();
+  const settings = useSettingsStore((s) => s.settings);
   const [stats, setStats] = useState<GameStats | null>(null);
 
   useFocusEffect(
@@ -53,14 +55,18 @@ export default function StatsScreen() {
         <View className="flex-1 items-center justify-center gap-2 p-8">
           <Text className="text-ink text-center text-lg font-medium">No completed puzzles yet</Text>
           <Text className="text-ink-soft text-center">
-            Finish a puzzle to start tracking your times and streak.
+            {settings.timerEnabled
+              ? "Finish a puzzle to start tracking your times and streak."
+              : "Finish a puzzle to start building your streak."}
           </Text>
         </View>
       ) : (
         <ScrollView contentContainerClassName="gap-6 p-6">
           <View className="flex-row gap-3">
             <StatCard label="Completed" value={String(stats.totalCompleted)} />
-            <StatCard label="Mistake-free" value={String(stats.mistakeFreeCompleted)} />
+            {settings.mistakeCheckingEnabled ? (
+              <StatCard label="Mistake-free" value={String(stats.mistakeFreeCompleted)} />
+            ) : null}
           </View>
 
           <View className="flex-row gap-3">
@@ -84,13 +90,15 @@ export default function StatsScreen() {
                   </Text>
                   <View className="items-end">
                     <Text className="text-ink text-base tabular-nums">{stat.completed} done</Text>
-                    <Text className="text-ink-soft text-sm tabular-nums">
-                      {stat.bestSeconds == null
-                        ? "—"
-                        : `best ${formatDuration(stat.bestSeconds)} · avg ${formatDuration(
-                            stat.averageSeconds ?? 0,
-                          )}`}
-                    </Text>
+                    {settings.timerEnabled ? (
+                      <Text className="text-ink-soft text-sm tabular-nums">
+                        {stat.bestSeconds == null
+                          ? "—"
+                          : `best ${formatDuration(stat.bestSeconds)} · avg ${formatDuration(
+                              stat.averageSeconds ?? 0,
+                            )}`}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               );

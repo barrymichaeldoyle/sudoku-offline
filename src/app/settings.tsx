@@ -20,11 +20,15 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 type ToggleKey = Exclude<keyof Settings, "theme">;
 
 const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
-  { key: "timerEnabled", label: "Timer", hint: "Show the elapsed-time clock" },
+  {
+    key: "timerEnabled",
+    label: "Timer",
+    hint: "Track elapsed time, pause/resume, and time stats",
+  },
   {
     key: "mistakeCheckingEnabled",
     label: "Mistake checking",
-    hint: "Flag wrong numbers as you play",
+    hint: "Flag wrong numbers and track mistakes in stats",
   },
   {
     key: "highlightPeers",

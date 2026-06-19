@@ -744,6 +744,7 @@ If mistake checking is enabled:
 If mistake checking is disabled:
 
 - Do not reveal correctness
+- Do not track or show mistake counts in stats or share text
 - Still allow duplicate visual warning if the setting supports it
 
 ---
@@ -977,6 +978,9 @@ Show when a number does not match the solution.
 ---
 
 ## 11.6 Pause screen
+
+Only show the pause overlay when the timer setting is on. When the timer is off, there
+is no pause/resume flow — leaving the game screen just saves progress.
 
 Pause overlay should be calm and clear.
 

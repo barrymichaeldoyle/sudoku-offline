@@ -61,6 +61,8 @@ type GameStore = {
   resume: () => void;
   /** Persist immediately (e.g. on app background); also pauses the timer. */
   flushAndPause: () => void;
+  /** Keep timer running state in sync when settings change mid-game. */
+  syncTimerFromSettings: () => void;
 };
 
 // --- Debounced persistence ---------------------------------------------------
@@ -97,6 +99,19 @@ function commitElapsed(state: Pick<GameStore, "game" | "running" | "lastStartedA
   return { ...game, elapsedSeconds: game.elapsedSeconds + delta };
 }
 
+/** Entering the game screen to play should always start unpaused. */
+function activateForPlay(game: GameState): GameState {
+  if (game.status === "completed" || game.status === "abandoned") {
+    return game;
+  }
+  return { ...game, status: "active" };
+}
+
+function timerStateForActiveGame(isActive: boolean): Pick<GameStore, "running" | "lastStartedAt"> {
+  const track = isActive && getSettings().timerEnabled;
+  return { running: track, lastStartedAt: track ? Date.now() : null };
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   game: null,
   loading: false,
@@ -112,11 +127,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   lastStartedAt: null,
 
   async loadGame(id) {
-    if (get().game?.id === id) {
+    const current = get().game;
+    if (current?.id === id) {
+      if (current.status === "paused") {
+        if (getSettings().timerEnabled) {
+          get().resume();
+        } else {
+          set({ game: { ...current, status: "active" } });
+        }
+      }
       return;
     }
     set({ loading: true });
-    const game = await getGameById(id);
+    const loaded = await getGameById(id);
+    const game = loaded ? activateForPlay(loaded) : loaded;
     const isActive = game != null && game.status !== "completed" && game.status !== "abandoned";
     set({
       game,
@@ -128,15 +152,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       undoStack: [],
       hintPromptVisible: false,
       hintCooldownUntil: null,
-      running: isActive,
-      lastStartedAt: isActive ? Date.now() : null,
+      ...timerStateForActiveGame(isActive),
     });
   },
 
   setGame(game) {
-    const isActive = game.status !== "completed" && game.status !== "abandoned";
+    const active = activateForPlay(game);
+    const isActive = active.status !== "completed" && active.status !== "abandoned";
     set({
-      game,
+      game: active,
       selectedCell: null,
       selectedNumber: null,
       notesMode: false,
@@ -144,8 +168,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       undoStack: [],
       hintPromptVisible: false,
       hintCooldownUntil: null,
-      running: isActive,
-      lastStartedAt: isActive ? Date.now() : null,
+      ...timerStateForActiveGame(isActive),
     });
   },
 
@@ -293,6 +316,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pause() {
+    if (!getSettings().timerEnabled) {
+      return;
+    }
     const state = get();
     if (!state.game || !state.running) {
       return;
@@ -309,12 +335,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!game || game.status === "completed") {
       return;
     }
+    if (!getSettings().timerEnabled) {
+      set({ game: { ...game, status: "active" } });
+      return;
+    }
     set({ game: { ...game, status: "active" }, running: true, lastStartedAt: Date.now() });
   },
 
   flushAndPause() {
-    get().pause();
+    if (getSettings().timerEnabled) {
+      get().pause();
+    }
     flushSave();
+  },
+
+  syncTimerFromSettings() {
+    const state = get();
+    const { game, running } = state;
+    if (!game || game.status === "completed" || game.status === "abandoned") {
+      return;
+    }
+
+    const timerEnabled = getSettings().timerEnabled;
+
+    if (!timerEnabled) {
+      if (running) {
+        const committed = commitElapsed(state);
+        set({ game: committed, running: false, lastStartedAt: null });
+        scheduleSave(committed);
+      } else if (game.status === "paused") {
+        set({ game: { ...game, status: "active" }, running: false, lastStartedAt: null });
+      }
+      return;
+    }
+
+    if (game.status === "paused") {
+      set({ running: false, lastStartedAt: null });
+      return;
+    }
+
+    if (!running) {
+      set({ running: true, lastStartedAt: Date.now() });
+    }
   },
 }));
 
@@ -361,7 +423,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
       ? cleanupNotesAfterPlacement(game.notes, index, nextValue)
       : game.notes.slice();
     notes[index] = 0;
-    if (!correct) {
+    if (!correct && getSettings().mistakeCheckingEnabled) {
       mistakes += 1;
     }
     if (!correct && getSettings().mistakeCheckingEnabled) {
@@ -438,7 +500,7 @@ function finalizeAfterPlacement(
   values: CellValue[],
 ): void {
   if (isPuzzleComplete(values, next.solution)) {
-    const committed = commitElapsed({ ...get(), game: next });
+    const committed = getSettings().timerEnabled ? commitElapsed({ ...get(), game: next }) : next;
     const completed: GameState = { ...committed, status: "completed" };
     if (saveTimer) {
       clearTimeout(saveTimer);

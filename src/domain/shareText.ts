@@ -16,6 +16,10 @@ export type ShareResultInput = {
   elapsedSeconds: number;
   mistakes: number;
   hintsUsed: number;
+  /** When false, time is omitted from the share line (timer setting off). */
+  showTimer?: boolean;
+  /** When false, mistakes are omitted from the share line (mistake checking off). */
+  showMistakes?: boolean;
   /** Set when the completed game was a daily; `kind` picks the heading/streak. */
   daily?: { kind: DailyTrack; dateKey: string; streak: number } | null;
 };
@@ -29,7 +33,15 @@ function pluralize(count: number, noun: string): string {
  * it can be unit-tested and reused by any share surface.
  */
 export function formatShareText(input: ShareResultInput): string {
-  const { difficulty, elapsedSeconds, mistakes, hintsUsed, daily } = input;
+  const {
+    difficulty,
+    elapsedSeconds,
+    mistakes,
+    hintsUsed,
+    showTimer = true,
+    showMistakes = true,
+    daily,
+  } = input;
 
   let heading: string;
   if (daily?.kind === "challenge") {
@@ -39,9 +51,17 @@ export function formatShareText(input: ShareResultInput): string {
   } else {
     heading = `Sudoku — ${DIFFICULTY_LABELS[difficulty]}`;
   }
-  const stats = `⏱ ${formatDuration(elapsedSeconds)} · ❌ ${pluralize(mistakes, "mistake")} · 💡 ${pluralize(hintsUsed, "hint")}`;
 
-  const lines = [heading, stats];
+  const statParts: string[] = [];
+  if (showTimer) {
+    statParts.push(`⏱ ${formatDuration(elapsedSeconds)}`);
+  }
+  if (showMistakes) {
+    statParts.push(`❌ ${pluralize(mistakes, "mistake")}`);
+  }
+  statParts.push(`💡 ${pluralize(hintsUsed, "hint")}`);
+
+  const lines = [heading, statParts.join(" · ")];
   // Only the normal daily has a streak.
   if (daily?.kind === "daily" && daily.streak > 0) {
     lines.push(`🔥 ${daily.streak} day streak`);

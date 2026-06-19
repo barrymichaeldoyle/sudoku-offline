@@ -18,8 +18,10 @@ jest.mock("@/services/adService", () => ({
 }));
 jest.mock("@/state/useEntitlementStore", () => ({ hasRemoveAds: jest.fn(() => false) }));
 
+import { DEFAULT_SETTINGS } from "@/domain/settings";
 import { adService } from "@/services/adService";
 import { hasRemoveAds } from "@/state/useEntitlementStore";
+import { useSettingsStore } from "@/state/useSettingsStore";
 
 import { useGameStore } from "./useGameStore";
 
@@ -60,6 +62,7 @@ describe("useGameStore reducers", () => {
     mockHasRemoveAds.mockReturnValue(false);
     mockIsRewardedHintAvailable.mockResolvedValue(true); // online by default
     mockShowRewardedHintAd.mockResolvedValue(false);
+    useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS } });
     load();
     useGameStore.getState().setInputMode("cell");
   });
@@ -117,6 +120,54 @@ describe("useGameStore reducers", () => {
     s.undo();
     expect(useGameStore.getState().game!.values[0]).toBeNull();
     expect(useGameStore.getState().undoStack).toHaveLength(0);
+  });
+
+  it("activates a paused game when setGame is called", () => {
+    useGameStore.getState().setGame({ ...freshGame(), status: "paused" });
+    const game = useGameStore.getState().game!;
+    expect(game.status).toBe("active");
+    expect(useGameStore.getState().running).toBe(true);
+  });
+
+  describe("syncTimerFromSettings", () => {
+    it("starts the timer when timer is enabled mid-game", () => {
+      useSettingsStore.setState((state) => ({
+        settings: { ...state.settings, timerEnabled: false },
+      }));
+      useGameStore.getState().setGame(freshGame());
+      expect(useGameStore.getState().running).toBe(false);
+
+      useSettingsStore.setState((state) => ({
+        settings: { ...state.settings, timerEnabled: true },
+      }));
+      useGameStore.getState().syncTimerFromSettings();
+
+      expect(useGameStore.getState().running).toBe(true);
+      expect(useGameStore.getState().lastStartedAt).not.toBeNull();
+    });
+
+    it("stops and commits elapsed time when timer is disabled mid-game", () => {
+      useGameStore.getState().setGame(freshGame());
+      useGameStore.setState({ lastStartedAt: Date.now() - 5000 });
+
+      useSettingsStore.setState((state) => ({
+        settings: { ...state.settings, timerEnabled: false },
+      }));
+      useGameStore.getState().syncTimerFromSettings();
+
+      expect(useGameStore.getState().running).toBe(false);
+      expect(useGameStore.getState().game!.elapsedSeconds).toBeGreaterThanOrEqual(5);
+    });
+  });
+
+  it("does not count mistakes when mistake checking is disabled", () => {
+    useSettingsStore.setState((state) => ({
+      settings: { ...state.settings, mistakeCheckingEnabled: false },
+    }));
+    const s = useGameStore.getState();
+    s.pressCell(0);
+    s.pressNumber(3);
+    expect(useGameStore.getState().game!.mistakes).toBe(0);
   });
 
   describe("hint flow", () => {

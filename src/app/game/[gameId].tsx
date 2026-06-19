@@ -1,7 +1,7 @@
 import { clsx } from "clsx";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { AppState, Share, useWindowDimensions } from "react-native";
+import { AppState, Share } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { GameControls } from "@/components/GameControls";
@@ -39,6 +39,8 @@ export default function GameScreen() {
   const hintPromptVisible = useGameStore((s) => s.hintPromptVisible);
   const loadGame = useGameStore((s) => s.loadGame);
   const flushAndPause = useGameStore((s) => s.flushAndPause);
+  const syncTimerFromSettings = useGameStore((s) => s.syncTimerFromSettings);
+  const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
   const [boardSize, setBoardSize] = useState(0);
 
   useEffect(() => {
@@ -47,8 +49,15 @@ export default function GameScreen() {
     }
   }, [gameId, loadGame]);
 
-  // Auto-pause (and persist) when the app leaves the foreground.
   useEffect(() => {
+    syncTimerFromSettings();
+  }, [timerEnabled, syncTimerFromSettings]);
+
+  // Auto-pause (and persist) when the app leaves the foreground — only when timing.
+  useEffect(() => {
+    if (!timerEnabled) {
+      return;
+    }
     const sub = AppState.addEventListener("change", (next) => {
       if (next !== "active") {
         flushAndPause();
@@ -58,7 +67,17 @@ export default function GameScreen() {
       sub.remove();
       flushAndPause();
     };
-  }, [flushAndPause]);
+  }, [flushAndPause, timerEnabled]);
+
+  // Persist progress when leaving the game screen without pausing.
+  useEffect(() => {
+    if (timerEnabled) {
+      return;
+    }
+    return () => {
+      flushAndPause();
+    };
+  }, [flushAndPause, timerEnabled]);
 
   if (!game) {
     return (
@@ -70,7 +89,7 @@ export default function GameScreen() {
     );
   }
 
-  const paused = game.status === "paused" && !justCompleted;
+  const paused = timerEnabled && game.status === "paused" && !justCompleted;
 
   return (
     <Screen className="bg-canvas flex-1">
@@ -83,15 +102,18 @@ export default function GameScreen() {
             setBoardSize(Math.floor(Math.min(width, height)));
           }}
         >
-          {boardSize > 0 ? <SudokuBoard size={boardSize} /> : null}
+          {boardSize > 0 ? (
+            <View style={{ width: boardSize, height: boardSize }}>
+              <SudokuBoard size={boardSize} />
+              {paused ? <PausedOverlay boardSize={boardSize} /> : null}
+            </View>
+          ) : null}
         </View>
         <View className="gap-3">
           <GameControls />
           <NumberPad />
         </View>
       </View>
-
-      {paused ? <PausedOverlay /> : null}
       {hintPromptVisible && !paused && !justCompleted ? <HintPromptOverlay /> : null}
       {justCompleted ? <CompletionOverlay /> : null}
     </Screen>
@@ -161,17 +183,17 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   );
 }
 
-function PausedOverlay() {
+function PausedOverlay({ boardSize }: { boardSize: number }) {
   const router = useRouter();
   const resume = useGameStore((s) => s.resume);
-  const { height } = useWindowDimensions();
-  const cardOffset = -Math.min(96, Math.max(56, height * 0.1));
+  const inset = Math.round(boardSize * 0.04);
 
   return (
-    <View className="absolute inset-0 items-center justify-center bg-black/70 p-8">
+    <View className="absolute inset-0">
+      <View className="absolute inset-0 rounded-2xl bg-black/70" />
       <View
-        className="border-line bg-surface min-h-96 w-full items-center justify-center gap-3 rounded-3xl border p-8"
-        style={{ transform: [{ translateY: cardOffset }] }}
+        className="border-line bg-surface absolute items-center justify-center gap-3 rounded-3xl border p-6"
+        style={{ top: inset, bottom: inset, left: inset, right: inset }}
       >
         <Text className="text-ink text-2xl font-bold">Paused</Text>
         <Text className="text-ink-soft -mt-1 text-sm">Your progress is saved</Text>
@@ -321,6 +343,8 @@ function CompletionOverlay() {
         elapsedSeconds: game.elapsedSeconds,
         mistakes: game.mistakes,
         hintsUsed: game.hintsUsed,
+        showTimer: settings.timerEnabled,
+        showMistakes: settings.mistakeCheckingEnabled,
         daily: daily
           ? { kind: daily.track, dateKey: daily.dateKey, streak: daily.streak?.current ?? 0 }
           : null,

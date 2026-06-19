@@ -34,9 +34,9 @@ screen, hint prompt). See `HINT_FLOW.md`. Branch: work directly on `main`._
 ## Current state — Phases 1 & 3 DONE ✅  (Phase 2 was folded in)
 
 A user can launch the app, start a new game by difficulty (or the daily puzzle),
-play with cell-first or number-first input + notes, undo, erase, use hints, watch a
-timer that auto-pauses on background, and complete a puzzle — fully offline. Board
-highlighting and mistake/duplicate flagging respect the settings. **66 unit tests pass.**
+play with cell-first or number-first input + notes, undo, erase, use hints, watch an
+optional timer (with auto-pause on background when enabled), and complete a puzzle — fully
+offline. Board highlighting and mistake/duplicate flagging respect the settings. **66 unit tests pass.**
 
 ### What exists
 - **Domain** (`src/domain/sudoku/`): `types.ts`, `board.ts`, `notes.ts`, `validation.ts`
@@ -58,8 +58,8 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
 - **State** (`src/state/useGameStore.ts`): zustand. Holds `game`, selection, `inputMode`
   ("cell"|"number"), `notesMode`, `justCompleted`. Actions: `loadGame`, `setGame`,
   `pressCell`, `pressNumber`, `erase`, `toggleNotesMode`, `setInputMode`. Mistakes
-  increment whenever a placed value ≠ solution (visual flagging is a separate setting,
-  not built yet). Persistence is fire-and-forget per action (no debounce yet).
+  increment only when mistake checking is enabled (same gate for stats and board
+  flagging). Persistence is fire-and-forget per action (no debounce yet).
 - **UI**: `src/app/_layout.tsx` (init gate + SafeAreaProvider), `app/index.tsx` (Home:
   Continue/Daily/New Game), `app/game/[gameId].tsx` (Game screen + completion overlay).
   Components: `Board/SudokuBoard`, `Board/SudokuCell`, `NumberPad`, `GameControls`,
@@ -74,8 +74,10 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
   cell (prefers naked singles), bumps `hintsUsed`. Gated per the **Hint model** Locked
   Decision — see `HINT_FLOW.md` (rewarded-ad/premium/offline-free flow added after Phase 6).
 - **Undo**: in-memory `undoStack` of `GameAction`s; `undo()` reverses the last move.
-- **Timer**: committed `elapsedSeconds` + in-memory `lastStartedAt`; `useElapsedSeconds`
-  ticks the display. Auto-pause on background via `AppState`; resume overlay on tap.
+- **Timer**: committed `elapsedSeconds` + in-memory `lastStartedAt` when the timer
+  setting is on; `useElapsedSeconds` ticks the display. Auto-pause on background via
+  `AppState`; resume overlay on tap. When the timer is off, elapsed time is not tracked
+  and pause/resume is disabled.
 - **Haptics** (`src/services/haptics.ts`), gated by `hapticsEnabled`.
 - **Debounced autosave** (600ms) with flush on pause/background/complete.
 - **Settings-driven board**: peer/same-number highlight + mistake checking read settings;

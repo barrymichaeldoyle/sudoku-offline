@@ -60,4 +60,28 @@ describe("formatShareText", () => {
       }),
     ).toBe("Sudoku Daily Challenge — 2026-06-19\n⏱ 15:05 · ❌ 3 mistakes · 💡 4 hints");
   });
+
+  it("omits time when showTimer is false", () => {
+    expect(
+      formatShareText({
+        difficulty: "medium",
+        elapsedSeconds: 600,
+        mistakes: 1,
+        hintsUsed: 0,
+        showTimer: false,
+      }),
+    ).toBe("Sudoku — Medium\n❌ 1 mistake · 💡 0 hints");
+  });
+
+  it("omits mistakes when showMistakes is false", () => {
+    expect(
+      formatShareText({
+        difficulty: "hard",
+        elapsedSeconds: 120,
+        mistakes: 2,
+        hintsUsed: 1,
+        showMistakes: false,
+      }),
+    ).toBe("Sudoku — Hard\n⏱ 02:00 · 💡 1 hint");
+  });
 });

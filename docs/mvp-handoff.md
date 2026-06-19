@@ -12,9 +12,14 @@ These override the original handoff where they conflict:
   "Continue" only resumes `active`/`paused` games.
 - **Input modes:** ship both cell-first and number-first from the start, switchable via a
   Settings `inputMode` toggle; input handler abstracts over the mode.
-- **Mistakes:** `mistakes` always increments when a placed value disagrees with the
-  solution (historical record for stats). `mistakeCheckingEnabled` only controls whether
-  the mistake is *visually* flagged live.
+- **Mistakes:** when `mistakeCheckingEnabled` is on, wrong placements increment
+  `mistakes`, are flagged on the board, and feed stats (including "mistake-free"
+  completions). When off, mistakes are not tracked, not shown in stats, and wrong
+  numbers are not flagged.
+- **Timer:** when `timerEnabled` is on, elapsed time is tracked, pause/resume and
+  auto-pause on background apply, and time stats (best/average) are shown. When off,
+  there is no pause UI or background pause, elapsed time is not tracked, and time
+  is omitted from stats and share text.
 - **No runtime generator:** drop `domain/sudoku/generator.ts` for MVP. Keep `solver.ts`
   as a lightweight candidate/constraint helper for hints only. Any generation is a
   build-time script, not bundled into the app.
@@ -49,9 +54,9 @@ Core product promise: **A fast, clean Sudoku app that respects your concentratio
 
 ### In scope
 - **Gameplay:** classic 9x9 only; new puzzle by difficulty (easy/medium/hard/expert);
-  cell-first input (number-first if simple); pencil notes; undo; eraser; timer with
-  pause/resume; mistake-checking toggle; highlight selected row/col/box; highlight same
-  numbers; duplicate warning; auto-save; completion detection; haptics.
+  cell-first input (number-first if simple); pencil notes; undo; eraser; optional timer
+  with pause/resume when enabled; optional mistake checking; highlight selected row/col/box;
+  highlight same numbers; duplicate warning; auto-save; completion detection; haptics.
 - **Puzzles:** bundled static packs; local SQLite import on first launch; unique IDs;
   81-char string format; deterministic daily puzzle that works offline.
 - **Retention:** daily puzzle; daily streak; completion screen; basic stats; shareable
@@ -171,10 +176,12 @@ CREATE TABLE IF NOT EXISTS entitlements (key TEXT PRIMARY KEY NOT NULL, value TE
 `cleanupNotesAfterPlacement`. Index convention: row-major 0..80.
 
 ## Game Screen UX
-Header (timer, mistakes, pause) → board → number pad → controls (notes toggle, undo,
-erase, hint) → optional completion modal. Cell-first interaction; notes mode toggles
-note bits; erase clears value/notes; undo reverses last user-changing action. Subtle
-haptics for place / invalid / complete / toggle notes (respect setting).
+Header (optional timer, optional mistakes, pause when timer on) → board → number pad →
+controls (notes toggle, undo, erase, hint) → optional completion modal. Cell-first
+interaction; notes mode toggles note bits; erase clears value/notes; undo reverses last
+user-changing action. Subtle haptics for place / invalid / complete / toggle notes
+(respect setting). Pause overlay and auto-pause on background only when the timer setting
+is on.
 
 ## Save Strategy
 User action → update in-memory store immediately → debounce local SQLite save. Persist
@@ -182,9 +189,11 @@ after value/note/undo/erase/hint/pause/background/completion. Lose at most one m
 crash.
 
 ## Timer Strategy
-Store `elapsed_seconds`, in-memory `last_started_at`, `status`. While active & not paused:
-`displayElapsed = savedElapsed + now - lastStartedAt`. On pause/background: commit
-elapsed, set paused, save. Auto-pause on background; resume only on user tap.
+When `timerEnabled` is on: store `elapsed_seconds`, in-memory `last_started_at`, and
+`status`. While active & not paused: `displayElapsed = savedElapsed + now -
+lastStartedAt`. On pause/background: commit elapsed, set paused, save. Auto-pause on
+background; resume only on user tap. When the timer setting is off, elapsed time is not
+tracked, pause/resume does not apply, and time is omitted from stats and share text.
 
 ## Daily Puzzle
 Local date key `YYYY-MM-DD`. Selection: deterministic index `daysSinceEpoch %
@@ -194,9 +203,9 @@ local calendar day; completing today updates streak; yesterday → increment; to
 change; else reset to 1.
 
 ## Stats
-Total completed; completed by difficulty; best/average time by difficulty; current &
-longest daily streak; mistake-free completions. Source: `completed_games` +
-`daily_progress`. Don't over-engineer caching yet.
+Total completed; completed by difficulty; best/average time by difficulty (timer setting
+on only); current & longest daily streak; mistake-free completions (mistake checking on
+only). Source: `completed_games` + `daily_progress`. Don't over-engineer caching yet.
 
 ## Hints
 Find an empty non-given cell; prefer single-candidate cells if candidate logic exists;
@@ -233,9 +242,10 @@ Gameplay never waits on analytics; failures invisible to users; cap queue eventu
 
 ## Screens
 - **Home:** Continue (if active) · Daily · New Game (Easy/Medium/Hard/Expert) · Stats · Settings.
-- **Game:** board, timer, controls; smooth on small phones.
-- **Completion:** difficulty, time, mistakes, hints; New Game · Daily · Share. No
-  post-completion interstitial (dropped 2026-06-19 — see Locked Decisions).
+- **Game:** board, optional timer/controls; smooth on small phones.
+- **Completion:** difficulty; time and mistakes when those settings are on; hints; New
+  Game · Daily · Share. No post-completion interstitial (dropped 2026-06-19 — see Locked
+  Decisions).
 - **Stats / Settings:** simple displays and toggles.
 
 ## Visual Direction
