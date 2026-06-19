@@ -1,17 +1,19 @@
 import { clsx } from "clsx";
 
+import { SimpleIcon, type SimpleIconName } from "@/components/SimpleIcon";
 import { useGameStore } from "@/state/useGameStore";
 import { useHintCooldownRemaining } from "@/state/useHintCooldown";
 import { Pressable, Text, View } from "@/tw";
 
 type ControlButtonProps = {
   label: string;
+  icon: SimpleIconName;
   active?: boolean;
   disabled?: boolean;
   onPress: () => void;
 };
 
-function ControlButton({ label, active, disabled, onPress }: ControlButtonProps) {
+function ControlButton({ label, icon, active, disabled, onPress }: ControlButtonProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -25,6 +27,7 @@ function ControlButton({ label, active, disabled, onPress }: ControlButtonProps)
         disabled && "opacity-40",
       )}
     >
+      <SimpleIcon name={icon} tone={active ? "onPrimary" : "muted"} />
       <Text className={clsx("text-sm font-semibold", active ? "text-on-primary" : "text-ink-soft")}>
         {label}
       </Text>
@@ -46,15 +49,17 @@ export function GameControls() {
   return (
     <View className="gap-2">
       <View className="flex-row gap-2">
-        <ControlButton label="Undo" disabled={!canUndo} onPress={undo} />
-        <ControlButton label="Erase" onPress={erase} />
+        <ControlButton label="Undo" icon="undo" disabled={!canUndo} onPress={undo} />
+        <ControlButton label="Erase" icon="erase" onPress={erase} />
         <ControlButton
           label={notesMode ? "Notes ✓" : "Notes"}
+          icon="notes"
           active={notesMode}
           onPress={toggleNotesMode}
         />
         <ControlButton
           label={hintCooldown > 0 ? `Hint ${hintCooldown}s` : "Hint"}
+          icon="hint"
           disabled={hintCooldown > 0}
           onPress={requestHint}
         />
@@ -68,6 +73,7 @@ export function GameControls() {
         accessibilityLabel={`Input mode: ${inputMode === "cell" ? "cell first" : "number first"}`}
         className="bg-surface-muted flex-row items-center gap-1.5 self-center rounded-full px-4 py-2 active:opacity-70"
       >
+        <SimpleIcon name="input" tone="muted" />
         <Text className="text-ink-dim text-xs font-medium">Input</Text>
         <Text className="text-ink text-xs font-semibold">
           {inputMode === "cell" ? "Cell-first" : "Number-first"}

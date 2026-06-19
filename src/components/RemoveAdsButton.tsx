@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { useState } from "react";
 
+import { SimpleIcon } from "@/components/SimpleIcon";
 import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
 import { track } from "@/services/analyticsService";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
@@ -40,10 +41,11 @@ export function RemoveAdsButton({ source }: { source: string }) {
       accessibilityRole="button"
       accessibilityLabel="Remove ads and unlock unlimited hints"
       className={clsx(
-        "items-center rounded-2xl border border-primary py-4 active:opacity-80",
+        "flex-row items-center justify-center gap-2 rounded-2xl border border-primary py-4 active:opacity-80",
         busy && "opacity-50",
       )}
     >
+      <SimpleIcon name="plus" tone="primary" />
       <Text className="text-primary text-base font-semibold">
         {busy ? "Loading…" : "Remove Ads · Unlimited hints"}
       </Text>
