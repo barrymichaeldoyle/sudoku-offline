@@ -16,6 +16,14 @@ export type AnalyticsEventName =
   | "daily_completed"
   | "setting_changed"
   | "onboarding_completed"
-  | "share_result_tapped";
+  | "share_result_tapped"
+  | "daily_reminder_permission_requested"
+  | "daily_reminder_permission_granted"
+  | "daily_reminder_permission_denied"
+  | "daily_reminder_enabled"
+  | "daily_reminder_disabled"
+  | "daily_reminder_time_changed"
+  | "daily_reminder_scheduled"
+  | "daily_reminder_tapped";
 
 export type AnalyticsPayload = Record<string, string | number | boolean | null>;

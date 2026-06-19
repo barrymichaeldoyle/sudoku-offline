@@ -1,8 +1,24 @@
-# Push Notifications - Daily Puzzle Reminder (planned)
+# Push Notifications - Daily Puzzle Reminder
 
 > Retention feature for bringing players back to the daily puzzle without making
-> the app feel noisy. **Not yet built.** This should be an opt-in setting, use
-> local scheduling first, and keep the core game fully playable offline.
+> the app feel noisy. **Built** (local notifications, v1). Opt-in setting, local
+> scheduling only, core game stays fully playable offline.
+>
+> Implementation: `services/notificationService.ts` (scheduler + permission),
+> `domain/reminder.ts` (pure schedule-decision logic, unit-tested),
+> `hooks/useDailyReminderObserver.ts` (tap → deep link), Settings "Reminders"
+> section, and resync hooks on boot, setting/time change, daily start, daily
+> completion, and app foreground. Chose the **recommended v1 opportunistic
+> `DATE` trigger** below (not the repeating calendar trigger) so the reminder is
+> suppressed once today's daily is done. Reminder time is a small set of presets
+> (8/9/12/6/8) to avoid adding a native time-picker dependency for v1.
+>
+> Permission is never requested cold. It is asked only when the player opts in —
+> either via the Settings toggle, or via a **one-time soft prompt shown after a
+> daily/challenge completion** (a high-trust moment). The soft prompt shows at
+> most once (`daily_reminder_prompt_seen` meta flag) and only when the OS prompt
+> can still be shown; tapping "Turn on reminder" triggers the OS request, "Not
+> now" dismisses for good.
 
 Pairs with [`handover.md`](./handover.md) (phase status),
 [`retention-monetization.md`](./retention-monetization.md) (reward-ad retention

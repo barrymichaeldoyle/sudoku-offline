@@ -1,10 +1,13 @@
 import "@/global.css";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { initializeApp } from "@/data/init";
+import { useDailyReminderObserver } from "@/hooks/useDailyReminderObserver";
+import { syncDailyReminderSchedule } from "@/services/notificationService";
+import { getSettings } from "@/state/useSettingsStore";
 import { Text, View } from "@/tw";
 
 export default function RootLayout() {
@@ -20,7 +23,10 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       {ready ? (
-        <Stack screenOptions={{ headerShown: false }} />
+        <>
+          <Stack screenOptions={{ headerShown: false }} />
+          <NotificationBridge />
+        </>
       ) : (
         <View className="bg-canvas flex-1 items-center justify-center gap-3">
           {error ? (
@@ -32,4 +38,25 @@ export default function RootLayout() {
       )}
     </SafeAreaProvider>
   );
+}
+
+/**
+ * Renders nothing — it just lives inside the mounted navigator so reminder taps
+ * can route, and keeps the daily reminder accurate whenever the app is resumed
+ * (a date rollover or a daily finished elsewhere can make a pending reminder
+ * stale).
+ */
+function NotificationBridge() {
+  useDailyReminderObserver();
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void syncDailyReminderSchedule(getSettings());
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  return null;
 }

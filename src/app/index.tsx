@@ -1,8 +1,8 @@
 import type { DailyTrack } from "@/domain/daily";
 
 import { clsx } from "clsx";
-import { Redirect, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 
 import { Screen } from "@/components/Screen";
@@ -58,6 +58,9 @@ type DailyCardState = {
 
 export default function Home() {
   const router = useRouter();
+  // `daily=1` arrives from a daily-reminder notification tap (see
+  // notificationService); it means "take me to today's Daily Puzzle".
+  const params = useLocalSearchParams<{ daily?: string }>();
   const setGame = useGameStore((s) => s.setGame);
   const settings = useSettingsStore((s) => s.settings);
   const hydrated = useSettingsStore((s) => s.hydrated);
@@ -162,6 +165,25 @@ export default function Home() {
     },
     [activeGame, busy, openGame],
   );
+
+  // Reminder tap deep link: resume (or start) today's daily, then drop the
+  // param so it fires once. Loads progress fresh so an in-progress daily resumes
+  // rather than getting replaced by a new game.
+  const dailyLinkHandled = useRef(false);
+  useEffect(() => {
+    if (params.daily !== "1" || !hydrated || !onboardingComplete || dailyLinkHandled.current) {
+      return;
+    }
+    dailyLinkHandled.current = true;
+    router.setParams({ daily: undefined });
+    void (async () => {
+      const card = await loadDailyCard("daily");
+      if (card.completed) {
+        return; // Already done today — just land on Home.
+      }
+      await startFromPuzzle(() => getDailyPuzzle("daily"), "daily", card.game);
+    })();
+  }, [params.daily, hydrated, onboardingComplete, router, startFromPuzzle]);
 
   // First launch: send the player to the minimal-vs-full setup screen.
   if (hydrated && !onboardingComplete) {

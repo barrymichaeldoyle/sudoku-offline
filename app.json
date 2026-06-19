@@ -39,6 +39,15 @@
       ],
       "expo-sqlite",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#208AEF",
+          "defaultChannel": "daily-reminders",
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",

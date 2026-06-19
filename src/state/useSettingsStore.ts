@@ -8,6 +8,7 @@ import {
 } from "@/data/repositories/settingsRepository";
 import { DEFAULT_SETTINGS, MINIMAL_SETTINGS, type Settings } from "@/domain/settings";
 import { track } from "@/services/analyticsService";
+import { syncDailyReminderSchedule } from "@/services/notificationService";
 import { applyThemePreference } from "@/services/theme";
 
 type SettingsStore = {
@@ -39,6 +40,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     set({ settings });
     if (key === "theme") {
       applyThemePreference(settings.theme);
+    }
+    if (key === "dailyReminderEnabled" || key === "dailyReminderTimeMinutes") {
+      void syncDailyReminderSchedule(settings);
     }
     void saveSettings(settings).catch(() => {});
     void track("setting_changed", { setting: String(key), value });

@@ -18,10 +18,19 @@ import { Screen } from "@/components/Screen";
 import { SimpleIcon, type SimpleIconName } from "@/components/SimpleIcon";
 import { getDailyForGame } from "@/data/repositories/dailyRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
+import {
+  loadReminderPromptSeen,
+  setReminderPromptSeen,
+} from "@/data/repositories/settingsRepository";
 import { formatShareText } from "@/domain/shareText";
 import { NEW_GAME_DIFFICULTIES, type GameState } from "@/domain/sudoku/types";
 import { track } from "@/services/analyticsService";
 import { launchPuzzle } from "@/services/gameLauncher";
+import {
+  canOfferReminderPrompt,
+  requestDailyReminderPermission,
+  syncDailyReminderSchedule,
+} from "@/services/notificationService";
 import { getDailyCompletionInfo, type DailyCompletionInfo } from "@/services/statsService";
 import { formatDuration, useElapsedSeconds } from "@/state/useElapsedSeconds";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
@@ -422,23 +431,50 @@ function CompletionOverlay() {
   const settings = useSettingsStore((s) => s.settings);
   const [daily, setDaily] = useState<DailyCompletionInfo | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showReminderPrompt, setShowReminderPrompt] = useState(false);
 
   useEffect(() => {
     if (!game) {
       return;
     }
     let cancelled = false;
-    getDailyCompletionInfo(game.id).then((info) => {
+    getDailyCompletionInfo(game.id).then(async (info) => {
       if (cancelled || !info) {
         return;
       }
       setDaily(info);
       void track("daily_completed", { track: info.track });
+      if (info.track === "daily") {
+        // Don't nag about a daily the player just finished — push the reminder
+        // out to tomorrow.
+        void syncDailyReminderSchedule(useSettingsStore.getState().settings);
+      }
+      // Finishing a daily/challenge is a high-trust moment: offer the reminder
+      // once, here, instead of cold-prompting elsewhere.
+      if (!useSettingsStore.getState().settings.dailyReminderEnabled) {
+        const [seen, canOffer] = await Promise.all([
+          loadReminderPromptSeen(),
+          canOfferReminderPrompt(),
+        ]);
+        if (!cancelled && !seen && canOffer) {
+          setShowReminderPrompt(true);
+          void setReminderPromptSeen(); // shown once, ever
+        }
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [game]);
+
+  const onEnableReminder = async () => {
+    setShowReminderPrompt(false);
+    const granted = await requestDailyReminderPermission();
+    if (granted) {
+      useSettingsStore.getState().setSetting("dailyReminderEnabled", true);
+      void track("daily_reminder_enabled");
+    }
+  };
 
   if (!game) {
     return null;
@@ -500,6 +536,13 @@ function CompletionOverlay() {
             </Text>
           ) : null}
 
+          {showReminderPrompt ? (
+            <ReminderPrompt
+              onEnable={() => void onEnableReminder()}
+              onDismiss={() => setShowReminderPrompt(false)}
+            />
+          ) : null}
+
           <OverlayButton
             icon="share"
             label="Share Result"
@@ -526,6 +569,37 @@ function CompletionOverlay() {
           <RemoveAdsButton source="completion" variant="link" />
         </ScrollView>
       </View>
+    </View>
+  );
+}
+
+/** One-time soft opt-in shown after a daily/challenge win — no OS prompt until
+ * the player taps Enable, and never shown again once dismissed. */
+function ReminderPrompt({ onEnable, onDismiss }: { onEnable: () => void; onDismiss: () => void }) {
+  return (
+    <View className="border-line bg-canvas mt-4 gap-3 rounded-2xl border p-4">
+      <View className="gap-1">
+        <Text className="text-ink text-center text-base font-semibold">Want a daily reminder?</Text>
+        <Text className="text-ink-soft text-center text-sm">
+          A gentle nudge to finish each day's puzzle and keep your streak going.
+        </Text>
+      </View>
+      <Pressable
+        onPress={onEnable}
+        accessibilityRole="button"
+        accessibilityLabel="Turn on daily reminder"
+        className="bg-primary items-center rounded-xl py-3 active:opacity-80"
+      >
+        <Text className="text-on-primary text-base font-semibold">Turn on reminder</Text>
+      </Pressable>
+      <Pressable
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Not now"
+        className="items-center py-1 active:opacity-70"
+      >
+        <Text className="text-ink-soft text-sm font-medium">Not now</Text>
+      </Pressable>
     </View>
   );
 }

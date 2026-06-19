@@ -2,13 +2,16 @@ import type { Settings, ThemePreference } from "@/domain/settings";
 
 import { useRouter } from "expo-router";
 import { lazy, Suspense } from "react";
-import { Alert, Switch } from "react-native";
+import { Alert, Platform, Switch } from "react-native";
 
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { resetStats } from "@/data/repositories/statsRepository";
 import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
+import { formatReminderTime } from "@/domain/reminder";
+import { track } from "@/services/analyticsService";
+import { requestDailyReminderPermission } from "@/services/notificationService";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
@@ -22,7 +25,9 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "dark", label: "Dark" },
 ];
 
-type ToggleKey = Exclude<keyof Settings, "theme">;
+type ToggleKey = {
+  [K in keyof Settings]: Settings[K] extends boolean ? K : never;
+}[keyof Settings];
 
 const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
   {
@@ -58,12 +63,41 @@ const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
   { key: "hapticsEnabled", label: "Haptics", hint: "Vibration feedback on actions" },
 ];
 
+// A few sensible reminder times (minutes after local midnight). Kept to presets
+// so we don't need a native time-picker dependency for v1.
+const REMINDER_TIMES = [8 * 60, 9 * 60, 12 * 60, 18 * 60, 20 * 60];
+
 export default function SettingsScreen() {
   const router = useRouter();
   const settings = useSettingsStore((s) => s.settings);
   const setSetting = useSettingsStore((s) => s.setSetting);
   const isPremium = useEntitlementStore((s) => s.entitlements[ENTITLEMENT_REMOVE_ADS] === true);
   const restorePurchases = useEntitlementStore((s) => s.restorePurchases);
+
+  const onToggleReminder = async (next: boolean) => {
+    if (!next) {
+      setSetting("dailyReminderEnabled", false);
+      void track("daily_reminder_disabled");
+      return;
+    }
+    const granted = await requestDailyReminderPermission();
+    if (!granted) {
+      // Permission denied — keep the app-level setting off and point the player
+      // at system settings (we don't re-ask automatically).
+      Alert.alert(
+        "Notifications are off",
+        "To get a daily reminder, enable notifications for Sudoku in your device settings.",
+      );
+      return;
+    }
+    setSetting("dailyReminderEnabled", true);
+    void track("daily_reminder_enabled");
+  };
+
+  const onChangeReminderTime = (minutes: number) => {
+    setSetting("dailyReminderTimeMinutes", minutes);
+    void track("daily_reminder_time_changed", { minutes });
+  };
 
   const onResetStats = () => {
     Alert.alert("Reset stats?", "This permanently clears your completed games and daily streak.", [
@@ -140,6 +174,60 @@ export default function SettingsScreen() {
             </View>
           ))}
         </View>
+
+        {Platform.OS === "web" ? null : (
+          <View className="gap-3">
+            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              Reminders
+            </Text>
+            <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+              <View className="flex-1 gap-0.5">
+                <Text className="text-ink text-base font-medium">Daily puzzle reminder</Text>
+                <Text className="text-ink-soft text-sm">
+                  A gentle nudge to finish today's Daily Puzzle and keep your streak going
+                </Text>
+              </View>
+              <Switch
+                value={settings.dailyReminderEnabled}
+                onValueChange={(v) => void onToggleReminder(v)}
+                accessibilityLabel="Daily puzzle reminder"
+              />
+            </View>
+            {settings.dailyReminderEnabled ? (
+              <View className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3">
+                <Text className="text-ink text-base font-medium">Reminder time</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {REMINDER_TIMES.map((minutes) => {
+                    const active = settings.dailyReminderTimeMinutes === minutes;
+                    const label = formatReminderTime(minutes);
+                    return (
+                      <Pressable
+                        key={minutes}
+                        onPress={() => onChangeReminderTime(minutes)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={`Remind me at ${label}`}
+                        className={
+                          active
+                            ? "bg-primary rounded-xl px-4 py-2.5"
+                            : "border-line bg-canvas rounded-xl border px-4 py-2.5"
+                        }
+                      >
+                        <Text
+                          className={
+                            active ? "text-on-primary font-semibold" : "text-ink font-medium"
+                          }
+                        >
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        )}
 
         <View className="gap-3">
           <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">

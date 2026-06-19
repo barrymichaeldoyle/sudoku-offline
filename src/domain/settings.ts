@@ -12,7 +12,14 @@ export type Settings = {
   showRemainingCounts: boolean;
   /** Premium-only: skip the hint confirmation dialog. */
   instantHintsEnabled: boolean;
+  /** Opt-in local reminder to come back for today's unfinished Daily Puzzle. */
+  dailyReminderEnabled: boolean;
+  /** Reminder time as minutes after local midnight (default 09:00 = 540). */
+  dailyReminderTimeMinutes: number;
 };
+
+/** Default reminder time: 09:00 local, expressed as minutes after midnight. */
+export const DEFAULT_REMINDER_TIME_MINUTES = 9 * 60;
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
@@ -24,6 +31,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoNoteCleanup: true,
   showRemainingCounts: true,
   instantHintsEnabled: false,
+  dailyReminderEnabled: false,
+  dailyReminderTimeMinutes: DEFAULT_REMINDER_TIME_MINUTES,
 };
 
 /**

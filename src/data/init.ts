@@ -1,5 +1,6 @@
 import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
+import { syncDailyReminderSchedule } from "@/services/notificationService";
 import { applyThemePreference } from "@/services/theme";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
@@ -22,6 +23,9 @@ export function initializeApp(): Promise<void> {
       await useSettingsStore.getState().hydrate();
       applyThemePreference(useSettingsStore.getState().settings.theme);
       await useEntitlementStore.getState().hydrate();
+      // Keep the daily reminder accurate across launches (date rollover, a daily
+      // finished on another day, a reminder time that has since passed).
+      void syncDailyReminderSchedule(useSettingsStore.getState().settings);
       // Best-effort: warm the ad SDK so a rewarded hint is ready when asked.
       // Never block (or fail) offline boot on ads.
       void adService.initialize().catch(() => undefined);

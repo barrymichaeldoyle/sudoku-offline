@@ -50,3 +50,25 @@ export async function setOnboardingComplete(): Promise<void> {
     "true",
   );
 }
+
+// Whether the one-time "want a daily reminder?" prompt has been shown after a
+// daily completion. Kept out of the user-facing Settings blob.
+const REMINDER_PROMPT_KEY = "daily_reminder_prompt_seen";
+
+export async function loadReminderPromptSeen(): Promise<boolean> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM settings WHERE key = ?",
+    REMINDER_PROMPT_KEY,
+  );
+  return row?.value === "true";
+}
+
+export async function setReminderPromptSeen(): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+    REMINDER_PROMPT_KEY,
+    "true",
+  );
+}
