@@ -8,7 +8,7 @@ import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { resetStats } from "@/data/repositories/statsRepository";
-import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
+import { ENTITLEMENT_REMOVE_ADS, IAP_ENABLED } from "@/domain/entitlements";
 import { formatReminderTime } from "@/domain/reminder";
 import { track } from "@/services/analyticsService";
 import { requestDailyReminderPermission } from "@/services/notificationService";
@@ -229,50 +229,52 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        <View className="gap-3">
-          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-            Ads & Purchases
-          </Text>
-          {isPremium ? (
-            <View className="gap-3">
-              <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
-                <Text className="text-ink text-base font-medium">Premium active</Text>
-                <Text className="text-ink-soft text-sm">
-                  No ads. Hints without prompts. Thanks for your support.
-                </Text>
-              </View>
-              <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-                <View className="flex-1 gap-0.5">
-                  <Text className="text-ink text-base font-medium">Instant hints</Text>
+        {IAP_ENABLED ? (
+          <View className="gap-3">
+            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              Ads & Purchases
+            </Text>
+            {isPremium ? (
+              <View className="gap-3">
+                <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
+                  <Text className="text-ink text-base font-medium">Premium active</Text>
                   <Text className="text-ink-soft text-sm">
-                    Reveal hints immediately without a confirmation prompt
+                    No ads. Hints without prompts. Thanks for your support.
                   </Text>
                 </View>
-                <Switch
-                  value={settings.instantHintsEnabled}
-                  onValueChange={(v) => setSetting("instantHintsEnabled", v)}
-                  accessibilityLabel="Instant hints"
-                />
+                <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-ink text-base font-medium">Instant hints</Text>
+                    <Text className="text-ink-soft text-sm">
+                      Reveal hints immediately without a confirmation prompt
+                    </Text>
+                  </View>
+                  <Switch
+                    value={settings.instantHintsEnabled}
+                    onValueChange={(v) => setSetting("instantHintsEnabled", v)}
+                    accessibilityLabel="Instant hints"
+                  />
+                </View>
               </View>
-            </View>
-          ) : (
-            <>
-              <RemoveAdsButton source="settings" />
-              <Text className="text-ink-soft text-sm">
-                One-time purchase. Skip rewarded-ad prompts for hints. No ads ever appear while you
-                play.
-              </Text>
-            </>
-          )}
-          <Pressable
-            onPress={onRestore}
-            accessibilityRole="button"
-            accessibilityLabel="Restore purchases"
-            className="border-line bg-surface items-center rounded-2xl border py-4 active:opacity-80"
-          >
-            <Text className="text-ink text-base font-medium">Restore Purchases</Text>
-          </Pressable>
-        </View>
+            ) : (
+              <>
+                <RemoveAdsButton source="settings" />
+                <Text className="text-ink-soft text-sm">
+                  One-time purchase. Skip rewarded-ad prompts for hints. No ads ever appear while
+                  you play.
+                </Text>
+              </>
+            )}
+            <Pressable
+              onPress={onRestore}
+              accessibilityRole="button"
+              accessibilityLabel="Restore purchases"
+              className="border-line bg-surface items-center rounded-2xl border py-4 active:opacity-80"
+            >
+              <Text className="text-ink text-base font-medium">Restore Purchases</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View className="gap-3">
           <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">

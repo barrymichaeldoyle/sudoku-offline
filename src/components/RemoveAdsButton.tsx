@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import { useState } from "react";
 
 import { SimpleIcon } from "@/components/SimpleIcon";
-import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
+import { ENTITLEMENT_REMOVE_ADS, IAP_ENABLED } from "@/domain/entitlements";
 import { track } from "@/services/analyticsService";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { Pressable, Text } from "@/tw";
@@ -27,7 +27,8 @@ export function RemoveAdsButton({
   const purchaseRemoveAds = useEntitlementStore((s) => s.purchaseRemoveAds);
   const [busy, setBusy] = useState(false);
 
-  if (isPremium) {
+  // IAP disabled for v1.0 (stubbed purchases) — render nothing anywhere.
+  if (!IAP_ENABLED || isPremium) {
     return null;
   }
 

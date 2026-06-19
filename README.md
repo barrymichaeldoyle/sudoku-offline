@@ -6,9 +6,9 @@ Classic Sudoku that works offline, with no ads while you play.
 
 The app is not on the App Store or Google Play yet. Links will be added here when it ships.
 
-| Platform | Status |
-| --- | --- |
-| [App Store](https://apps.apple.com/) | Coming soon |
+| Platform                                | Status      |
+| --------------------------------------- | ----------- |
+| [App Store](https://apps.apple.com/)    | Coming soon |
 | [Google Play](https://play.google.com/) | Coming soon |
 
 ## Support

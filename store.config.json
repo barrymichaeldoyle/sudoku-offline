@@ -23,10 +23,10 @@
       "phasedRelease": true
     },
     "review": {
-      "firstName": "REPLACE",
-      "lastName": "REPLACE",
-      "email": "app-review@example.com",
-      "phone": "+1 000 000 0000",
+      "firstName": "Barry Michael",
+      "lastName": "Doyle",
+      "email": "barry@barrymichaeldoyle.com",
+      "phone": "+27 74 173 8720",
       "demoRequired": false,
       "notes": "Sudoku Offline does not require sign-in. Reviewers can open the app and start a puzzle immediately. Optional rewarded ads are user-initiated only (e.g. for an extra hint); there are no interstitial or banner ads during gameplay."
     }
