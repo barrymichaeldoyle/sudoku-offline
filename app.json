@@ -8,9 +8,11 @@
     "scheme": "sudokuoffline",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.barrymichaeldoyle.sudokuoffline"
     },
     "android": {
+      "package": "com.barrymichaeldoyle.sudokuoffline",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,6 +42,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "20182e11-c7bd-4694-a0ff-57c629d03e7f"
+      }
+    },
+    "owner": "barrymichaeldoyle"
   }
 }

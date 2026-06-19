@@ -1,0 +1,22 @@
+name: Release Tag
+
+# Builds both platforms when you push a version tag (e.g. v1.0.0).
+# Does not submit to stores — run `eas submit` separately when ready.
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build_ios:
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  build_android:
+    type: build
+    params:
+      platform: android
+      profile: production

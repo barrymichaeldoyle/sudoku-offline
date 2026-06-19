@@ -1,0 +1,31 @@
+name: Manual Build
+
+# Run from CLI: eas workflow:run manual-build.yml
+# Or trigger from the Expo dashboard. Does not run automatically.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        type: choice
+        options:
+          - ios
+          - android
+        default: ios
+        required: true
+        description: Platform to build
+      profile:
+        type: choice
+        options:
+          - preview
+          - production
+        default: preview
+        required: true
+        description: Build profile (preview = internal/TestFlight-style testing)
+
+jobs:
+  build:
+    type: build
+    params:
+      platform: ${{ inputs.platform }}
+      profile: ${{ inputs.profile }}
