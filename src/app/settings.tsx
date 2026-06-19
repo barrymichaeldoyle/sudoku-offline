@@ -5,6 +5,7 @@ import { Alert, Switch } from "react-native";
 
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { resetStats } from "@/data/repositories/statsRepository";
 import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
@@ -68,24 +69,14 @@ export default function SettingsScreen() {
     Alert.alert(
       restored ? "Purchases restored" : "Nothing to restore",
       restored
-        ? "Ads are removed and hints are unlimited."
+        ? "Ads are removed. Thanks for your support."
         : "We couldn’t find a previous purchase to restore.",
     );
   };
 
   return (
     <Screen className="bg-canvas flex-1">
-      <View className="flex-row items-center px-4 pt-2">
-        <Pressable
-          onPress={() => router.back()}
-          className="py-1 pr-4 active:opacity-60"
-          accessibilityRole="button"
-          accessibilityLabel="Back to home"
-        >
-          <Text className="text-primary text-base font-medium">‹ Home</Text>
-        </Pressable>
-        <Text className="text-ink text-lg font-semibold">Settings</Text>
-      </View>
+      <ScreenHeader title="Settings" onBack={() => router.back()} />
 
       <ScrollView contentContainerClassName="gap-6 p-6">
         <View className="gap-3">
@@ -150,7 +141,7 @@ export default function SettingsScreen() {
               <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
                 <Text className="text-ink text-base font-medium">Premium active</Text>
                 <Text className="text-ink-soft text-sm">
-                  No ads, unlimited hints. Thanks for your support.
+                  No ads. Hints without prompts. Thanks for your support.
                 </Text>
               </View>
               <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
@@ -171,8 +162,8 @@ export default function SettingsScreen() {
             <>
               <RemoveAdsButton source="settings" />
               <Text className="text-ink-soft text-sm">
-                One-time purchase. Unlocks unlimited hints and removes the rewarded-ad prompt. No
-                ads ever appear while you play.
+                One-time purchase. Skip rewarded-ad prompts for hints. No ads ever appear while you
+                play.
               </Text>
             </>
           )}

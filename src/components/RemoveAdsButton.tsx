@@ -39,7 +39,7 @@ export function RemoveAdsButton({ source }: { source: string }) {
       onPress={onPress}
       disabled={busy}
       accessibilityRole="button"
-      accessibilityLabel="Remove ads and unlock unlimited hints"
+      accessibilityLabel="Remove ads and skip hint prompts"
       className={clsx(
         "flex-row items-center justify-center gap-2 rounded-2xl border border-primary py-4 active:opacity-80",
         busy && "opacity-50",
@@ -47,7 +47,7 @@ export function RemoveAdsButton({ source }: { source: string }) {
     >
       <SimpleIcon name="plus" tone="primary" />
       <Text className="text-primary text-base font-semibold">
-        {busy ? "Loading…" : "Remove Ads · Unlimited hints"}
+        {busy ? "Loading…" : "Remove Ads"}
       </Text>
     </Pressable>
   );

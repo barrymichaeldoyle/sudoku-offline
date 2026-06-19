@@ -2,11 +2,12 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 
 import { Screen } from "@/components/Screen";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
 import { getGameStats, type GameStats } from "@/services/statsService";
 import { useSettingsStore } from "@/state/useSettingsStore";
-import { Pressable, ScrollView, Text, View } from "@/tw";
+import { ScrollView, Text, View } from "@/tw";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   easy: "Easy",
@@ -35,17 +36,7 @@ export default function StatsScreen() {
 
   return (
     <Screen className="bg-canvas flex-1">
-      <View className="flex-row items-center px-4 pt-2">
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Back to home"
-          className="py-1 pr-4 active:opacity-60"
-        >
-          <Text className="text-primary text-base font-medium">‹ Home</Text>
-        </Pressable>
-        <Text className="text-ink text-lg font-semibold">Stats</Text>
-      </View>
+      <ScreenHeader title="Stats" onBack={() => router.back()} />
 
       {stats == null ? (
         <View className="flex-1 items-center justify-center">

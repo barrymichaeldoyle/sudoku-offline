@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { AppState, Share } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
+import { ConfettiBurst } from "@/components/ConfettiBurst";
 import { GameControls } from "@/components/GameControls";
 import { InputModeToggle } from "@/components/InputModeToggle";
+import { NavBackButton } from "@/components/NavBackButton";
 import { NumberPad } from "@/components/NumberPad";
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
@@ -116,7 +118,12 @@ export default function GameScreen() {
         </View>
       </View>
       {hintPromptVisible && !paused && !justCompleted ? <HintPromptOverlay /> : null}
-      {justCompleted ? <CompletionOverlay /> : null}
+      {justCompleted ? (
+        <>
+          <ConfettiBurst />
+          <CompletionOverlay />
+        </>
+      ) : null}
     </Screen>
   );
 }
@@ -136,15 +143,7 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   return (
     <View className="gap-2">
       <View className="flex-row items-center justify-between">
-        <Pressable
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel="Back to home"
-          className="-ml-2 flex-row items-center py-1 pr-4 active:opacity-60"
-        >
-          <SimpleIcon name="back" tone="primary" size={20} />
-          <Text className="text-primary text-base font-medium">Home</Text>
-        </Pressable>
+        <NavBackButton onPress={onBack} />
 
         <View className="flex-row items-center gap-2">
           {timerEnabled && running ? (
@@ -312,19 +311,19 @@ function HintPromptOverlay() {
           </Text>
         </Pressable>
 
-        {/* Premium upsell — unlimited hints with no ads, works offline. */}
+        {/* Premium upsell — skip hint ads when online. */}
         <Pressable
           onPress={onUpgrade}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel="Remove ads for unlimited hints"
+          accessibilityLabel="Remove ads and skip hint prompts"
           className={clsx(
             "mt-2 flex-row items-center justify-center gap-2 rounded-2xl border border-primary py-4 active:opacity-80",
             busy && "opacity-50",
           )}
         >
           <SimpleIcon name="plus" tone="primary" />
-          <Text className="text-primary text-base font-semibold">Remove ads · Unlimited hints</Text>
+          <Text className="text-primary text-base font-semibold">Remove Ads</Text>
         </Pressable>
 
         <Pressable
