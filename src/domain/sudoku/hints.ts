@@ -22,6 +22,13 @@ export function computeCandidates(values: CellValue[], index: number): number[] 
   return candidates;
 }
 
+/**
+ * Cooldown between hints, in milliseconds. Stops players from spamming the Hint
+ * button (which would trivialize the puzzle) — applies to every reveal, premium
+ * included. See docs/HINT_FLOW.md.
+ */
+export const HINT_COOLDOWN_MS = 30_000;
+
 export type Hint = { index: number; value: number };
 
 /**

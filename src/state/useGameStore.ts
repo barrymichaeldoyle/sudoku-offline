@@ -4,10 +4,12 @@ import { create } from "zustand";
 
 import { completeGame, getGameById, saveGame } from "@/data/repositories/gameRepository";
 import { isGivenCell, isPuzzleComplete, isValueCorrect } from "@/domain/sudoku/board";
-import { findHintCell } from "@/domain/sudoku/hints";
+import { findHintCell, HINT_COOLDOWN_MS } from "@/domain/sudoku/hints";
 import { cleanupNotesAfterPlacement, toggleNote } from "@/domain/sudoku/notes";
+import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
 import { haptics } from "@/services/haptics";
+import { hasRemoveAds } from "@/state/useEntitlementStore";
 import { getSettings } from "@/state/useSettingsStore";
 
 export type InputMode = "cell" | "number";
@@ -24,6 +26,11 @@ type GameStore = {
   justCompleted: boolean;
   undoStack: GameAction[];
 
+  /** True while the rewarded-hint prompt is shown. */
+  hintPromptVisible: boolean;
+  /** Epoch ms until which the Hint button is on cooldown, or null when ready. */
+  hintCooldownUntil: number | null;
+
   /** Timer: in-memory wall-clock anchor; committed seconds live on game. */
   running: boolean;
   lastStartedAt: number | null;
@@ -38,7 +45,16 @@ type GameStore = {
   pressCell: (index: number) => void;
   pressNumber: (num: number) => void;
   erase: () => void;
-  hint: () => void;
+  /**
+   * Hint entry point. Premium reveals instantly. For everyone else: if a
+   * rewarded ad is loaded (online) the prompt opens; if not (offline) the hint
+   * is revealed for free — the premium experience — so hints always work
+   * offline.
+   */
+  requestHint: () => Promise<void>;
+  /** Watch the rewarded ad and, if granted, reveal one hint. */
+  confirmRewardedHint: () => Promise<void>;
+  dismissHintPrompt: () => void;
   undo: () => void;
 
   pause: () => void;
@@ -90,6 +106,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   notesMode: false,
   justCompleted: false,
   undoStack: [],
+  hintPromptVisible: false,
+  hintCooldownUntil: null,
   running: false,
   lastStartedAt: null,
 
@@ -108,6 +126,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       notesMode: false,
       justCompleted: false,
       undoStack: [],
+      hintPromptVisible: false,
+      hintCooldownUntil: null,
       running: isActive,
       lastStartedAt: isActive ? Date.now() : null,
     });
@@ -122,6 +142,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       notesMode: false,
       justCompleted: false,
       undoStack: [],
+      hintPromptVisible: false,
+      hintCooldownUntil: null,
       running: isActive,
       lastStartedAt: isActive ? Date.now() : null,
     });
@@ -135,6 +157,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedNumber: null,
       justCompleted: false,
       undoStack: [],
+      hintPromptVisible: false,
+      hintCooldownUntil: null,
       running: false,
       lastStartedAt: null,
     });
@@ -194,38 +218,50 @@ export const useGameStore = create<GameStore>((set, get) => ({
     scheduleSave(next);
   },
 
-  hint() {
-    const { game } = get();
+  async requestHint() {
+    const { game, hintCooldownUntil } = get();
     if (!game) {
       return;
     }
-    const found = findHintCell(game.values, game.givens, game.solution);
-    if (!found) {
+    // Cooldown: stop hint spamming so the puzzle stays a challenge.
+    if (hintCooldownUntil != null && Date.now() < hintCooldownUntil) {
       return;
     }
-    const { index, value } = found;
-    const previousValue = game.values[index];
-    const previousNotes = game.notes[index];
-    const values = game.values.slice();
-    values[index] = value;
-    const notes = getSettings().autoNoteCleanup
-      ? cleanupNotesAfterPlacement(game.notes, index, value)
-      : game.notes.slice();
-    notes[index] = 0;
+    // Nothing left to reveal — no-op, and never open the prompt for nothing.
+    if (!findHintCell(game.values, game.givens, game.solution)) {
+      return;
+    }
+    // Premium reveals instantly.
+    if (hasRemoveAds()) {
+      revealHint(set, get);
+      return;
+    }
+    // Offline (no rewarded ad loaded) → give the premium experience: a free,
+    // instant hint. Keeps the offline-first promise that hints always work.
+    const adReady = await adService.isRewardedHintAvailable().catch(() => false);
+    if (!adReady) {
+      revealHint(set, get);
+      return;
+    }
+    // Online and not premium → watch a rewarded ad to reveal the hint.
+    void track("rewarded_hint_offered", { difficulty: game.difficulty });
+    set({ hintPromptVisible: true });
+  },
 
-    const action: GameAction = {
-      type: "place_value",
-      cellIndex: index,
-      previousValue,
-      nextValue: value,
-      previousNotes,
-      nextNotes: 0,
-    };
-    let next: GameState = { ...game, values, notes, hintsUsed: game.hintsUsed + 1 };
-    haptics.place();
-    void track("hint_used", { difficulty: game.difficulty });
-    set({ game: next, selectedCell: index, undoStack: [...get().undoStack, action] });
-    finalizeAfterPlacement(set, get, next, values);
+  async confirmRewardedHint() {
+    const granted = await adService.showRewardedHintAd();
+    if (!granted) {
+      // No reward (e.g. offline / no inventory). Leave the prompt to show its
+      // own unavailable message; the user can dismiss it.
+      return;
+    }
+    const game = get().game;
+    void track("rewarded_hint_watched", { difficulty: game?.difficulty ?? "" });
+    revealHint(set, get);
+  },
+
+  dismissHintPrompt() {
+    set({ hintPromptVisible: false });
   },
 
   undo() {
@@ -345,6 +381,52 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
   };
   const next: GameState = { ...game, values, notes, mistakes };
   set({ game: next, undoStack: [...undoStack, action] });
+  finalizeAfterPlacement(set, get, next, values);
+}
+
+/**
+ * Reveal one correct cell from the solution and bump `hintsUsed`. Prefers a
+ * naked single, else the first empty cell (see `findHintCell`). Closes the
+ * rewarded-hint prompt if it was open. No-op when nothing is left to reveal.
+ */
+function revealHint(set: SetFn, get: GetFn): void {
+  const { game, undoStack } = get();
+  if (!game) {
+    return;
+  }
+  const found = findHintCell(game.values, game.givens, game.solution);
+  if (!found) {
+    set({ hintPromptVisible: false });
+    return;
+  }
+  const { index, value } = found;
+  const previousValue = game.values[index];
+  const previousNotes = game.notes[index];
+  const values = game.values.slice();
+  values[index] = value;
+  const notes = getSettings().autoNoteCleanup
+    ? cleanupNotesAfterPlacement(game.notes, index, value)
+    : game.notes.slice();
+  notes[index] = 0;
+
+  const action: GameAction = {
+    type: "place_value",
+    cellIndex: index,
+    previousValue,
+    nextValue: value,
+    previousNotes,
+    nextNotes: 0,
+  };
+  const next: GameState = { ...game, values, notes, hintsUsed: game.hintsUsed + 1 };
+  haptics.place();
+  void track("hint_used", { difficulty: game.difficulty });
+  set({
+    game: next,
+    selectedCell: index,
+    undoStack: [...undoStack, action],
+    hintPromptVisible: false,
+    hintCooldownUntil: Date.now() + HINT_COOLDOWN_MS,
+  });
   finalizeAfterPlacement(set, get, next, values);
 }
 

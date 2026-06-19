@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 
 import { useGameStore } from "@/state/useGameStore";
+import { useHintCooldownRemaining } from "@/state/useHintCooldown";
 import { Pressable, Text, View } from "@/tw";
 
 type ControlButtonProps = {
@@ -19,17 +20,12 @@ function ControlButton({ label, active, disabled, onPress }: ControlButtonProps)
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled, selected: !!active }}
       className={clsx(
-        "flex-1 items-center justify-center rounded-lg py-3",
-        active ? "bg-blue-600" : "bg-neutral-100 dark:bg-neutral-800",
+        "flex-1 items-center justify-center rounded-xl py-3",
+        active ? "bg-primary" : "bg-surface-muted",
         disabled && "opacity-40",
       )}
     >
-      <Text
-        className={clsx(
-          "text-sm font-medium",
-          active ? "text-white" : "text-neutral-700 dark:text-neutral-200",
-        )}
-      >
+      <Text className={clsx("text-sm font-semibold", active ? "text-on-primary" : "text-ink-soft")}>
         {label}
       </Text>
     </Pressable>
@@ -43,8 +39,9 @@ export function GameControls() {
   const setInputMode = useGameStore((s) => s.setInputMode);
   const toggleNotesMode = useGameStore((s) => s.toggleNotesMode);
   const erase = useGameStore((s) => s.erase);
-  const hint = useGameStore((s) => s.hint);
+  const requestHint = useGameStore((s) => s.requestHint);
   const undo = useGameStore((s) => s.undo);
+  const hintCooldown = useHintCooldownRemaining();
 
   return (
     <View className="gap-1.5">
@@ -56,7 +53,11 @@ export function GameControls() {
           active={notesMode}
           onPress={toggleNotesMode}
         />
-        <ControlButton label="Hint" onPress={hint} />
+        <ControlButton
+          label={hintCooldown > 0 ? `Hint ${hintCooldown}s` : "Hint"}
+          disabled={hintCooldown > 0}
+          onPress={requestHint}
+        />
       </View>
       <ControlButton
         label={inputMode === "cell" ? "Input: Cell-first" : "Input: Number-first"}

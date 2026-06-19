@@ -1474,20 +1474,21 @@ Not allowed:
 - Fake system alerts
 - Blocking offline gameplay
 
-Rewarded hint prompt should be clear:
+Hints have no free allowance, but they always work offline. Premium
+(`remove_ads`) gets unlimited instant hints. A free user online watches a short
+rewarded ad per hint; a free user **offline** (no ad loaded) gets the hint free
+— the premium experience — so a missing connection never blocks a hint and an ad
+is never shown when one can't load. See [`HINT_FLOW.md`](./HINT_FLOW.md).
+
+The rewarded-hint prompt (only shown when an ad is loaded) should be clear:
 
 ```text
-Need another hint?
-Watch a short ad to get one extra hint.
+Need a hint?
+Watch a short ad to reveal one hint.
 ```
 
-If offline:
-
-```text
-Extra ad hints need internet.
-```
-
-But do not block all hints offline.
+Always offer the calm premium upgrade alongside the ad ("Remove ads · Unlimited
+hints"). Never use a misleading close button or fake system alert.
 
 ---
 

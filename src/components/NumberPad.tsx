@@ -38,18 +38,14 @@ export function NumberPad() {
             accessibilityLabel={`Number ${num}`}
             accessibilityState={{ selected: isSelected }}
             className={clsx(
-              "flex-1 items-center justify-center rounded-lg py-3",
-              isSelected ? "bg-blue-600" : "bg-neutral-100 dark:bg-neutral-800",
+              "flex-1 items-center justify-center rounded-xl py-3.5",
+              isSelected ? "bg-primary" : "bg-surface-muted",
             )}
           >
             <Text
               className={clsx(
-                "text-2xl",
-                isSelected
-                  ? "text-white"
-                  : isExhausted
-                    ? "text-neutral-300 dark:text-neutral-600"
-                    : "text-neutral-900 dark:text-neutral-100",
+                "text-2xl font-semibold",
+                isSelected ? "text-on-primary" : isExhausted ? "text-ink-dim" : "text-ink",
               )}
             >
               {num}

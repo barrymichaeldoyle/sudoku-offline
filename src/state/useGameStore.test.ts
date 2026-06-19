@@ -10,8 +10,22 @@ jest.mock("@/data/repositories/gameRepository", () => ({
   completeGame: jest.fn().mockResolvedValue(undefined),
   getGameById: jest.fn().mockResolvedValue(null),
 }));
+jest.mock("@/services/adService", () => ({
+  adService: {
+    isRewardedHintAvailable: jest.fn().mockResolvedValue(false),
+    showRewardedHintAd: jest.fn().mockResolvedValue(false),
+  },
+}));
+jest.mock("@/state/useEntitlementStore", () => ({ hasRemoveAds: jest.fn(() => false) }));
+
+import { adService } from "@/services/adService";
+import { hasRemoveAds } from "@/state/useEntitlementStore";
 
 import { useGameStore } from "./useGameStore";
+
+const mockShowRewardedHintAd = adService.showRewardedHintAd as jest.Mock;
+const mockIsRewardedHintAvailable = adService.isRewardedHintAvailable as jest.Mock;
+const mockHasRemoveAds = hasRemoveAds as jest.Mock;
 
 // A valid completed grid; givens are all empty so every cell is editable.
 const SOLUTION =
@@ -43,6 +57,9 @@ function load(): void {
 
 describe("useGameStore reducers", () => {
   beforeEach(() => {
+    mockHasRemoveAds.mockReturnValue(false);
+    mockIsRewardedHintAvailable.mockResolvedValue(true); // online by default
+    mockShowRewardedHintAd.mockResolvedValue(false);
     load();
     useGameStore.getState().setInputMode("cell");
   });
@@ -100,5 +117,82 @@ describe("useGameStore reducers", () => {
     s.undo();
     expect(useGameStore.getState().game!.values[0]).toBeNull();
     expect(useGameStore.getState().undoStack).toHaveLength(0);
+  });
+
+  describe("hint flow", () => {
+    it("opens the rewarded prompt for non-premium players when an ad is loaded", async () => {
+      await useGameStore.getState().requestHint();
+      const state = useGameStore.getState();
+      // No reveal — an ad is available, so the hint is gated behind it.
+      expect(state.game!.hintsUsed).toBe(0);
+      expect(state.game!.values.every((v) => v == null)).toBe(true);
+      expect(state.hintPromptVisible).toBe(true);
+    });
+
+    it("reveals a free hint instantly when offline (no ad available)", async () => {
+      mockIsRewardedHintAvailable.mockResolvedValue(false);
+      await useGameStore.getState().requestHint();
+      const state = useGameStore.getState();
+      expect(state.game!.hintsUsed).toBe(1);
+      expect(state.hintPromptVisible).toBe(false);
+      // A correct value from the solution was placed.
+      const placed = state.game!.values.findIndex((v) => v != null);
+      expect(state.game!.values[placed]).toBe(Number(SOLUTION[placed]));
+    });
+
+    it("reveals instantly for premium without a prompt", async () => {
+      mockHasRemoveAds.mockReturnValue(true);
+      await useGameStore.getState().requestHint();
+      const state = useGameStore.getState();
+      expect(state.game!.hintsUsed).toBe(1);
+      expect(state.hintPromptVisible).toBe(false);
+
+      // Cooldown gates spamming even for premium; once cleared, another reveals.
+      useGameStore.setState({ hintCooldownUntil: null });
+      await useGameStore.getState().requestHint();
+      expect(useGameStore.getState().game!.hintsUsed).toBe(2);
+    });
+
+    it("starts a cooldown after a reveal and blocks the next hint", async () => {
+      mockIsRewardedHintAvailable.mockResolvedValue(false); // offline → free reveal
+      await useGameStore.getState().requestHint();
+      const after = useGameStore.getState();
+      expect(after.game!.hintsUsed).toBe(1);
+      expect(after.hintCooldownUntil).not.toBeNull();
+      expect(after.hintCooldownUntil!).toBeGreaterThan(Date.now());
+
+      // Spamming during the cooldown is a no-op.
+      await useGameStore.getState().requestHint();
+      expect(useGameStore.getState().game!.hintsUsed).toBe(1);
+    });
+
+    it("allows another hint once the cooldown elapses", async () => {
+      mockIsRewardedHintAvailable.mockResolvedValue(false);
+      await useGameStore.getState().requestHint();
+      useGameStore.setState({ hintCooldownUntil: Date.now() - 1 });
+      await useGameStore.getState().requestHint();
+      expect(useGameStore.getState().game!.hintsUsed).toBe(2);
+    });
+
+    it("reveals a hint when the rewarded ad grants a reward", async () => {
+      await useGameStore.getState().requestHint();
+      expect(useGameStore.getState().hintPromptVisible).toBe(true);
+
+      mockShowRewardedHintAd.mockResolvedValue(true);
+      await useGameStore.getState().confirmRewardedHint();
+
+      expect(useGameStore.getState().game!.hintsUsed).toBe(1);
+      expect(useGameStore.getState().hintPromptVisible).toBe(false);
+    });
+
+    it("leaves the prompt open when the rewarded ad grants nothing", async () => {
+      await useGameStore.getState().requestHint();
+
+      mockShowRewardedHintAd.mockResolvedValue(false);
+      await useGameStore.getState().confirmRewardedHint();
+
+      expect(useGameStore.getState().game!.hintsUsed).toBe(0);
+      expect(useGameStore.getState().hintPromptVisible).toBe(true);
+    });
   });
 });

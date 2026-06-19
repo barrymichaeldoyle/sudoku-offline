@@ -3,8 +3,11 @@ import type { Settings, ThemePreference } from "@/domain/settings";
 import { useRouter } from "expo-router";
 import { Alert, Switch } from "react-native";
 
+import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { resetStats } from "@/data/repositories/statsRepository";
+import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
+import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
 
@@ -45,6 +48,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const settings = useSettingsStore((s) => s.settings);
   const setSetting = useSettingsStore((s) => s.setSetting);
+  const isPremium = useEntitlementStore((s) => s.entitlements[ENTITLEMENT_REMOVE_ADS] === true);
+  const restorePurchases = useEntitlementStore((s) => s.restorePurchases);
 
   const onResetStats = () => {
     Alert.alert("Reset stats?", "This permanently clears your completed games and daily streak.", [
@@ -53,25 +58,34 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const onRestore = async () => {
+    await restorePurchases();
+    const restored = useEntitlementStore.getState().entitlements[ENTITLEMENT_REMOVE_ADS] === true;
+    Alert.alert(
+      restored ? "Purchases restored" : "Nothing to restore",
+      restored
+        ? "Ads are removed and hints are unlimited."
+        : "We couldn’t find a previous purchase to restore.",
+    );
+  };
+
   return (
-    <Screen className="flex-1 bg-white dark:bg-neutral-950">
+    <Screen className="bg-canvas flex-1">
       <View className="flex-row items-center px-4 pt-2">
         <Pressable
           onPress={() => router.back()}
-          className="py-1 pr-4"
+          className="py-1 pr-4 active:opacity-60"
           accessibilityRole="button"
           accessibilityLabel="Back to home"
         >
-          <Text className="text-base text-blue-600 dark:text-blue-400">‹ Home</Text>
+          <Text className="text-primary text-base font-medium">‹ Home</Text>
         </Pressable>
-        <Text className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          Settings
-        </Text>
+        <Text className="text-ink text-lg font-semibold">Settings</Text>
       </View>
 
       <ScrollView contentContainerClassName="gap-6 p-6">
         <View className="gap-3">
-          <Text className="text-sm font-medium tracking-wide text-neutral-500 uppercase">
+          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
             Theme
           </Text>
           <View className="flex-row gap-2">
@@ -86,16 +100,12 @@ export default function SettingsScreen() {
                   accessibilityLabel={`${opt.label} theme`}
                   className={
                     active
-                      ? "flex-1 items-center rounded-xl bg-blue-600 py-3"
-                      : "flex-1 items-center rounded-xl bg-neutral-100 py-3 dark:bg-neutral-800"
+                      ? "bg-primary flex-1 items-center rounded-xl py-3"
+                      : "border-line bg-surface flex-1 items-center rounded-xl border py-3"
                   }
                 >
                   <Text
-                    className={
-                      active
-                        ? "font-semibold text-white"
-                        : "font-medium text-neutral-900 dark:text-neutral-100"
-                    }
+                    className={active ? "text-on-primary font-semibold" : "text-ink font-medium"}
                   >
                     {opt.label}
                   </Text>
@@ -106,19 +116,17 @@ export default function SettingsScreen() {
         </View>
 
         <View className="gap-3">
-          <Text className="text-sm font-medium tracking-wide text-neutral-500 uppercase">
+          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
             Gameplay
           </Text>
           {TOGGLES.map((t) => (
             <View
               key={t.key}
-              className="flex-row items-center justify-between gap-3 rounded-xl bg-neutral-100 px-4 py-3 dark:bg-neutral-800"
+              className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3"
             >
               <View className="flex-1 gap-0.5">
-                <Text className="text-base font-medium text-neutral-900 dark:text-neutral-100">
-                  {t.label}
-                </Text>
-                <Text className="text-sm text-neutral-500">{t.hint}</Text>
+                <Text className="text-ink text-base font-medium">{t.label}</Text>
+                <Text className="text-ink-soft text-sm">{t.hint}</Text>
               </View>
               <Switch
                 value={settings[t.key]}
@@ -130,16 +138,46 @@ export default function SettingsScreen() {
         </View>
 
         <View className="gap-3">
-          <Text className="text-sm font-medium tracking-wide text-neutral-500 uppercase">Data</Text>
+          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+            Ads & Purchases
+          </Text>
+          {isPremium ? (
+            <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
+              <Text className="text-ink text-base font-medium">Premium active</Text>
+              <Text className="text-ink-soft text-sm">
+                No ads, unlimited hints. Thanks for your support.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <RemoveAdsButton source="settings" />
+              <Text className="text-ink-soft text-sm">
+                One-time purchase. Unlocks unlimited hints and removes the rewarded-ad prompt. No
+                ads ever appear while you play.
+              </Text>
+            </>
+          )}
+          <Pressable
+            onPress={onRestore}
+            accessibilityRole="button"
+            accessibilityLabel="Restore purchases"
+            className="border-line bg-surface items-center rounded-2xl border py-4 active:opacity-80"
+          >
+            <Text className="text-ink text-base font-medium">Restore Purchases</Text>
+          </Pressable>
+        </View>
+
+        <View className="gap-3">
+          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+            Data
+          </Text>
           <Pressable
             onPress={onResetStats}
             accessibilityRole="button"
             accessibilityLabel="Reset stats"
-            className="items-center rounded-xl bg-red-50 py-4 dark:bg-red-950"
+            className="border-danger items-center rounded-2xl border py-4 active:opacity-80"
           >
-            <Text className="text-base font-medium text-red-600 dark:text-red-400">
-              Reset Stats
-            </Text>
+            <Text className="text-danger text-base font-medium">Reset Stats</Text>
           </Pressable>
         </View>
       </ScrollView>

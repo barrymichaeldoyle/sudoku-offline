@@ -32,29 +32,27 @@ export default function StatsScreen() {
   );
 
   return (
-    <Screen className="flex-1 bg-white dark:bg-neutral-950">
+    <Screen className="bg-canvas flex-1">
       <View className="flex-row items-center px-4 pt-2">
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel="Back to home"
-          className="py-1 pr-4"
+          className="py-1 pr-4 active:opacity-60"
         >
-          <Text className="text-base text-blue-600 dark:text-blue-400">‹ Home</Text>
+          <Text className="text-primary text-base font-medium">‹ Home</Text>
         </Pressable>
-        <Text className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Stats</Text>
+        <Text className="text-ink text-lg font-semibold">Stats</Text>
       </View>
 
       {stats == null ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-neutral-500">Loading…</Text>
+          <Text className="text-ink-soft">Loading…</Text>
         </View>
       ) : stats.totalCompleted === 0 ? (
         <View className="flex-1 items-center justify-center gap-2 p-8">
-          <Text className="text-center text-lg font-medium text-neutral-900 dark:text-neutral-100">
-            No completed puzzles yet
-          </Text>
-          <Text className="text-center text-neutral-500">
+          <Text className="text-ink text-center text-lg font-medium">No completed puzzles yet</Text>
+          <Text className="text-ink-soft text-center">
             Finish a puzzle to start tracking your times and streak.
           </Text>
         </View>
@@ -71,7 +69,7 @@ export default function StatsScreen() {
           </View>
 
           <View className="gap-3">
-            <Text className="text-sm font-medium tracking-wide text-neutral-500 uppercase">
+            <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
               By Difficulty
             </Text>
             {DIFFICULTIES.map((difficulty) => {
@@ -79,16 +77,14 @@ export default function StatsScreen() {
               return (
                 <View
                   key={difficulty}
-                  className="flex-row items-center justify-between rounded-xl bg-neutral-100 px-4 py-3 dark:bg-neutral-800"
+                  className="border-line bg-surface flex-row items-center justify-between rounded-2xl border px-4 py-3"
                 >
-                  <Text className="text-base font-medium text-neutral-900 dark:text-neutral-100">
+                  <Text className="text-ink text-base font-medium">
                     {DIFFICULTY_LABELS[difficulty]}
                   </Text>
                   <View className="items-end">
-                    <Text className="text-base text-neutral-900 tabular-nums dark:text-neutral-100">
-                      {stat.completed} done
-                    </Text>
-                    <Text className="text-sm text-neutral-500 tabular-nums">
+                    <Text className="text-ink text-base tabular-nums">{stat.completed} done</Text>
+                    <Text className="text-ink-soft text-sm tabular-nums">
                       {stat.bestSeconds == null
                         ? "—"
                         : `best ${formatDuration(stat.bestSeconds)} · avg ${formatDuration(
@@ -108,11 +104,9 @@ export default function StatsScreen() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-1 gap-1 rounded-xl bg-neutral-100 p-4 dark:bg-neutral-800">
-      <Text className="text-2xl font-bold text-neutral-900 tabular-nums dark:text-neutral-50">
-        {value}
-      </Text>
-      <Text className="text-sm text-neutral-500">{label}</Text>
+    <View className="border-line bg-surface flex-1 gap-1 rounded-2xl border p-4">
+      <Text className="text-ink text-3xl font-bold tabular-nums">{value}</Text>
+      <Text className="text-ink-soft text-sm">{label}</Text>
     </View>
   );
 }

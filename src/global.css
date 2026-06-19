@@ -20,3 +20,102 @@
     --font-rounded: ui-rounded;
   }
 }
+
+/*
+ * Semantic design tokens — see docs/DESIGN_GUIDELINES.md.
+ *
+ * These map directly to Tailwind colour utilities (e.g. `bg-canvas`,
+ * `text-ink`, `border-line`). Each token resolves to a CSS variable, and the
+ * dark-mode block below overrides the same variables, so a single utility class
+ * swaps automatically with the system / chosen colour scheme. Components must
+ * use these tokens rather than raw Tailwind colours (blue-600, neutral-*, …).
+ */
+@theme {
+  /* Surfaces */
+  --color-canvas: #f7f3ea; /* app background — warm cream */
+  --color-surface: #ffffff; /* cards, board, modals */
+  --color-surface-muted: #efe9dd; /* secondary buttons, list rows */
+
+  /* Text (ink) */
+  --color-ink: #1f2937; /* primary text */
+  --color-ink-soft: #667085; /* secondary text */
+  --color-ink-dim: #98a2b3; /* muted text / placeholders */
+
+  /* Brand */
+  --color-primary: #2f3a5f; /* indigo */
+  --color-primary-press: #25304f;
+  --color-on-primary: #ffffff;
+
+  --color-accent: #7c9a92; /* sage */
+  --color-warning: #ddbb72; /* gold */
+  --color-danger: #c75c5c;
+  --color-success: #5f9e7d;
+
+  /* Board grid */
+  --color-grid-major: #2f3a5f; /* 3x3 box boundaries + board frame */
+  --color-grid-minor: #c9c1b3; /* individual cell lines */
+
+  /* Board cells */
+  --color-cell: #ffffff;
+  --color-cell-given: #f3ebdd;
+  --color-cell-selected: #ddbb72; /* gold */
+  --color-cell-peer: #f4e7c4;
+  --color-cell-same: #e1ece8; /* sage tint */
+  --color-cell-error: #f8d7da;
+  --color-cell-selected-ink: #1f2937; /* number on the bright selected cell */
+
+  /* Board numbers */
+  --color-num-given: #1f2937;
+  --color-num-user: #2f3a5f;
+  --color-num-note: #667085;
+  --color-num-error: #c75c5c;
+
+  /* Lines */
+  --color-line: #d8d0c2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Surfaces */
+    --color-canvas: #101828; /* deep navy */
+    --color-surface: #1d2939; /* slate */
+    --color-surface-muted: #27364a;
+
+    /* Text (ink) */
+    --color-ink: #f2f4f7;
+    --color-ink-soft: #cbd5e1;
+    --color-ink-dim: #94a3b8;
+
+    /* Brand */
+    --color-primary: #84caff; /* soft blue */
+    --color-primary-press: #53b1fd;
+    --color-on-primary: #101828;
+
+    --color-accent: #7c9a92;
+    --color-warning: #fdb022;
+    --color-danger: #fda29b;
+    --color-success: #75e0a7;
+
+    /* Board grid */
+    --color-grid-major: #e4e7ec;
+    --color-grid-minor: #475467;
+
+    /* Board cells */
+    --color-cell: #1d2939;
+    --color-cell-given: #27364a;
+    --color-cell-selected: #fdb022; /* warm amber */
+    --color-cell-peer: #344054;
+    --color-cell-same: #244c5a;
+    --color-cell-error: #5a2630;
+    --color-cell-selected-ink: #1f2937; /* dark number stays readable on amber */
+
+    /* Board numbers */
+    --color-num-given: #f2f4f7;
+    --color-num-user: #84caff;
+    --color-num-note: #cbd5e1;
+    --color-num-error: #fda29b;
+
+    /* Lines */
+    --color-line: #475467;
+  }
+}

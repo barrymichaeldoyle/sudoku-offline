@@ -20,11 +20,19 @@ These override the original handoff where they conflict:
   build-time script, not bundled into the app.
 - **SDK:** target Expo SDK 56; use the modern `expo-sqlite` async API
   (`openDatabaseAsync`, `runAsync`, `getAllAsync`), not the deprecated callback API.
+- **No forced ads (2026-06-19):** the post-completion interstitial was dropped — no
+  interstitials or banners, ever. The only ads are user-initiated *rewarded* ads.
+- **Hint model (2026-06-19):** no free-hint allowance. Premium (`remove_ads`) = unlimited
+  instant hints. Free user *online* (rewarded ad loaded) watches an ad per hint; free user
+  *offline* (no ad) gets the hint free — the premium experience — so hints always work
+  offline. A 30s cooldown (everyone, premium included) blocks hint-spamming. The rewarded
+  prompt doubles as the premium upsell. See `HINT_FLOW.md`.
 
 ## Project Goal
 Build an offline-first Sudoku mobile app using Expo. Polished, classic 9x9 with great
 input UX, offline-first play, bundled puzzle library, daily puzzle, stats, settings, and
-respectful monetisation hooks (ads only after completion; one-time "Remove Ads" later).
+respectful monetisation hooks (no forced ads — only user-initiated rewarded ads;
+one-time "Remove Ads" later).
 
 Core product promise: **A fast, clean Sudoku app that respects your concentration.**
 
@@ -192,8 +200,10 @@ longest daily streak; mistake-free completions. Source: `completed_games` +
 
 ## Hints
 Find an empty non-given cell; prefer single-candidate cells if candidate logic exists;
-else reveal a safe correct value from solution. Increment `hintsUsed`. Later gate behind
-premium / free hints / rewarded ad — never block core offline gameplay.
+else reveal a safe correct value from solution. Increment `hintsUsed`. Gating (per the
+Locked Decision, implemented in `HINT_FLOW.md`): premium reveals instantly; a free user
+watches a rewarded ad when one is loaded, and gets the hint free when offline — so hints
+never depend on the network. A 30s cooldown throttles reveals for everyone.
 
 ## Ads & Purchases (stubs first)
 ```ts
@@ -224,8 +234,8 @@ Gameplay never waits on analytics; failures invisible to users; cap queue eventu
 ## Screens
 - **Home:** Continue (if active) · Daily · New Game (Easy/Medium/Hard/Expert) · Stats · Settings.
 - **Game:** board, timer, controls; smooth on small phones.
-- **Completion:** difficulty, time, mistakes, hints; New Game · Daily · Share; then
-  `maybeShowPostCompletionInterstitial`.
+- **Completion:** difficulty, time, mistakes, hints; New Game · Daily · Share. No
+  post-completion interstitial (dropped 2026-06-19 — see Locked Decisions).
 - **Stats / Settings:** simple displays and toggles.
 
 ## Visual Direction

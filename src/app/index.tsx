@@ -1,5 +1,6 @@
 import type { DailyTrack } from "@/domain/daily";
 
+import { clsx } from "clsx";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 
@@ -23,6 +24,14 @@ const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   hard: "Hard",
   expert: "Expert",
   extreme: "Extreme",
+};
+
+const DIFFICULTY_HINTS: Record<Difficulty, string> = {
+  easy: "Relaxed solving",
+  medium: "A steady challenge",
+  hard: "For regular players",
+  expert: "Few givens, real focus",
+  extreme: "The toughest grids",
 };
 
 export default function Home() {
@@ -68,11 +77,14 @@ export default function Home() {
   );
 
   return (
-    <Screen className="flex-1 bg-white dark:bg-neutral-950">
-      <ScrollView contentContainerClassName="gap-8 p-6">
-        <Text className="mt-6 text-center text-4xl font-bold text-neutral-900 dark:text-neutral-50">
-          Sudoku
-        </Text>
+    <Screen className="bg-canvas flex-1">
+      <ScrollView contentContainerClassName="gap-8 px-6 pb-10">
+        <View className="mt-8 items-center gap-1">
+          <Text className="text-ink text-center text-4xl font-bold tracking-tight">Sudoku</Text>
+          <Text className="text-ink-soft text-center text-sm font-medium">
+            Classic puzzles · Works offline
+          </Text>
+        </View>
 
         <View className="gap-3">
           {activeGame ? (
@@ -80,24 +92,25 @@ export default function Home() {
           ) : null}
           <PrimaryButton
             label="Daily Puzzle"
+            hint="A fresh puzzle every day"
             variant="secondary"
             onPress={() => startFromPuzzle(() => getDailyPuzzle("daily"), "daily")}
           />
           <PrimaryButton
             label="Daily Challenge"
+            hint="A tougher daily grid"
             variant="secondary"
             onPress={() => startFromPuzzle(() => getDailyPuzzle("challenge"), "challenge")}
           />
         </View>
 
         <View className="gap-3">
-          <Text className="text-sm font-medium tracking-wide text-neutral-500 uppercase">
-            New Game
-          </Text>
+          <SectionLabel>New Game</SectionLabel>
           {NEW_GAME_DIFFICULTIES.map((difficulty) => (
             <PrimaryButton
               key={difficulty}
               label={DIFFICULTY_LABELS[difficulty]}
+              hint={DIFFICULTY_HINTS[difficulty]}
               variant="secondary"
               onPress={() => startFromPuzzle(() => getRandomPuzzleByDifficulty(difficulty))}
             />
@@ -117,34 +130,42 @@ export default function Home() {
   );
 }
 
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+      {children}
+    </Text>
+  );
+}
+
 type PrimaryButtonProps = {
   label: string;
+  hint?: string;
   onPress: () => void;
   variant?: "primary" | "secondary";
 };
 
-function PrimaryButton({ label, onPress, variant = "primary" }: PrimaryButtonProps) {
+function PrimaryButton({ label, hint, onPress, variant = "primary" }: PrimaryButtonProps) {
   const isPrimary = variant === "primary";
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className={
-        isPrimary
-          ? "items-center rounded-xl bg-blue-600 py-4"
-          : "items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"
-      }
+      className={clsx(
+        "rounded-2xl px-5 py-4 active:opacity-80",
+        isPrimary ? "items-center bg-primary" : "border border-line bg-surface",
+      )}
     >
       <Text
-        className={
-          isPrimary
-            ? "text-lg font-semibold text-white"
-            : "text-lg font-medium text-neutral-900 dark:text-neutral-100"
-        }
+        className={clsx(
+          "text-lg",
+          isPrimary ? "font-semibold text-on-primary" : "font-semibold text-ink",
+        )}
       >
         {label}
       </Text>
+      {!isPrimary && hint ? <Text className="text-ink-soft mt-0.5 text-sm">{hint}</Text> : null}
     </Pressable>
   );
 }

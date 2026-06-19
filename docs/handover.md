@@ -4,7 +4,9 @@ Living status doc for picking the work back up. Pairs with the full spec in
 [`mvp-handoff.md`](./mvp-handoff.md) (scope, schema, acceptance criteria) and the
 **Locked Decisions** section at the top of that file. Update this file as phases land.
 
-_Last updated: end of Phase 6 — MVP feature-complete (2026-06-19). Branch: work directly on `main`._
+_Last updated: 2026-06-19 — MVP feature-complete (Phase 6), plus the rewarded-hint flow
+(with a 30s anti-spam cooldown) and "Remove Ads" purchase entry points (Settings, completion
+screen, hint prompt). See `HINT_FLOW.md`. Branch: work directly on `main`._
 
 ---
 
@@ -68,7 +70,9 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
   `settingsRepository` (single JSON blob in `settings` table), `useSettingsStore`
   (hydrated on boot). No Settings **screen** yet (Phase 6) — values are defaults until then.
 - **Hints**: `domain/sudoku/hints.ts` (`computeCandidates`, `findHintCell`) + store
-  `hint()` + Hint button. Reveals a correct cell, prefers naked singles, bumps `hintsUsed`.
+  `requestHint`/`confirmRewardedHint`/`dismissHintPrompt` + Hint button. Reveals a correct
+  cell (prefers naked singles), bumps `hintsUsed`. Gated per the **Hint model** Locked
+  Decision — see `HINT_FLOW.md` (rewarded-ad/premium/offline-free flow added after Phase 6).
 - **Undo**: in-memory `undoStack` of `GameAction`s; `undo()` reverses the last move.
 - **Timer**: committed `elapsedSeconds` + in-memory `lastStartedAt`; `useElapsedSeconds`
   ticks the display. Auto-pause on background via `AppState`; resume overlay on tap.
@@ -110,12 +114,18 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
   (`track` = fire-and-forget enqueue, never throws; `flushPendingEvents` no-op — no
   backend). Events wired: `app_opened` (boot), `puzzle_started`/`daily_started`
   (`gameLauncher`), `hint_used` + `puzzle_completed` (store), `daily_completed` +
-  `share_result_tapped` (completion screen), `setting_changed` (settings store).
+  `share_result_tapped` (completion screen), `setting_changed` (settings store),
+  `rewarded_hint_offered`/`rewarded_hint_watched` (hint flow), `premium_upgrade_tapped`
+  (hint-prompt upsell).
 - **Entitlements**: `domain/entitlements.ts` (`ENTITLEMENT_REMOVE_ADS`),
   `entitlementRepository` over `entitlements` (cache is the offline source of truth),
   `useEntitlementStore` (hydrated on boot, `hasRemoveAds()` non-reactive read).
 - **Purchase stub**: `services/purchaseService.ts` (`PurchaseService` shape;
   `purchaseRemoveAds` returns false, refresh/restore no-op — no store SDK in MVP).
+  `useEntitlementStore.purchaseRemoveAds()`/`restorePurchases()` wrap it (re-read the cache on
+  success). The reusable `components/RemoveAdsButton.tsx` (hides itself when premium) surfaces
+  the purchase on the Settings "Ads & Purchases" section (+ Restore Purchases) and the
+  completion screen; the hint prompt has its own upgrade button that also reveals the hint.
 - **Ad stub**: `services/adService.ts` — **no forced ads** (no interstitials/banners;
   the post-completion interstitial was dropped 2026-06-19 as too intrusive). Only
   user-initiated rewarded ads: `isRewardedHintAvailable`/`showRewardedHintAd` (return false,

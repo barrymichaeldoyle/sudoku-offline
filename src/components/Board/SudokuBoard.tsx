@@ -30,7 +30,7 @@ export function SudokuBoard() {
   const selectedValue = selectedCell == null ? null : game.values[selectedCell];
 
   return (
-    <View className="aspect-square w-full overflow-hidden rounded-md border-2 border-neutral-400 bg-white dark:border-neutral-500 dark:bg-neutral-950">
+    <View className="border-grid-major bg-cell aspect-square w-full overflow-hidden rounded-2xl border-2">
       {ROWS.map((row) => (
         <View key={row} className="flex-1 flex-row">
           {ROWS.map((col) => {

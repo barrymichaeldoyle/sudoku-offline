@@ -1,3 +1,4 @@
+import { clsx } from "clsx";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { AppState, Share } from "react-native";
@@ -5,6 +6,7 @@ import { AppState, Share } from "react-native";
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { GameControls } from "@/components/GameControls";
 import { NumberPad } from "@/components/NumberPad";
+import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import { formatShareText } from "@/domain/shareText";
@@ -13,6 +15,7 @@ import { track } from "@/services/analyticsService";
 import { launchPuzzle } from "@/services/gameLauncher";
 import { getDailyCompletionInfo, type DailyCompletionInfo } from "@/services/statsService";
 import { formatDuration, useElapsedSeconds } from "@/state/useElapsedSeconds";
+import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, Text, View } from "@/tw";
@@ -32,6 +35,7 @@ export default function GameScreen() {
   const game = useGameStore((s) => s.game);
   const loading = useGameStore((s) => s.loading);
   const justCompleted = useGameStore((s) => s.justCompleted);
+  const hintPromptVisible = useGameStore((s) => s.hintPromptVisible);
   const loadGame = useGameStore((s) => s.loadGame);
   const flushAndPause = useGameStore((s) => s.flushAndPause);
 
@@ -56,9 +60,9 @@ export default function GameScreen() {
 
   if (!game) {
     return (
-      <Screen className="flex-1 bg-white dark:bg-neutral-950">
+      <Screen className="bg-canvas flex-1">
         <View className="flex-1 items-center justify-center">
-          <Text className="text-neutral-500">{loading ? "Loading…" : "Game not found"}</Text>
+          <Text className="text-ink-soft">{loading ? "Loading…" : "Game not found"}</Text>
         </View>
       </Screen>
     );
@@ -67,7 +71,7 @@ export default function GameScreen() {
   const paused = game.status === "paused" && !justCompleted;
 
   return (
-    <Screen className="flex-1 bg-white dark:bg-neutral-950">
+    <Screen className="bg-canvas flex-1">
       <View className="flex-1 gap-4 p-4">
         <GameHeader onBack={() => router.back()} />
         <SudokuBoard />
@@ -78,6 +82,7 @@ export default function GameScreen() {
       </View>
 
       {paused ? <PausedOverlay /> : null}
+      {hintPromptVisible && !paused && !justCompleted ? <HintPromptOverlay /> : null}
       {justCompleted ? <CompletionOverlay /> : null}
     </Screen>
   );
@@ -100,30 +105,30 @@ function GameHeader({ onBack }: { onBack: () => void }) {
         onPress={onBack}
         accessibilityRole="button"
         accessibilityLabel="Back to home"
-        className="py-1 pr-4"
+        className="py-1 pr-4 active:opacity-60"
       >
-        <Text className="text-base text-blue-600 dark:text-blue-400">‹ Home</Text>
+        <Text className="text-primary text-base font-medium">‹ Home</Text>
       </Pressable>
 
       <View className="flex-row items-center gap-3">
-        <Text className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+        <Text className="text-ink text-base font-semibold">
           {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
         </Text>
         {timerEnabled ? (
-          <Text className="text-base text-neutral-500 tabular-nums">{formatDuration(elapsed)}</Text>
+          <Text className="text-ink-soft text-base tabular-nums">{formatDuration(elapsed)}</Text>
         ) : null}
       </View>
 
       <View className="flex-row items-center gap-3">
-        <Text className="text-base text-neutral-500">✕ {game.mistakes}</Text>
+        <Text className="text-ink-soft text-base tabular-nums">✕ {game.mistakes}</Text>
         {timerEnabled && running ? (
           <Pressable
             onPress={pause}
             accessibilityRole="button"
             accessibilityLabel="Pause game"
-            className="py-1 pl-1"
+            className="py-1 pl-1 active:opacity-60"
           >
-            <Text className="text-base text-blue-600 dark:text-blue-400">Pause</Text>
+            <Text className="text-primary text-base font-medium">Pause</Text>
           </Pressable>
         ) : null}
       </View>
@@ -135,15 +140,102 @@ function PausedOverlay() {
   const resume = useGameStore((s) => s.resume);
   return (
     <View className="absolute inset-0 items-center justify-center bg-black/60 p-8">
-      <View className="w-full items-center gap-4 rounded-2xl bg-white p-8 dark:bg-neutral-900">
-        <Text className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">Paused</Text>
+      <View className="border-line bg-surface w-full items-center gap-5 rounded-3xl border p-8">
+        <Text className="text-ink text-2xl font-bold">Paused</Text>
         <Pressable
           onPress={resume}
           accessibilityRole="button"
           accessibilityLabel="Resume game"
-          className="w-full items-center rounded-xl bg-blue-600 py-4"
+          className="bg-primary w-full items-center rounded-2xl py-4 active:opacity-80"
         >
-          <Text className="text-lg font-semibold text-white">Resume</Text>
+          <Text className="text-on-primary text-lg font-semibold">Resume</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function HintPromptOverlay() {
+  const confirmRewardedHint = useGameStore((s) => s.confirmRewardedHint);
+  const dismissHintPrompt = useGameStore((s) => s.dismissHintPrompt);
+  const requestHint = useGameStore((s) => s.requestHint);
+  const purchaseRemoveAds = useEntitlementStore((s) => s.purchaseRemoveAds);
+  const [busy, setBusy] = useState(false);
+
+  // The store only opens this prompt when a rewarded ad is actually loaded
+  // (offline players get a free hint instead), so we always offer the ad here.
+  const onWatch = async () => {
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await confirmRewardedHint();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onUpgrade = async () => {
+    if (busy) {
+      return;
+    }
+    void track("premium_upgrade_tapped", { source: "hint_prompt" });
+    setBusy(true);
+    try {
+      const ok = await purchaseRemoveAds();
+      if (ok) {
+        // Now premium — close the prompt and reveal the hint they asked for.
+        dismissHintPrompt();
+        void requestHint();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+      <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
+        <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
+        <Text className="text-ink-soft text-center">Watch a short ad to reveal one hint.</Text>
+
+        <Pressable
+          onPress={onWatch}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Watch ad to reveal a hint"
+          className={clsx(
+            "mt-4 items-center rounded-2xl bg-primary py-4 active:opacity-80",
+            busy && "opacity-50",
+          )}
+        >
+          <Text className="text-on-primary text-lg font-semibold">
+            {busy ? "Loading…" : "Watch Ad"}
+          </Text>
+        </Pressable>
+
+        {/* Premium upsell — unlimited hints with no ads, works offline. */}
+        <Pressable
+          onPress={onUpgrade}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Remove ads for unlimited hints"
+          className={clsx(
+            "mt-2 items-center rounded-2xl border border-primary py-4 active:opacity-80",
+            busy && "opacity-50",
+          )}
+        >
+          <Text className="text-primary text-base font-semibold">Remove ads · Unlimited hints</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={dismissHintPrompt}
+          accessibilityRole="button"
+          accessibilityLabel="Close hint prompt"
+          className="mt-2 items-center rounded-2xl py-3 active:opacity-60"
+        >
+          <Text className="text-ink-soft text-base font-medium">Not now</Text>
         </Pressable>
       </View>
     </View>
@@ -221,17 +313,15 @@ function CompletionOverlay() {
 
   return (
     <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
-      <View className="w-full gap-2 rounded-2xl bg-white p-6 dark:bg-neutral-900">
-        <Text className="text-center text-2xl font-bold text-neutral-900 dark:text-neutral-50">
-          {heading}
-        </Text>
-        <Text className="text-center text-neutral-500">
+      <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
+        <Text className="text-ink text-center text-2xl font-bold">{heading}</Text>
+        <Text className="text-ink-soft text-center">
           {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} ·{" "}
           {formatDuration(game.elapsedSeconds)} · Mistakes: {game.mistakes} · Hints:{" "}
           {game.hintsUsed}
         </Text>
         {daily?.streak && daily.streak.current > 0 ? (
-          <Text className="text-center text-base font-semibold text-orange-500">
+          <Text className="text-warning text-center text-base font-semibold">
             🔥 {daily.streak.current} day streak
           </Text>
         ) : null}
@@ -240,32 +330,29 @@ function CompletionOverlay() {
           onPress={onShare}
           accessibilityRole="button"
           accessibilityLabel="Share result"
-          className="mt-4 items-center rounded-xl bg-blue-600 py-4"
+          className="bg-primary mt-4 items-center rounded-2xl py-4 active:opacity-80"
         >
-          <Text className="text-lg font-semibold text-white">Share Result</Text>
+          <Text className="text-on-primary text-lg font-semibold">Share Result</Text>
         </Pressable>
         {canReplay ? (
           <Pressable
             onPress={onNewGame}
             accessibilityRole="button"
             accessibilityLabel="Start a new game"
-            className="items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"
+            className="border-line bg-surface-muted items-center rounded-2xl border py-4 active:opacity-80"
           >
-            <Text className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
-              New Game
-            </Text>
+            <Text className="text-ink text-lg font-medium">New Game</Text>
           </Pressable>
         ) : null}
         <Pressable
           onPress={() => router.replace("/")}
           accessibilityRole="button"
           accessibilityLabel="Back to home"
-          className="items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"
+          className="border-line bg-surface-muted items-center rounded-2xl border py-4 active:opacity-80"
         >
-          <Text className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
-            Back to Home
-          </Text>
+          <Text className="text-ink text-lg font-medium">Back to Home</Text>
         </Pressable>
+        <RemoveAdsButton source="completion" />
       </View>
     </View>
   );

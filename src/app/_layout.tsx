@@ -22,9 +22,9 @@ export default function RootLayout() {
       {ready ? (
         <Stack screenOptions={{ headerShown: false }} />
       ) : (
-        <View className="flex-1 items-center justify-center gap-3 bg-white dark:bg-neutral-950">
+        <View className="bg-canvas flex-1 items-center justify-center gap-3">
           {error ? (
-            <Text className="px-8 text-center text-red-500">{error}</Text>
+            <Text className="text-danger px-8 text-center">{error}</Text>
           ) : (
             <ActivityIndicator />
           )}
