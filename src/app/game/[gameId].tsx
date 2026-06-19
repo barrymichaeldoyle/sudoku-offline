@@ -1,3 +1,5 @@
+import type { PropsWithChildren } from "react";
+
 import { clsx } from "clsx";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -97,19 +99,27 @@ export default function GameScreen() {
 
   return (
     <Screen className="bg-canvas flex-1">
-      <View className="flex-1 gap-3 p-4">
+      <View className="w-full max-w-[640px] flex-1 gap-3 self-center p-4">
         <GameHeader onBack={() => router.back()} onSettings={() => router.push("/settings")} />
         <View
-          className="flex-1 items-center justify-center"
+          // Bottom-aligned so the grid→actions gap equals the actions→numbers
+          // gap (both the column's gap-3); leftover slack sits above the grid.
+          className="flex-1 items-center justify-end"
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
-            setBoardSize(Math.floor(Math.min(width, height)));
+            // Reserve room for the input-mode toggle row above the grid.
+            setBoardSize(Math.floor(Math.min(width, height - 44)));
           }}
         >
           {boardSize > 0 ? (
-            <View style={{ width: boardSize, height: boardSize }}>
-              <SudokuBoard size={boardSize} />
-              {paused ? <PausedOverlay boardSize={boardSize} /> : null}
+            <View style={{ width: boardSize }} className="gap-2">
+              <View className="flex-row justify-end">
+                <InputModeToggle />
+              </View>
+              <View style={{ width: boardSize, height: boardSize }}>
+                <SudokuBoard size={boardSize} />
+                {paused ? <PausedOverlay boardSize={boardSize} /> : null}
+              </View>
             </View>
           ) : null}
         </View>
@@ -133,6 +143,7 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   const game = useGameStore((s) => s.game);
   const running = useGameStore((s) => s.running);
   const pause = useGameStore((s) => s.pause);
+  const resume = useGameStore((s) => s.resume);
   const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
   const mistakeCheckingEnabled = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
   const elapsed = useElapsedSeconds();
@@ -142,22 +153,15 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   }
 
   return (
-    <View className="gap-2">
-      <View className="flex-row items-center justify-between">
-        <NavBackButton onPress={onBack} />
-
-        <View className="flex-row items-center gap-2">
-          {timerEnabled && running ? (
-            <Pressable
-              onPress={pause}
-              accessibilityRole="button"
-              accessibilityLabel="Pause game"
-              className="bg-surface-muted flex-row items-center gap-1.5 rounded-full px-4 py-1.5 active:opacity-70"
-            >
-              <SimpleIcon name="pause" tone="muted" />
-              <Text className="text-ink text-sm font-semibold">Pause</Text>
-            </Pressable>
-          ) : null}
+    <View className="gap-4">
+      {/* Top bar: back · centered title · settings. The flex-1 side zones keep
+          the title centered regardless of the two buttons' widths. */}
+      <View className="flex-row items-center">
+        <View className="flex-1 items-start">
+          <NavBackButton onPress={onBack} />
+        </View>
+        <Text className="text-ink text-lg font-bold">Sudoku</Text>
+        <View className="flex-1 items-end">
           <Pressable
             onPress={onSettings}
             accessibilityRole="button"
@@ -169,20 +173,53 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
         </View>
       </View>
 
-      <View className="flex-row items-center justify-between gap-3">
-        <View className="min-w-0 flex-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-          <Text className="text-ink text-lg font-semibold">
+      {/* Stats stacked label-above-value: a small uppercase label over a bold
+          value. tabular-nums keeps the timer/mistakes from shifting. */}
+      <View className="gap-3">
+        <StatItem label="Difficulty">
+          <Text className="text-ink text-xl font-bold">
             {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
           </Text>
-          {timerEnabled ? (
-            <Text className="text-ink-soft text-base tabular-nums">{formatDuration(elapsed)}</Text>
-          ) : null}
-          {mistakeCheckingEnabled ? (
-            <Text className="text-ink-soft text-base tabular-nums">Mistakes {game.mistakes}</Text>
-          ) : null}
-        </View>
-        <InputModeToggle />
+        </StatItem>
+        {timerEnabled ? (
+          <StatItem label="Time">
+            <View className="flex-row items-center gap-2">
+              <Text
+                className="text-ink text-xl font-bold"
+                style={{ fontVariant: ["tabular-nums"] }}
+              >
+                {formatDuration(elapsed)}
+              </Text>
+              {/* Always rendered (toggles pause/resume) so the row never reflows. */}
+              <Pressable
+                onPress={running ? pause : resume}
+                accessibilityRole="button"
+                accessibilityLabel={running ? "Pause game" : "Resume game"}
+                className="bg-surface-muted h-7 w-7 items-center justify-center rounded-full active:opacity-70"
+              >
+                <SimpleIcon name={running ? "pause" : "play"} tone="muted" size={14} />
+              </Pressable>
+            </View>
+          </StatItem>
+        ) : null}
+        {mistakeCheckingEnabled ? (
+          <StatItem label="Mistakes">
+            <Text className="text-ink text-xl font-bold" style={{ fontVariant: ["tabular-nums"] }}>
+              {game.mistakes}
+            </Text>
+          </StatItem>
+        ) : null}
       </View>
+    </View>
+  );
+}
+
+/** One game stat: a small uppercase label above its value. */
+function StatItem({ label, children }: PropsWithChildren<{ label: string }>) {
+  return (
+    <View className="gap-0.5">
+      <Text className="text-ink-soft text-xs font-semibold tracking-widest uppercase">{label}</Text>
+      {children}
     </View>
   );
 }

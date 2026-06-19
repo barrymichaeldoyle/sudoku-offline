@@ -12,10 +12,12 @@ export function InputModeToggle() {
       accessibilityRole="button"
       accessibilityState={{ selected: inputMode === "number" }}
       accessibilityLabel={`Input mode: ${inputMode === "cell" ? "cell first" : "number first"}`}
-      className="bg-surface-muted flex-row items-center gap-1.5 rounded-full px-3 py-1.5 active:opacity-70"
+      // Fixed width so the pill doesn't resize between the two labels; the icon
+      // sits at the left and the label is centered in the remaining space.
+      className="bg-surface-muted w-[120px] flex-row items-center gap-2 rounded-full px-3 py-1.5 active:opacity-70"
     >
       <SimpleIcon name="input" tone="muted" size={16} />
-      <Text className="text-ink text-xs font-semibold">
+      <Text className="text-ink flex-1 text-center text-xs font-semibold">
         {inputMode === "cell" ? "Cell-first" : "Number-first"}
       </Text>
     </Pressable>

@@ -45,7 +45,7 @@ export function NumberPad() {
             <Text
               className={clsx(
                 "text-2xl font-semibold",
-                isSelected ? "text-on-primary" : isExhausted ? "text-ink-dim" : "text-ink",
+                isSelected ? "text-on-primary" : isExhausted ? "text-ink-soft" : "text-ink",
               )}
             >
               {num}

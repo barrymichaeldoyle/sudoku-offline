@@ -119,8 +119,9 @@ async function main() {
     },
   ];
 
-  for (const { file, width, svg } of outputs) {
-    await writeFile(file, renderPng(svg, width));
+  await Promise.all(outputs.map(({ file, width, svg }) => writeFile(file, renderPng(svg, width))));
+
+  for (const { file, width } of outputs) {
     console.log(`${file.replace(`${ASSETS_DIR}/`, "")}  (${width}px)`);
   }
 

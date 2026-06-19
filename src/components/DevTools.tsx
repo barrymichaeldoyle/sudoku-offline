@@ -100,7 +100,7 @@ export default function DevTools() {
 
   return (
     <View className="gap-3">
-      <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+      <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
         Developer
       </Text>
       <View className="border-line bg-surface gap-2 rounded-2xl border p-3">

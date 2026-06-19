@@ -191,7 +191,7 @@ export default function Home() {
                   </Text>
                   <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
                 </View>
-                <Text className="text-ink-dim text-xl">›</Text>
+                <Text className="text-ink-soft text-xl">›</Text>
               </Pressable>
             ))}
           </View>
@@ -337,7 +337,7 @@ function progressText(
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+    <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
       {children}
     </Text>
   );

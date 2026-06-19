@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { useEffect, useState } from "react";
-import { Image } from "react-native";
+import { Image, StyleSheet } from "react-native";
 import {
   NativeAd,
   NativeAdView,
@@ -92,10 +92,13 @@ export function NativeAdCard({ className }: { className?: string }) {
             ) : null}
           </View>
         </View>
-        <NativeMediaView
-          style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 8 }}
-          resizeMode="cover"
-        />
+        {/* Fixed-aspect frame so the media can't dominate or overflow the card.
+            NativeMediaView sizes to the creative's own ratio, so we pin it to the
+            frame with absoluteFill and use "contain" to show the whole creative
+            (no cropping/cut-off). */}
+        <View className="bg-surface overflow-hidden rounded-lg" style={{ aspectRatio: 16 / 9 }}>
+          <NativeMediaView style={StyleSheet.absoluteFill} resizeMode="contain" />
+        </View>
         {nativeAd.callToAction ? (
           <NativeAsset assetType={NativeAssetType.CALL_TO_ACTION}>
             {/* Outline style so the ad's CTA reads as the ad's button, distinct

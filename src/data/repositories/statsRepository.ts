@@ -109,32 +109,36 @@ export async function seedSampleStats(): Promise<void> {
     await txn.runAsync("DELETE FROM daily_progress");
 
     let n = 0;
+    const completedGameInserts: Promise<unknown>[] = [];
     for (const difficulty of DIFFICULTIES) {
       const { count, base } = SEED_PER_DIFFICULTY[difficulty];
       for (let i = 0; i < count; i++) {
         const elapsed = Math.max(60, base + i * 37 - (i % 3) * 50);
         const mistakes = i % 4 === 0 ? 0 : i % 3;
-        await txn.runAsync(
-          `INSERT INTO completed_games
-             (id, game_id, puzzle_id, difficulty, date_key, elapsed_seconds, mistakes, hints_used, completed_at)
-           VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
-          `dev-${difficulty}-${i}`,
-          `dev-game-${n}`,
-          `dev-puzzle-${n}`,
-          difficulty,
-          elapsed,
-          mistakes,
-          i % 5,
-          now.toISOString(),
+        completedGameInserts.push(
+          txn.runAsync(
+            `INSERT INTO completed_games
+               (id, game_id, puzzle_id, difficulty, date_key, elapsed_seconds, mistakes, hints_used, completed_at)
+             VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
+            `dev-${difficulty}-${i}`,
+            `dev-game-${n}`,
+            `dev-puzzle-${n}`,
+            difficulty,
+            elapsed,
+            mistakes,
+            i % 5,
+            now.toISOString(),
+          ),
         );
         n++;
       }
     }
+    await Promise.all(completedGameInserts);
 
-    for (let i = 0; i < SEED_STREAK_DAYS; i++) {
+    const dailyProgressInserts = Array.from({ length: SEED_STREAK_DAYS }, (_, i) => {
       const day = new Date(now.getTime() - i * MS_PER_DAY);
       const dateKey = localDateKey(day);
-      await txn.runAsync(
+      return txn.runAsync(
         `INSERT OR REPLACE INTO daily_progress
            (date_key, track, puzzle_id, game_id, completed_at, elapsed_seconds, mistakes, hints_used)
          VALUES (?, 'daily', ?, ?, ?, ?, ?, ?)`,
@@ -146,6 +150,7 @@ export async function seedSampleStats(): Promise<void> {
         i % 2,
         0,
       );
-    }
+    });
+    await Promise.all(dailyProgressInserts);
   });
 }

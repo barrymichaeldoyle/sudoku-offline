@@ -84,7 +84,7 @@ export default function SettingsScreen() {
 
       <ScrollView contentContainerClassName="gap-6 p-6">
         <View className="gap-3">
-          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
             Theme
           </Text>
           <View className="flex-row gap-2">
@@ -115,7 +115,7 @@ export default function SettingsScreen() {
         </View>
 
         <View className="gap-3">
-          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
             Gameplay
           </Text>
           {TOGGLES.map((t) => (
@@ -137,7 +137,7 @@ export default function SettingsScreen() {
         </View>
 
         <View className="gap-3">
-          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
             Ads & Purchases
           </Text>
           {isPremium ? (
@@ -182,7 +182,7 @@ export default function SettingsScreen() {
         </View>
 
         <View className="gap-3">
-          <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
             Data
           </Text>
           <Pressable

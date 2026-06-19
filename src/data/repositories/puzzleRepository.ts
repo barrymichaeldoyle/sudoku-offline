@@ -35,6 +35,7 @@ export async function importBundledPacksIfNeeded(): Promise<void> {
   const db = await getDatabase();
 
   for (const pack of BUNDLED_PACKS) {
+    // eslint-disable-next-line no-await-in-loop -- pack version checks and imports intentionally run one at a time.
     const existing = await db.getFirstAsync<{ version: number }>(
       "SELECT version FROM puzzle_packs WHERE id = ?",
       pack.id,
@@ -44,6 +45,7 @@ export async function importBundledPacksIfNeeded(): Promise<void> {
     }
 
     const now = new Date().toISOString();
+    // eslint-disable-next-line no-await-in-loop -- each pack import owns an exclusive transaction.
     await db.withExclusiveTransactionAsync(async (txn) => {
       const statement = await txn.prepareAsync(
         `INSERT OR REPLACE INTO puzzles
@@ -52,6 +54,7 @@ export async function importBundledPacksIfNeeded(): Promise<void> {
       );
       try {
         for (const puzzle of pack.puzzles) {
+          // eslint-disable-next-line no-await-in-loop -- reuse the prepared statement sequentially.
           await statement.executeAsync([
             puzzle.id,
             puzzle.difficulty,

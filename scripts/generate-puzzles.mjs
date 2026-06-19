@@ -279,17 +279,25 @@ async function main() {
     },
   ];
 
-  let seedOffset = 0;
-  for (const pack of packs) {
-    const rng = makeRng(SEED + seedOffset++ * 0x9e3779b1);
+  const results = packs.map((pack, seedOffset) => {
+    const rng = makeRng(SEED + seedOffset * 0x9e3779b1);
     const t0 = Date.now();
     const puzzles = buildPack(pack, rng);
     const clueCounts = puzzles.map((p) => p.givens.replace(/0/g, "").length);
     const min = Math.min(...clueCounts);
     const max = Math.max(...clueCounts);
-    await writeFile(resolve(OUT_DIR, pack.file), `${JSON.stringify(puzzles, null, 0)}\n`, "utf8");
+    return { pack, puzzles, min, max, elapsedMs: Date.now() - t0 };
+  });
+
+  await Promise.all(
+    results.map(({ pack, puzzles }) =>
+      writeFile(resolve(OUT_DIR, pack.file), `${JSON.stringify(puzzles, null, 0)}\n`, "utf8"),
+    ),
+  );
+
+  for (const { pack, puzzles, min, max, elapsedMs } of results) {
     console.log(
-      `${pack.file.padEnd(12)} ${String(puzzles.length).padStart(3)} puzzles  clues ${min}-${max}  (${Date.now() - t0}ms)`,
+      `${pack.file.padEnd(12)} ${String(puzzles.length).padStart(3)} puzzles  clues ${min}-${max}  (${elapsedMs}ms)`,
     );
   }
 

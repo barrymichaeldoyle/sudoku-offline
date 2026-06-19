@@ -23,6 +23,8 @@ type GameStore = {
   selectedNumber: number | null;
   inputMode: InputMode;
   notesMode: boolean;
+  /** Number-first only: the erase tool is the active selection (no number). */
+  eraseArmed: boolean;
   justCompleted: boolean;
   undoStack: GameAction[];
 
@@ -122,6 +124,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectedNumber: null,
   inputMode: "cell",
   notesMode: false,
+  eraseArmed: false,
   justCompleted: false,
   undoStack: [],
   hintPromptVisible: false,
@@ -152,6 +155,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedCell: null,
       selectedNumber: null,
       notesMode: false,
+      eraseArmed: false,
       justCompleted: false,
       undoStack: [],
       hintPromptVisible: false,
@@ -169,6 +173,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedCell: null,
       selectedNumber: null,
       notesMode: false,
+      eraseArmed: false,
       justCompleted: false,
       undoStack: [],
       hintPromptVisible: false,
@@ -184,6 +189,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       game: null,
       selectedCell: null,
       selectedNumber: null,
+      eraseArmed: false,
       justCompleted: false,
       undoStack: [],
       hintPromptVisible: false,
@@ -195,7 +201,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   setInputMode(mode) {
-    set({ inputMode: mode, selectedCell: null, selectedNumber: null });
+    set({ inputMode: mode, selectedCell: null, selectedNumber: null, eraseArmed: false });
   },
 
   toggleNotesMode() {
@@ -204,10 +210,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pressCell(index) {
-    const { inputMode, selectedNumber } = get();
-    if (inputMode === "number" && selectedNumber != null) {
-      applyNumber(set, get, index, selectedNumber);
-      return;
+    const { inputMode, selectedNumber, eraseArmed } = get();
+    if (inputMode === "number") {
+      // Erase tool armed → tapping a cell clears it; otherwise place the number.
+      if (eraseArmed) {
+        eraseCellAt(set, get, index);
+        return;
+      }
+      if (selectedNumber != null) {
+        applyNumber(set, get, index, selectedNumber);
+        return;
+      }
     }
     set({ selectedCell: index });
   },
@@ -215,7 +228,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pressNumber(num) {
     const { inputMode, selectedCell } = get();
     if (inputMode === "number") {
-      set((state) => ({ selectedNumber: state.selectedNumber === num ? null : num }));
+      // Selecting a number always disarms the erase tool.
+      set((state) => ({
+        selectedNumber: state.selectedNumber === num ? null : num,
+        eraseArmed: false,
+      }));
       return;
     }
     if (selectedCell != null) {
@@ -224,28 +241,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   erase() {
-    const { game, selectedCell } = get();
-    if (!game || selectedCell == null || isGivenCell(game.givens, selectedCell)) {
+    const { inputMode, selectedCell } = get();
+    // Number-first: erase is a toggleable tool (clears any selected number).
+    if (inputMode === "number") {
+      set((state) => ({ eraseArmed: !state.eraseArmed, selectedNumber: null }));
       return;
     }
-    const previousValue = game.values[selectedCell];
-    const previousNotes = game.notes[selectedCell];
-    if (previousValue == null && previousNotes === 0) {
-      return;
+    // Cell-first: erase the currently selected cell immediately.
+    if (selectedCell != null) {
+      eraseCellAt(set, get, selectedCell);
     }
-    const values = game.values.slice();
-    const notes = game.notes.slice();
-    values[selectedCell] = null;
-    notes[selectedCell] = 0;
-    const next: GameState = { ...game, values, notes };
-    const action: GameAction = {
-      type: "erase",
-      cellIndex: selectedCell,
-      previousValue,
-      previousNotes,
-    };
-    set({ game: next, undoStack: [...get().undoStack, action] });
-    scheduleSave(next);
   },
 
   async requestHint() {
@@ -397,6 +402,27 @@ type SetFn = (partial: Partial<GameStore>) => void;
 type GetFn = () => GameStore;
 
 /** Place or toggle a number into a cell, honoring notes mode and givens. */
+/** Clear a cell's value and notes (recording an undo action). No-op on givens. */
+function eraseCellAt(set: SetFn, get: GetFn, index: number): void {
+  const { game, undoStack } = get();
+  if (!game || isGivenCell(game.givens, index)) {
+    return;
+  }
+  const previousValue = game.values[index];
+  const previousNotes = game.notes[index];
+  if (previousValue == null && previousNotes === 0) {
+    return;
+  }
+  const values = game.values.slice();
+  const notes = game.notes.slice();
+  values[index] = null;
+  notes[index] = 0;
+  const next: GameState = { ...game, values, notes };
+  const action: GameAction = { type: "erase", cellIndex: index, previousValue, previousNotes };
+  set({ game: next, undoStack: [...undoStack, action] });
+  scheduleSave(next);
+}
+
 function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
   const { game, notesMode, undoStack } = get();
   if (!game || isGivenCell(game.givens, index)) {

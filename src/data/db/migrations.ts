@@ -19,6 +19,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     if (migration.version <= current) {
       continue;
     }
+    // eslint-disable-next-line no-await-in-loop -- migrations must run in version order.
     await db.withExclusiveTransactionAsync(async (txn) => {
       await txn.execAsync(migration.up);
       // PRAGMA user_version writes are transactional in SQLite.

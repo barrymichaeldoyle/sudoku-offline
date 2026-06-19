@@ -66,7 +66,7 @@ export default function StatsScreen() {
           </View>
 
           <View className="gap-3">
-            <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
+            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
               By Difficulty
             </Text>
             {DIFFICULTIES.map((difficulty) => {
