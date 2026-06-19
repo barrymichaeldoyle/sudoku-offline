@@ -26,8 +26,10 @@ type GameStore = {
   justCompleted: boolean;
   undoStack: GameAction[];
 
-  /** True while the rewarded-hint prompt is shown. */
+  /** True while a hint confirmation prompt is shown. */
   hintPromptVisible: boolean;
+  /** Rewarded-ad upsell vs a simple confirm-before-reveal prompt. */
+  hintPromptMode: "rewarded" | "confirm" | null;
   /** Epoch ms until which the Hint button is on cooldown, or null when ready. */
   hintCooldownUntil: number | null;
 
@@ -46,12 +48,13 @@ type GameStore = {
   pressNumber: (num: number) => void;
   erase: () => void;
   /**
-   * Hint entry point. Premium reveals instantly. For everyone else: if a
-   * rewarded ad is loaded (online) the prompt opens; if not (offline) the hint
-   * is revealed for free — the premium experience — so hints always work
-   * offline.
+   * Hint entry point. Always opens a prompt first so accidental taps do not
+   * reveal a cell. Freemium online players see the rewarded-ad prompt; premium
+   * and offline players see a simple confirm dialog (still free when offline).
    */
   requestHint: () => Promise<void>;
+  /** Confirm a hint without watching an ad (premium or offline). */
+  confirmHint: () => void;
   /** Watch the rewarded ad and, if granted, reveal one hint. */
   confirmRewardedHint: () => Promise<void>;
   dismissHintPrompt: () => void;
@@ -122,6 +125,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   justCompleted: false,
   undoStack: [],
   hintPromptVisible: false,
+  hintPromptMode: null,
   hintCooldownUntil: null,
   running: false,
   lastStartedAt: null,
@@ -151,6 +155,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       justCompleted: false,
       undoStack: [],
       hintPromptVisible: false,
+      hintPromptMode: null,
       hintCooldownUntil: null,
       ...timerStateForActiveGame(isActive),
     });
@@ -167,6 +172,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       justCompleted: false,
       undoStack: [],
       hintPromptVisible: false,
+      hintPromptMode: null,
       hintCooldownUntil: null,
       ...timerStateForActiveGame(isActive),
     });
@@ -181,6 +187,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       justCompleted: false,
       undoStack: [],
       hintPromptVisible: false,
+      hintPromptMode: null,
       hintCooldownUntil: null,
       running: false,
       lastStartedAt: null,
@@ -254,21 +261,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!findHintCell(game.values, game.givens, game.solution)) {
       return;
     }
-    // Premium reveals instantly.
+    // Premium → confirm first unless they opted into instant hints in settings.
     if (hasRemoveAds()) {
-      revealHint(set, get);
+      if (getSettings().instantHintsEnabled) {
+        revealHint(set, get);
+        return;
+      }
+      set({ hintPromptVisible: true, hintPromptMode: "confirm" });
       return;
     }
-    // Offline (no rewarded ad loaded) → give the premium experience: a free,
-    // instant hint. Keeps the offline-first promise that hints always work.
     const adReady = await adService.isRewardedHintAvailable().catch(() => false);
     if (!adReady) {
-      revealHint(set, get);
+      set({ hintPromptVisible: true, hintPromptMode: "confirm" });
       return;
     }
     // Online and not premium → watch a rewarded ad to reveal the hint.
     void track("rewarded_hint_offered", { difficulty: game.difficulty });
-    set({ hintPromptVisible: true });
+    set({ hintPromptVisible: true, hintPromptMode: "rewarded" });
+  },
+
+  confirmHint() {
+    revealHint(set, get);
   },
 
   async confirmRewardedHint() {
@@ -284,7 +297,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   dismissHintPrompt() {
-    set({ hintPromptVisible: false });
+    set({ hintPromptVisible: false, hintPromptMode: null });
   },
 
   undo() {
@@ -458,7 +471,7 @@ function revealHint(set: SetFn, get: GetFn): void {
   }
   const found = findHintCell(game.values, game.givens, game.solution);
   if (!found) {
-    set({ hintPromptVisible: false });
+    set({ hintPromptVisible: false, hintPromptMode: null });
     return;
   }
   const { index, value } = found;
@@ -487,6 +500,7 @@ function revealHint(set: SetFn, get: GetFn): void {
     selectedCell: index,
     undoStack: [...undoStack, action],
     hintPromptVisible: false,
+    hintPromptMode: null,
     hintCooldownUntil: Date.now() + HINT_COOLDOWN_MS,
   });
   finalizeAfterPlacement(set, get, next, values);

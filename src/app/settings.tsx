@@ -146,11 +146,26 @@ export default function SettingsScreen() {
             Ads & Purchases
           </Text>
           {isPremium ? (
-            <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
-              <Text className="text-ink text-base font-medium">Premium active</Text>
-              <Text className="text-ink-soft text-sm">
-                No ads, unlimited hints. Thanks for your support.
-              </Text>
+            <View className="gap-3">
+              <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
+                <Text className="text-ink text-base font-medium">Premium active</Text>
+                <Text className="text-ink-soft text-sm">
+                  No ads, unlimited hints. Thanks for your support.
+                </Text>
+              </View>
+              <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-ink text-base font-medium">Instant hints</Text>
+                  <Text className="text-ink-soft text-sm">
+                    Reveal hints immediately without a confirmation prompt
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.instantHintsEnabled}
+                  onValueChange={(v) => setSetting("instantHintsEnabled", v)}
+                  accessibilityLabel="Instant hints"
+                />
+              </View>
             </View>
           ) : (
             <>

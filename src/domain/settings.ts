@@ -8,6 +8,8 @@ export type Settings = {
   highlightPeers: boolean;
   hapticsEnabled: boolean;
   autoNoteCleanup: boolean;
+  /** Premium-only: skip the hint confirmation dialog. */
+  instantHintsEnabled: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   highlightPeers: true,
   hapticsEnabled: true,
   autoNoteCleanup: true,
+  instantHintsEnabled: false,
 };
 
 /**

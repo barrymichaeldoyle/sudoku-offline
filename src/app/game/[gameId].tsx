@@ -5,6 +5,7 @@ import { AppState, Share } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { GameControls } from "@/components/GameControls";
+import { InputModeToggle } from "@/components/InputModeToggle";
 import { NumberPad } from "@/components/NumberPad";
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
@@ -168,16 +169,19 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
         </View>
       </View>
 
-      <View className="flex-row items-center gap-3">
-        <Text className="text-ink text-lg font-semibold">
-          {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
-        </Text>
-        {timerEnabled ? (
-          <Text className="text-ink-soft text-base tabular-nums">{formatDuration(elapsed)}</Text>
-        ) : null}
-        {mistakeCheckingEnabled ? (
-          <Text className="text-ink-soft text-base tabular-nums">Mistakes {game.mistakes}</Text>
-        ) : null}
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="min-w-0 flex-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+          <Text className="text-ink text-lg font-semibold">
+            {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
+          </Text>
+          {timerEnabled ? (
+            <Text className="text-ink-soft text-base tabular-nums">{formatDuration(elapsed)}</Text>
+          ) : null}
+          {mistakeCheckingEnabled ? (
+            <Text className="text-ink-soft text-base tabular-nums">Mistakes {game.mistakes}</Text>
+          ) : null}
+        </View>
+        <InputModeToggle />
       </View>
     </View>
   );
@@ -217,14 +221,46 @@ function PausedOverlay({ boardSize }: { boardSize: number }) {
 }
 
 function HintPromptOverlay() {
+  const hintPromptMode = useGameStore((s) => s.hintPromptMode);
+  const confirmHint = useGameStore((s) => s.confirmHint);
   const confirmRewardedHint = useGameStore((s) => s.confirmRewardedHint);
   const dismissHintPrompt = useGameStore((s) => s.dismissHintPrompt);
-  const requestHint = useGameStore((s) => s.requestHint);
   const purchaseRemoveAds = useEntitlementStore((s) => s.purchaseRemoveAds);
   const [busy, setBusy] = useState(false);
 
-  // The store only opens this prompt when a rewarded ad is actually loaded
-  // (offline players get a free hint instead), so we always offer the ad here.
+  if (hintPromptMode === "confirm") {
+    return (
+      <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+        <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
+          <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
+          <Text className="text-ink-soft text-center">
+            This will reveal one correct cell. You can undo if you change your mind.
+          </Text>
+
+          <Pressable
+            onPress={confirmHint}
+            accessibilityRole="button"
+            accessibilityLabel="Reveal a hint"
+            className="bg-primary mt-4 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-80"
+          >
+            <SimpleIcon name="hint" tone="onPrimary" />
+            <Text className="text-on-primary text-lg font-semibold">Reveal hint</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={dismissHintPrompt}
+            accessibilityRole="button"
+            accessibilityLabel="Close hint prompt"
+            className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl py-3 active:opacity-60"
+          >
+            <SimpleIcon name="close" tone="muted" />
+            <Text className="text-ink-soft text-base font-medium">Not now</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   const onWatch = async () => {
     if (busy) {
       return;
@@ -246,9 +282,8 @@ function HintPromptOverlay() {
     try {
       const ok = await purchaseRemoveAds();
       if (ok) {
-        // Now premium — close the prompt and reveal the hint they asked for.
-        dismissHintPrompt();
-        void requestHint();
+        // Player already asked for a hint — reveal it now that they are premium.
+        confirmHint();
       }
     } finally {
       setBusy(false);

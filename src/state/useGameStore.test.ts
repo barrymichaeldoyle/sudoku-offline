@@ -178,35 +178,66 @@ describe("useGameStore reducers", () => {
       expect(state.game!.hintsUsed).toBe(0);
       expect(state.game!.values.every((v) => v == null)).toBe(true);
       expect(state.hintPromptVisible).toBe(true);
+      expect(state.hintPromptMode).toBe("rewarded");
     });
 
-    it("reveals a free hint instantly when offline (no ad available)", async () => {
+    it("opens a confirm prompt when offline (no ad available)", async () => {
       mockIsRewardedHintAvailable.mockResolvedValue(false);
       await useGameStore.getState().requestHint();
       const state = useGameStore.getState();
+      expect(state.game!.hintsUsed).toBe(0);
+      expect(state.hintPromptVisible).toBe(true);
+      expect(state.hintPromptMode).toBe("confirm");
+    });
+
+    it("reveals a free hint after confirming while offline", async () => {
+      mockIsRewardedHintAvailable.mockResolvedValue(false);
+      await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
+      const state = useGameStore.getState();
       expect(state.game!.hintsUsed).toBe(1);
       expect(state.hintPromptVisible).toBe(false);
-      // A correct value from the solution was placed.
       const placed = state.game!.values.findIndex((v) => v != null);
       expect(state.game!.values[placed]).toBe(Number(SOLUTION[placed]));
     });
 
-    it("reveals instantly for premium without a prompt", async () => {
+    it("opens a confirm prompt for premium instead of revealing instantly", async () => {
       mockHasRemoveAds.mockReturnValue(true);
+      await useGameStore.getState().requestHint();
+      const state = useGameStore.getState();
+      expect(state.game!.hintsUsed).toBe(0);
+      expect(state.hintPromptVisible).toBe(true);
+      expect(state.hintPromptMode).toBe("confirm");
+    });
+
+    it("reveals instantly for premium when instant hints is enabled", async () => {
+      mockHasRemoveAds.mockReturnValue(true);
+      useSettingsStore.setState((state) => ({
+        settings: { ...state.settings, instantHintsEnabled: true },
+      }));
       await useGameStore.getState().requestHint();
       const state = useGameStore.getState();
       expect(state.game!.hintsUsed).toBe(1);
       expect(state.hintPromptVisible).toBe(false);
+    });
 
-      // Cooldown gates spamming even for premium; once cleared, another reveals.
+    it("reveals for premium after the player confirms", async () => {
+      mockHasRemoveAds.mockReturnValue(true);
+      await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
+      expect(useGameStore.getState().game!.hintsUsed).toBe(1);
+
+      // Cooldown gates spamming even for premium; once cleared, another confirms.
       useGameStore.setState({ hintCooldownUntil: null });
       await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
       expect(useGameStore.getState().game!.hintsUsed).toBe(2);
     });
 
     it("starts a cooldown after a reveal and blocks the next hint", async () => {
-      mockIsRewardedHintAvailable.mockResolvedValue(false); // offline → free reveal
+      mockIsRewardedHintAvailable.mockResolvedValue(false); // offline → confirm first
       await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
       const after = useGameStore.getState();
       expect(after.game!.hintsUsed).toBe(1);
       expect(after.hintCooldownUntil).not.toBeNull();
@@ -220,8 +251,10 @@ describe("useGameStore reducers", () => {
     it("allows another hint once the cooldown elapses", async () => {
       mockIsRewardedHintAvailable.mockResolvedValue(false);
       await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
       useGameStore.setState({ hintCooldownUntil: Date.now() - 1 });
       await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
       expect(useGameStore.getState().game!.hintsUsed).toBe(2);
     });
 
