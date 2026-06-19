@@ -19,10 +19,17 @@ export async function track(
 }
 
 /**
- * Drain the queue to a remote sink. No-op for MVP (fully offline, no backend):
- * events accumulate locally (capped) until a real sink is wired up, at which
- * point this would batch `getPendingEvents()` → POST → `markEventsSent()`.
+ * Drain the queue to a remote sink — intentionally a no-op.
+ *
+ * Baseline usage analytics (active users, sessions, platform + app/update
+ * version adoption) is handled by EAS Insights (`expo-insights`), which reports
+ * automatically from native and needs no code here.
+ *
+ * EAS Insights does NOT ingest custom events, so the local `track()` queue
+ * stays deliberately dormant: events accumulate offline (capped) but are never
+ * drained. The flush seam is kept so a custom-event sink (e.g. Aptabase) can be
+ * wired later by batching `getPendingEvents()` → POST → `markEventsSent()`.
  */
 export async function flushPendingEvents(): Promise<void> {
-  // No backend yet — nothing to flush.
+  // No custom-event sink wired — EAS Insights covers baseline usage instead.
 }

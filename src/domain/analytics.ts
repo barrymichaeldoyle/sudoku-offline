@@ -1,7 +1,8 @@
 /**
- * Local analytics event vocabulary. Events are queued offline only (no backend
- * in MVP); see `services/analyticsService.ts`. Keep names stable — they are the
- * wire format once a sink exists.
+ * Local analytics event vocabulary. These custom events are queued offline only
+ * and never sent — EAS Insights (`expo-insights`) covers baseline usage but
+ * cannot ingest custom events; see `services/analyticsService.ts`. Keep names
+ * stable — they are the wire format once a custom-event sink is wired up.
  */
 export type AnalyticsEventName =
   | "app_opened"
