@@ -38,6 +38,7 @@ export default function GameScreen() {
   const hintPromptVisible = useGameStore((s) => s.hintPromptVisible);
   const loadGame = useGameStore((s) => s.loadGame);
   const flushAndPause = useGameStore((s) => s.flushAndPause);
+  const [boardSize, setBoardSize] = useState(0);
 
   useEffect(() => {
     if (gameId) {
@@ -72,10 +73,18 @@ export default function GameScreen() {
 
   return (
     <Screen className="bg-canvas flex-1">
-      <View className="flex-1 gap-4 p-4">
-        <GameHeader onBack={() => router.back()} />
-        <SudokuBoard />
-        <View className="mt-auto gap-3">
+      <View className="flex-1 gap-3 p-4">
+        <GameHeader onBack={() => router.back()} onSettings={() => router.push("/settings")} />
+        <View
+          className="flex-1 items-center justify-center"
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            setBoardSize(Math.floor(Math.min(width, height)));
+          }}
+        >
+          {boardSize > 0 ? <SudokuBoard size={boardSize} /> : null}
+        </View>
+        <View className="gap-3">
           <GameControls />
           <NumberPad />
         </View>
@@ -88,7 +97,7 @@ export default function GameScreen() {
   );
 }
 
-function GameHeader({ onBack }: { onBack: () => void }) {
+function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: () => void }) {
   const game = useGameStore((s) => s.game);
   const running = useGameStore((s) => s.running);
   const pause = useGameStore((s) => s.pause);
@@ -100,55 +109,75 @@ function GameHeader({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <View className="flex-row items-center justify-between">
-      <Pressable
-        onPress={onBack}
-        accessibilityRole="button"
-        accessibilityLabel="Back to home"
-        className="py-1 pr-4 active:opacity-60"
-      >
-        <Text className="text-primary text-base font-medium">‹ Home</Text>
-      </Pressable>
+    <View className="gap-2">
+      <View className="flex-row items-center justify-between">
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
+          className="-ml-1 py-1 pr-4 active:opacity-60"
+        >
+          <Text className="text-primary text-base font-medium">‹ Home</Text>
+        </Pressable>
+
+        <View className="flex-row items-center gap-2">
+          {timerEnabled && running ? (
+            <Pressable
+              onPress={pause}
+              accessibilityRole="button"
+              accessibilityLabel="Pause game"
+              className="bg-surface-muted rounded-full px-4 py-1.5 active:opacity-70"
+            >
+              <Text className="text-ink text-sm font-semibold">Pause</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={onSettings}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            className="bg-surface-muted h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+          >
+            <Text className="text-ink-soft text-lg leading-none">⚙</Text>
+          </Pressable>
+        </View>
+      </View>
 
       <View className="flex-row items-center gap-3">
-        <Text className="text-ink text-base font-semibold">
+        <Text className="text-ink text-lg font-semibold">
           {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty}
         </Text>
         {timerEnabled ? (
           <Text className="text-ink-soft text-base tabular-nums">{formatDuration(elapsed)}</Text>
         ) : null}
-      </View>
-
-      <View className="flex-row items-center gap-3">
         <Text className="text-ink-soft text-base tabular-nums">✕ {game.mistakes}</Text>
-        {timerEnabled && running ? (
-          <Pressable
-            onPress={pause}
-            accessibilityRole="button"
-            accessibilityLabel="Pause game"
-            className="py-1 pl-1 active:opacity-60"
-          >
-            <Text className="text-primary text-base font-medium">Pause</Text>
-          </Pressable>
-        ) : null}
       </View>
     </View>
   );
 }
 
 function PausedOverlay() {
+  const router = useRouter();
   const resume = useGameStore((s) => s.resume);
   return (
     <View className="absolute inset-0 items-center justify-center bg-black/60 p-8">
-      <View className="border-line bg-surface w-full items-center gap-5 rounded-3xl border p-8">
+      <View className="border-line bg-surface w-full items-center gap-3 rounded-3xl border p-8">
         <Text className="text-ink text-2xl font-bold">Paused</Text>
+        <Text className="text-ink-soft -mt-1 text-sm">Your progress is saved</Text>
         <Pressable
           onPress={resume}
           accessibilityRole="button"
           accessibilityLabel="Resume game"
-          className="bg-primary w-full items-center rounded-2xl py-4 active:opacity-80"
+          className="bg-primary mt-2 w-full items-center rounded-2xl py-4 active:opacity-80"
         >
           <Text className="text-on-primary text-lg font-semibold">Resume</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/settings")}
+          accessibilityRole="button"
+          accessibilityLabel="Open settings"
+          className="border-line bg-surface w-full items-center rounded-2xl border py-4 active:opacity-80"
+        >
+          <Text className="text-ink text-base font-medium">Settings</Text>
         </Pressable>
       </View>
     </View>

@@ -13,6 +13,7 @@ import {
   type GameState,
   type Puzzle,
 } from "@/domain/sudoku/types";
+import { formatDuration } from "@/domain/time";
 import { getDailyPuzzle } from "@/services/dailyService";
 import { launchPuzzle } from "@/services/gameLauncher";
 import { useGameStore } from "@/state/useGameStore";
@@ -32,6 +33,16 @@ const DIFFICULTY_HINTS: Record<Difficulty, string> = {
   hard: "For regular players",
   expert: "Few givens, real focus",
   extreme: "The toughest grids",
+};
+
+// A calm colour cue per difficulty — paired with the text label, never the sole
+// indicator (see design guidelines §15.4).
+const DIFFICULTY_DOT: Record<Difficulty, string> = {
+  easy: "bg-success",
+  medium: "bg-accent",
+  hard: "bg-warning",
+  expert: "bg-danger",
+  extreme: "bg-primary",
 };
 
 export default function Home() {
@@ -78,55 +89,151 @@ export default function Home() {
 
   return (
     <Screen className="bg-canvas flex-1">
-      <ScrollView contentContainerClassName="gap-8 px-6 pb-10">
-        <View className="mt-8 items-center gap-1">
-          <Text className="text-ink text-center text-4xl font-bold tracking-tight">Sudoku</Text>
-          <Text className="text-ink-soft text-center text-sm font-medium">
-            Classic puzzles · Works offline
-          </Text>
+      <ScrollView contentContainerClassName="gap-7 px-5 pt-6 pb-10">
+        <View className="items-center gap-3">
+          <AppMark />
+          <View className="items-center gap-1">
+            <Text className="text-ink text-center text-4xl font-bold tracking-tight">Sudoku</Text>
+            <Text className="text-ink-soft text-center text-sm font-medium">
+              Classic puzzles · Works offline
+            </Text>
+          </View>
         </View>
 
-        <View className="gap-3">
-          {activeGame ? (
-            <PrimaryButton label="Continue" onPress={() => openGame(activeGame)} />
-          ) : null}
-          <PrimaryButton
-            label="Daily Puzzle"
-            hint="A fresh puzzle every day"
-            variant="secondary"
+        {activeGame ? (
+          <ContinueCard game={activeGame} onPress={() => openGame(activeGame)} />
+        ) : null}
+
+        <View className="flex-row gap-3">
+          <DailyCard
+            title="Daily Puzzle"
+            subtitle="Today's puzzle"
+            accent="bg-accent"
             onPress={() => startFromPuzzle(() => getDailyPuzzle("daily"), "daily")}
           />
-          <PrimaryButton
-            label="Daily Challenge"
-            hint="A tougher daily grid"
-            variant="secondary"
+          <DailyCard
+            title="Daily Challenge"
+            subtitle="A tougher grid"
+            accent="bg-warning"
             onPress={() => startFromPuzzle(() => getDailyPuzzle("challenge"), "challenge")}
           />
         </View>
 
         <View className="gap-3">
           <SectionLabel>New Game</SectionLabel>
-          {NEW_GAME_DIFFICULTIES.map((difficulty) => (
-            <PrimaryButton
-              key={difficulty}
-              label={DIFFICULTY_LABELS[difficulty]}
-              hint={DIFFICULTY_HINTS[difficulty]}
-              variant="secondary"
-              onPress={() => startFromPuzzle(() => getRandomPuzzleByDifficulty(difficulty))}
-            />
-          ))}
+          <View className="border-line bg-surface overflow-hidden rounded-2xl border">
+            {NEW_GAME_DIFFICULTIES.map((difficulty, i) => (
+              <Pressable
+                key={difficulty}
+                onPress={() => startFromPuzzle(() => getRandomPuzzleByDifficulty(difficulty))}
+                accessibilityRole="button"
+                accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
+                className={clsx(
+                  "flex-row items-center gap-3 px-5 py-4 active:opacity-70",
+                  i > 0 && "border-line border-t",
+                )}
+              >
+                <View className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])} />
+                <View className="flex-1">
+                  <Text className="text-ink text-base font-semibold">
+                    {DIFFICULTY_LABELS[difficulty]}
+                  </Text>
+                  <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
+                </View>
+                <Text className="text-ink-dim text-xl">›</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
-        <View className="gap-3">
-          <PrimaryButton label="Stats" variant="secondary" onPress={() => router.push("/stats")} />
-          <PrimaryButton
-            label="Settings"
-            variant="secondary"
-            onPress={() => router.push("/settings")}
-          />
+        <View className="flex-row gap-3">
+          <MiniButton label="Stats" onPress={() => router.push("/stats")} />
+          <MiniButton label="Settings" onPress={() => router.push("/settings")} />
         </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+/** A small 3x3 grid mark with one highlighted cell — the app's visual motif. */
+function AppMark() {
+  return (
+    <View className="border-line bg-surface gap-1 rounded-2xl border p-2.5">
+      {[0, 1, 2].map((r) => (
+        <View key={r} className="flex-row gap-1">
+          {[0, 1, 2].map((c) => (
+            <View
+              key={c}
+              className={clsx(
+                "h-3 w-3 rounded-sm",
+                r === 0 && c === 1 ? "bg-warning" : "bg-primary/15",
+              )}
+            />
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ContinueCard({ game, onPress }: { game: GameState; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Continue your current game"
+      className="bg-primary gap-1 rounded-2xl p-5 active:opacity-80"
+    >
+      <Text className="text-on-primary/80 text-xs font-semibold tracking-widest uppercase">
+        Resume game
+      </Text>
+      <Text className="text-on-primary text-2xl font-bold">Continue</Text>
+      <Text className="text-on-primary/80 text-sm">
+        {DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} ·{" "}
+        {formatDuration(game.elapsedSeconds)}
+        {game.mistakes > 0 ? ` · ${game.mistakes} mistake${game.mistakes > 1 ? "s" : ""}` : ""}
+      </Text>
+    </Pressable>
+  );
+}
+
+function DailyCard({
+  title,
+  subtitle,
+  accent,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  accent: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      className="border-line bg-surface flex-1 gap-2 rounded-2xl border p-4 active:opacity-80"
+    >
+      <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
+      <View className="gap-0.5">
+        <Text className="text-ink text-base font-semibold">{title}</Text>
+        <Text className="text-ink-soft text-sm">{subtitle}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function MiniButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className="border-line bg-surface flex-1 items-center rounded-2xl border py-3.5 active:opacity-80"
+    >
+      <Text className="text-ink text-base font-semibold">{label}</Text>
+    </Pressable>
   );
 }
 
@@ -135,37 +242,5 @@ function SectionLabel({ children }: { children: string }) {
     <Text className="text-ink-dim px-1 text-xs font-semibold tracking-widest uppercase">
       {children}
     </Text>
-  );
-}
-
-type PrimaryButtonProps = {
-  label: string;
-  hint?: string;
-  onPress: () => void;
-  variant?: "primary" | "secondary";
-};
-
-function PrimaryButton({ label, hint, onPress, variant = "primary" }: PrimaryButtonProps) {
-  const isPrimary = variant === "primary";
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      className={clsx(
-        "rounded-2xl px-5 py-4 active:opacity-80",
-        isPrimary ? "items-center bg-primary" : "border border-line bg-surface",
-      )}
-    >
-      <Text
-        className={clsx(
-          "text-lg",
-          isPrimary ? "font-semibold text-on-primary" : "font-semibold text-ink",
-        )}
-      >
-        {label}
-      </Text>
-      {!isPrimary && hint ? <Text className="text-ink-soft mt-0.5 text-sm">{hint}</Text> : null}
-    </Pressable>
   );
 }

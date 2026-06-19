@@ -44,8 +44,8 @@ export function GameControls() {
   const hintCooldown = useHintCooldownRemaining();
 
   return (
-    <View className="gap-1.5">
-      <View className="flex-row gap-1.5">
+    <View className="gap-2">
+      <View className="flex-row gap-2">
         <ControlButton label="Undo" disabled={!canUndo} onPress={undo} />
         <ControlButton label="Erase" onPress={erase} />
         <ControlButton
@@ -59,10 +59,20 @@ export function GameControls() {
           onPress={requestHint}
         />
       </View>
-      <ControlButton
-        label={inputMode === "cell" ? "Input: Cell-first" : "Input: Number-first"}
+      {/* Compact, self-sizing input-mode toggle (not flex-1, so it can't
+          collapse in this column and get overlapped by the number pad). */}
+      <Pressable
         onPress={() => setInputMode(inputMode === "cell" ? "number" : "cell")}
-      />
+        accessibilityRole="button"
+        accessibilityState={{ selected: inputMode === "number" }}
+        accessibilityLabel={`Input mode: ${inputMode === "cell" ? "cell first" : "number first"}`}
+        className="bg-surface-muted flex-row items-center gap-1.5 self-center rounded-full px-4 py-2 active:opacity-70"
+      >
+        <Text className="text-ink-dim text-xs font-medium">Input</Text>
+        <Text className="text-ink text-xs font-semibold">
+          {inputMode === "cell" ? "Cell-first" : "Number-first"}
+        </Text>
+      </Pressable>
     </View>
   );
 }

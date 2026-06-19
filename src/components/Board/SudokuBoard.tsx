@@ -10,7 +10,7 @@ import { SudokuCell } from "./SudokuCell";
 
 const ROWS = Array.from({ length: BOARD_SIZE }, (_, i) => i);
 
-export function SudokuBoard() {
+export function SudokuBoard({ size }: { size?: number }) {
   const game = useGameStore((s) => s.game);
   const selectedCell = useGameStore((s) => s.selectedCell);
   const pressCell = useGameStore((s) => s.pressCell);
@@ -30,7 +30,17 @@ export function SudokuBoard() {
   const selectedValue = selectedCell == null ? null : game.values[selectedCell];
 
   return (
-    <View className="border-grid-major bg-cell aspect-square w-full overflow-hidden rounded-2xl border-2">
+    <View
+      // When a measured `size` is supplied the board renders as an exact square
+      // that fits the available space (so controls are never crowded); otherwise
+      // it falls back to filling its container width.
+      style={size != null ? { width: size, height: size } : undefined}
+      className={
+        size != null
+          ? "border-grid-major bg-cell overflow-hidden rounded-2xl border-2"
+          : "border-grid-major bg-cell aspect-square w-full overflow-hidden rounded-2xl border-2"
+      }
+    >
       {ROWS.map((row) => (
         <View key={row} className="flex-1 flex-row">
           {ROWS.map((col) => {
