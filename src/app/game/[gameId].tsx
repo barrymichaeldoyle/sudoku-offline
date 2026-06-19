@@ -6,7 +6,12 @@ import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { GameControls } from "@/components/GameControls";
 import { NumberPad } from "@/components/NumberPad";
 import { Screen } from "@/components/Screen";
+import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import { formatShareText } from "@/domain/shareText";
+import { NEW_GAME_DIFFICULTIES } from "@/domain/sudoku/types";
+import { adService } from "@/services/adService";
+import { track } from "@/services/analyticsService";
+import { launchPuzzle } from "@/services/gameLauncher";
 import { getDailyCompletionInfo, type DailyCompletionInfo } from "@/services/statsService";
 import { formatDuration, useElapsedSeconds } from "@/state/useElapsedSeconds";
 import { useGameStore } from "@/state/useGameStore";
@@ -18,6 +23,7 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   medium: "Medium",
   hard: "Hard",
   expert: "Expert",
+  extreme: "Extreme",
 };
 
 export default function GameScreen() {
@@ -133,7 +139,14 @@ function PausedOverlay() {
 function CompletionOverlay() {
   const router = useRouter();
   const game = useGameStore((s) => s.game);
+  const setGame = useGameStore((s) => s.setGame);
   const [daily, setDaily] = useState<DailyCompletionInfo | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Post-completion ad hook (no-op stub in MVP; ads never run during play).
+  useEffect(() => {
+    void adService.maybeShowPostCompletionInterstitial();
+  }, []);
 
   useEffect(() => {
     if (!game) {
@@ -141,7 +154,11 @@ function CompletionOverlay() {
     }
     let cancelled = false;
     getDailyCompletionInfo(game.id).then((info) => {
-      if (!cancelled) setDaily(info);
+      if (cancelled || !info) {
+        return;
+      }
+      setDaily(info);
+      void track("daily_completed", { track: info.track });
     });
     return () => {
       cancelled = true;
@@ -153,6 +170,7 @@ function CompletionOverlay() {
   }
 
   const onShare = () => {
+    void track("share_result_tapped", { difficulty: game.difficulty });
     void Share.share({
       message: formatShareText({
         difficulty: game.difficulty,
@@ -166,12 +184,31 @@ function CompletionOverlay() {
     }).catch(() => {});
   };
 
+  const onNewGame = async () => {
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const next = await launchPuzzle(() => getRandomPuzzleByDifficulty(game.difficulty));
+      if (next) {
+        setGame(next);
+        router.replace({ pathname: "/game/[gameId]", params: { gameId: next.id } });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const heading =
     daily?.track === "challenge"
       ? "Challenge Complete"
       : daily
         ? "Daily Complete"
         : "Puzzle Complete";
+  // "New Game" replays the same difficulty — only meaningful for the ordinary
+  // difficulty-pool games (daily/challenge have no such pool to draw from).
+  const canReplay = !daily && NEW_GAME_DIFFICULTIES.includes(game.difficulty);
 
   return (
     <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
@@ -193,6 +230,16 @@ function CompletionOverlay() {
         <Pressable onPress={onShare} className="mt-4 items-center rounded-xl bg-blue-600 py-4">
           <Text className="text-lg font-semibold text-white">Share Result</Text>
         </Pressable>
+        {canReplay ? (
+          <Pressable
+            onPress={onNewGame}
+            className="items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"
+          >
+            <Text className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
+              New Game
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={() => router.replace("/")}
           className="items-center rounded-xl bg-neutral-100 py-4 dark:bg-neutral-800"

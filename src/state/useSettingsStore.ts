@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { loadSettings, saveSettings } from "@/data/repositories/settingsRepository";
 import { DEFAULT_SETTINGS, type Settings } from "@/domain/settings";
+import { track } from "@/services/analyticsService";
 
 type SettingsStore = {
   settings: Settings;
@@ -23,6 +24,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     const settings = { ...get().settings, [key]: value };
     set({ settings });
     void saveSettings(settings).catch(() => {});
+    void track("setting_changed", { setting: String(key), value });
   },
 }));
 

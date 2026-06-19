@@ -4,8 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 
 import { Screen } from "@/components/Screen";
-import { startDailyProgress } from "@/data/repositories/dailyRepository";
-import { createGame, getActiveGame } from "@/data/repositories/gameRepository";
+import { getActiveGame } from "@/data/repositories/gameRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import {
   NEW_GAME_DIFFICULTIES,
@@ -14,6 +13,7 @@ import {
   type Puzzle,
 } from "@/domain/sudoku/types";
 import { getDailyPuzzle } from "@/services/dailyService";
+import { launchPuzzle } from "@/services/gameLauncher";
 import { useGameStore } from "@/state/useGameStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
 
@@ -56,14 +56,8 @@ export default function Home() {
       if (busy) return;
       setBusy(true);
       try {
-        const puzzle = await loadPuzzle();
-        if (puzzle) {
-          const game = await createGame(puzzle);
-          // Daily/challenge puzzles carry a dateKey; record progress on the
-          // right track so completion can update streaks/stats.
-          if (dailyTrack && puzzle.dateKey) {
-            await startDailyProgress(puzzle.dateKey, dailyTrack, puzzle.id, game.id);
-          }
+        const game = await launchPuzzle(loadPuzzle, dailyTrack);
+        if (game) {
           openGame(game);
         }
       } finally {

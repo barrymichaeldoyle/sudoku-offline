@@ -4,7 +4,7 @@ Living status doc for picking the work back up. Pairs with the full spec in
 [`mvp-handoff.md`](./mvp-handoff.md) (scope, schema, acceptance criteria) and the
 **Locked Decisions** section at the top of that file. Update this file as phases land.
 
-_Last updated: end of Phase 4 (2026-06-19). Branch: work directly on `main`._
+_Last updated: end of Phase 5 (2026-06-19). Branch: work directly on `main`._
 
 ---
 
@@ -103,11 +103,31 @@ highlighting and mistake/duplicate flagging respect the settings. **66 unit test
   (RN `Share`) using pure `domain/shareText.ts` (`formatShareText`, tested).
 - **Time util**: `domain/time.ts` `formatDuration` (re-exported from `useElapsedSeconds`).
 
+### Added in Phase 5 (Offline hooks — stubs)
+- **Analytics (local queue)**: `domain/analytics.ts` (event-name union),
+  `eventRepository` over `pending_events` (capped at 1000, `getPendingEvents`/
+  `markEventsSent` ready for a future sink), `services/analyticsService.ts`
+  (`track` = fire-and-forget enqueue, never throws; `flushPendingEvents` no-op — no
+  backend). Events wired: `app_opened` (boot), `puzzle_started`/`daily_started`
+  (`gameLauncher`), `hint_used` + `puzzle_completed` (store), `daily_completed` +
+  `share_result_tapped` (completion screen), `setting_changed` (settings store).
+- **Entitlements**: `domain/entitlements.ts` (`ENTITLEMENT_REMOVE_ADS`),
+  `entitlementRepository` over `entitlements` (cache is the offline source of truth),
+  `useEntitlementStore` (hydrated on boot, `hasRemoveAds()` non-reactive read).
+- **Purchase stub**: `services/purchaseService.ts` (`PurchaseService` shape;
+  `purchaseRemoveAds` returns false, refresh/restore no-op — no store SDK in MVP).
+- **Ad stub**: `services/adService.ts` (`maybeShowPostCompletionInterstitial` — early-returns
+  for `remove_ads`, called only from the completion overlay; rewarded-hint methods return
+  false). Never runs during play.
+- **Shared launcher**: `services/gameLauncher.ts` `launchPuzzle()` centralizes
+  create-game + daily-progress + start analytics; used by Home and the completion screen's
+  new **New Game** action (replays the same difficulty for ordinary games).
+
 ### Known gaps (later phases)
 - **Undo doesn't restore peer notes** that `autoNoteCleanup` removed (the `GameAction`
   type only stores the edited cell's notes — accepted limitation).
-- **Completion overlay** has share text but **no ad hook** yet (Phase 5
-  `maybeShowPostCompletionInterstitial`).
+- **Analytics/ads/purchases are stubs**: no real SDKs, no event sink. `flushPendingEvents`,
+  `purchaseRemoveAds`, and the rewarded-ad/interstitial bodies are integration points only.
 - **No Settings screen, no theme switching** yet (Phase 6).
 
 ---
@@ -120,21 +140,18 @@ would have provided; no separate solver needed yet.
 
 ### Phase 4 — Retention — DONE ✅ (see "Added in Phase 4" above)
 
-### Phase 5 — Offline hooks (stubs) (next up)
-- `analyticsService` (local `pending_events` queue; `flushPendingEvents` no-op),
-  `adService` + `purchaseService` interfaces (no real SDKs), `entitlementRepository`
-  cache. Never block gameplay; ads only post-completion.
+### Phase 5 — Offline hooks (stubs) — DONE ✅ (see "Added in Phase 5" above)
 
-### Phase 6 — Polish
+### Phase 6 — Polish (next up)
 - Settings screen + theme store, empty/error states, a11y labels, small-phone layout,
   broaden test coverage (streak logic, store reducers).
 
 ---
 
 ## Repos/tables not yet touched
-`pending_events`, `entitlements`, `schema_meta`. Repositories for events/entitlements are
-specced in `mvp-handoff.md` but not yet created (Phase 5). (`completed_games`,
-`daily_progress`, and `settings` are now all read/written.)
+Only `schema_meta` remains unused. `pending_events` (eventRepository) and `entitlements`
+(entitlementRepository) are now read/written, as are `completed_games`, `daily_progress`,
+and `settings`.
 
 ## Note: `knip` is wired up
 `knip.json` + `pnpm knip` detect unused files/deps. Its `entry` is currently only

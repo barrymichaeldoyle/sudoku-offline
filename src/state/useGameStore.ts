@@ -6,6 +6,7 @@ import { completeGame, getGameById, saveGame } from "@/data/repositories/gameRep
 import { isGivenCell, isPuzzleComplete, isValueCorrect } from "@/domain/sudoku/board";
 import { findHintCell } from "@/domain/sudoku/hints";
 import { cleanupNotesAfterPlacement, toggleNote } from "@/domain/sudoku/notes";
+import { track } from "@/services/analyticsService";
 import { haptics } from "@/services/haptics";
 import { getSettings } from "@/state/useSettingsStore";
 
@@ -222,6 +223,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
     let next: GameState = { ...game, values, notes, hintsUsed: game.hintsUsed + 1 };
     haptics.place();
+    void track("hint_used", { difficulty: game.difficulty });
     set({ game: next, selectedCell: index, undoStack: [...get().undoStack, action] });
     finalizeAfterPlacement(set, get, next, values);
   },
@@ -363,6 +365,12 @@ function finalizeAfterPlacement(
     pendingGame = null;
     set({ game: completed, justCompleted: true, running: false, lastStartedAt: null });
     haptics.complete();
+    void track("puzzle_completed", {
+      difficulty: completed.difficulty,
+      elapsedSeconds: completed.elapsedSeconds,
+      mistakes: completed.mistakes,
+      hintsUsed: completed.hintsUsed,
+    });
     void completeGame(completed).catch(() => {});
     return;
   }

@@ -1,3 +1,5 @@
+import { track } from "@/services/analyticsService";
+import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 
 import { getDatabase } from "./db/client";
@@ -16,6 +18,8 @@ export function initializeApp(): Promise<void> {
       await getDatabase();
       await importBundledPacksIfNeeded();
       await useSettingsStore.getState().hydrate();
+      await useEntitlementStore.getState().hydrate();
+      void track("app_opened");
     })().catch((err) => {
       initPromise = null; // allow retry on next call
       throw err;
