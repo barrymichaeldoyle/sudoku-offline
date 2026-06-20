@@ -121,180 +121,182 @@ export default function SettingsScreen() {
     <Screen className="bg-canvas flex-1">
       <ScreenHeader title="Settings" onBack={() => router.back()} />
 
-      <ScrollView contentContainerClassName="gap-6 p-6">
-        <View className="gap-3">
-          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-            Theme
-          </Text>
-          <View className="flex-row gap-2">
-            {THEME_OPTIONS.map((opt) => {
-              const active = settings.theme === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setSetting("theme", opt.value)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={`${opt.label} theme`}
-                  className={
-                    active
-                      ? "bg-primary flex-1 items-center rounded-xl py-3"
-                      : "border-line bg-surface flex-1 items-center rounded-xl border py-3"
-                  }
-                >
-                  <Text
-                    className={active ? "text-on-primary font-semibold" : "text-ink font-medium"}
-                  >
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <View className="gap-3">
-          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-            Gameplay
-          </Text>
-          {TOGGLES.map((t) => (
-            <View
-              key={t.key}
-              className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3"
-            >
-              <View className="flex-1 gap-0.5">
-                <Text className="text-ink text-base font-medium">{t.label}</Text>
-                <Text className="text-ink-soft text-sm">{t.hint}</Text>
-              </View>
-              <Switch
-                value={settings[t.key]}
-                onValueChange={(v) => setSetting(t.key, v)}
-                accessibilityLabel={t.label}
-              />
-            </View>
-          ))}
-        </View>
-
-        {Platform.OS === "web" ? null : (
+      <ScrollView contentContainerClassName="p-6">
+        <View className="w-full max-w-[640px] gap-6 self-center">
           <View className="gap-3">
             <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-              Reminders
+              Theme
             </Text>
-            <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-              <View className="flex-1 gap-0.5">
-                <Text className="text-ink text-base font-medium">Daily puzzle reminder</Text>
-                <Text className="text-ink-soft text-sm">
-                  A gentle nudge to finish today's Daily Puzzle and keep your streak going
-                </Text>
-              </View>
-              <Switch
-                value={settings.dailyReminderEnabled}
-                onValueChange={(v) => void onToggleReminder(v)}
-                accessibilityLabel="Daily puzzle reminder"
-              />
+            <View className="flex-row gap-2">
+              {THEME_OPTIONS.map((opt) => {
+                const active = settings.theme === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setSetting("theme", opt.value)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`${opt.label} theme`}
+                    className={
+                      active
+                        ? "bg-primary flex-1 items-center rounded-xl py-3"
+                        : "border-line bg-surface flex-1 items-center rounded-xl border py-3"
+                    }
+                  >
+                    <Text
+                      className={active ? "text-on-primary font-semibold" : "text-ink font-medium"}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            {settings.dailyReminderEnabled ? (
-              <View className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3">
-                <Text className="text-ink text-base font-medium">Reminder time</Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {REMINDER_TIMES.map((minutes) => {
-                    const active = settings.dailyReminderTimeMinutes === minutes;
-                    const label = formatReminderTime(minutes);
-                    return (
-                      <Pressable
-                        key={minutes}
-                        onPress={() => onChangeReminderTime(minutes)}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        accessibilityLabel={`Remind me at ${label}`}
-                        className={
-                          active
-                            ? "bg-primary rounded-xl px-4 py-2.5"
-                            : "border-line bg-canvas rounded-xl border px-4 py-2.5"
-                        }
-                      >
-                        <Text
+          </View>
+
+          <View className="gap-3">
+            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              Gameplay
+            </Text>
+            {TOGGLES.map((t) => (
+              <View
+                key={t.key}
+                className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+              >
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-ink text-base font-medium">{t.label}</Text>
+                  <Text className="text-ink-soft text-sm">{t.hint}</Text>
+                </View>
+                <Switch
+                  value={settings[t.key]}
+                  onValueChange={(v) => setSetting(t.key, v)}
+                  accessibilityLabel={t.label}
+                />
+              </View>
+            ))}
+          </View>
+
+          {Platform.OS === "web" ? null : (
+            <View className="gap-3">
+              <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+                Reminders
+              </Text>
+              <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+                <View className="flex-1 gap-0.5">
+                  <Text className="text-ink text-base font-medium">Daily puzzle reminder</Text>
+                  <Text className="text-ink-soft text-sm">
+                    A gentle nudge to finish today's Daily Puzzle and keep your streak going
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.dailyReminderEnabled}
+                  onValueChange={(v) => void onToggleReminder(v)}
+                  accessibilityLabel="Daily puzzle reminder"
+                />
+              </View>
+              {settings.dailyReminderEnabled ? (
+                <View className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3">
+                  <Text className="text-ink text-base font-medium">Reminder time</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {REMINDER_TIMES.map((minutes) => {
+                      const active = settings.dailyReminderTimeMinutes === minutes;
+                      const label = formatReminderTime(minutes);
+                      return (
+                        <Pressable
+                          key={minutes}
+                          onPress={() => onChangeReminderTime(minutes)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          accessibilityLabel={`Remind me at ${label}`}
                           className={
-                            active ? "text-on-primary font-semibold" : "text-ink font-medium"
+                            active
+                              ? "bg-primary rounded-xl px-4 py-2.5"
+                              : "border-line bg-canvas rounded-xl border px-4 py-2.5"
                           }
                         >
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                          <Text
+                            className={
+                              active ? "text-on-primary font-semibold" : "text-ink font-medium"
+                            }
+                          >
+                            {label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
-            ) : null}
-          </View>
-        )}
+              ) : null}
+            </View>
+          )}
 
-        {IAP_ENABLED ? (
-          <View className="gap-3">
-            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-              Ads & Purchases
-            </Text>
-            {isPremium ? (
-              <View className="gap-3">
-                <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
-                  <Text className="text-ink text-base font-medium">Premium active</Text>
-                  <Text className="text-ink-soft text-sm">
-                    No ads. Hints without prompts. Thanks for your support.
-                  </Text>
-                </View>
-                <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-                  <View className="flex-1 gap-0.5">
-                    <Text className="text-ink text-base font-medium">Instant hints</Text>
+          {IAP_ENABLED ? (
+            <View className="gap-3">
+              <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+                Ads & Purchases
+              </Text>
+              {isPremium ? (
+                <View className="gap-3">
+                  <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
+                    <Text className="text-ink text-base font-medium">Premium active</Text>
                     <Text className="text-ink-soft text-sm">
-                      Reveal hints immediately without a confirmation prompt
+                      No ads. Hints without prompts. Thanks for your support.
                     </Text>
                   </View>
-                  <Switch
-                    value={settings.instantHintsEnabled}
-                    onValueChange={(v) => setSetting("instantHintsEnabled", v)}
-                    accessibilityLabel="Instant hints"
-                  />
+                  <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-ink text-base font-medium">Instant hints</Text>
+                      <Text className="text-ink-soft text-sm">
+                        Reveal hints immediately without a confirmation prompt
+                      </Text>
+                    </View>
+                    <Switch
+                      value={settings.instantHintsEnabled}
+                      onValueChange={(v) => setSetting("instantHintsEnabled", v)}
+                      accessibilityLabel="Instant hints"
+                    />
+                  </View>
                 </View>
-              </View>
-            ) : (
-              <>
-                <RemoveAdsButton source="settings" />
-                <Text className="text-ink-soft text-sm">
-                  One-time purchase. Skip rewarded-ad prompts for hints. No ads ever appear while
-                  you play.
-                </Text>
-              </>
-            )}
+              ) : (
+                <>
+                  <RemoveAdsButton source="settings" />
+                  <Text className="text-ink-soft text-sm">
+                    One-time purchase. Skip rewarded-ad prompts for hints. No ads ever appear while
+                    you play.
+                  </Text>
+                </>
+              )}
+              <Pressable
+                onPress={onRestore}
+                accessibilityRole="button"
+                accessibilityLabel="Restore purchases"
+                className="border-line bg-surface items-center rounded-2xl border py-4 active:opacity-80"
+              >
+                <Text className="text-ink text-base font-medium">Restore Purchases</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View className="gap-3">
+            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              Data
+            </Text>
             <Pressable
-              onPress={onRestore}
+              onPress={onResetStats}
               accessibilityRole="button"
-              accessibilityLabel="Restore purchases"
-              className="border-line bg-surface items-center rounded-2xl border py-4 active:opacity-80"
+              accessibilityLabel="Reset stats"
+              className="border-danger items-center rounded-2xl border py-4 active:opacity-80"
             >
-              <Text className="text-ink text-base font-medium">Restore Purchases</Text>
+              <Text className="text-danger text-base font-medium">Reset Stats</Text>
             </Pressable>
           </View>
-        ) : null}
 
-        <View className="gap-3">
-          <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-            Data
-          </Text>
-          <Pressable
-            onPress={onResetStats}
-            accessibilityRole="button"
-            accessibilityLabel="Reset stats"
-            className="border-danger items-center rounded-2xl border py-4 active:opacity-80"
-          >
-            <Text className="text-danger text-base font-medium">Reset Stats</Text>
-          </Pressable>
+          {DevTools ? (
+            <Suspense fallback={null}>
+              <DevTools />
+            </Suspense>
+          ) : null}
         </View>
-
-        {DevTools ? (
-          <Suspense fallback={null}>
-            <DevTools />
-          </Suspense>
-        ) : null}
       </ScrollView>
     </Screen>
   );

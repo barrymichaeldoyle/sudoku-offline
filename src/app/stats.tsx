@@ -73,84 +73,92 @@ export default function StatsScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerClassName="gap-6 p-6">
-          <View className="flex-row gap-3">
-            <StatCard label="Completed" value={String(stats.totalCompleted)} icon="🏆" />
-            {settings.mistakeCheckingEnabled ? (
-              <StatCard
-                label="Mistake-free"
-                value={String(stats.mistakeFreeCompleted)}
-                icon="🎯"
-                hint={`${Math.round(
-                  (stats.mistakeFreeCompleted / stats.totalCompleted) * 100,
-                )}% of completed`}
-              />
-            ) : null}
-          </View>
-
-          <View className="flex-row gap-3">
-            <StatCard label="Current streak" value={String(stats.streak.current)} icon="🔥" />
-            <StatCard label="Longest streak" value={String(stats.streak.longest)} icon="🏅" />
-          </View>
-
-          {settings.timerEnabled ? (
-            <View className="flex-row">
-              <StatCard label="Time played" value={formatPlaytime(stats.totalSeconds)} icon="⏱️" />
+        <ScrollView contentContainerClassName="p-6">
+          <View className="w-full max-w-[640px] gap-6 self-center">
+            <View className="flex-row gap-3">
+              <StatCard label="Completed" value={String(stats.totalCompleted)} icon="🏆" />
+              {settings.mistakeCheckingEnabled ? (
+                <StatCard
+                  label="Mistake-free"
+                  value={String(stats.mistakeFreeCompleted)}
+                  icon="🎯"
+                  hint={`${Math.round(
+                    (stats.mistakeFreeCompleted / stats.totalCompleted) * 100,
+                  )}% of completed`}
+                />
+              ) : null}
             </View>
-          ) : null}
 
-          <View className="gap-3">
-            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-              By Difficulty
-            </Text>
-            {DIFFICULTIES.map((difficulty) => {
-              const stat = stats.byDifficulty[difficulty];
-              const empty = stat.completed === 0;
-              const barPct = Math.round((stat.completed / maxCompleted) * 100);
-              return (
-                <View
-                  key={difficulty}
-                  className={clsx(
-                    "border-line bg-surface gap-2.5 rounded-2xl border px-4 py-3",
-                    empty && "opacity-50",
-                  )}
-                >
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-3">
-                      <View
-                        className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])}
-                      />
-                      <View>
-                        <Text className="text-ink text-base font-medium">
-                          {DIFFICULTY_LABELS[difficulty]}
+            <View className="flex-row gap-3">
+              <StatCard label="Current streak" value={String(stats.streak.current)} icon="🔥" />
+              <StatCard label="Longest streak" value={String(stats.streak.longest)} icon="🏅" />
+            </View>
+
+            {settings.timerEnabled ? (
+              <View className="flex-row">
+                <StatCard
+                  label="Time played"
+                  value={formatPlaytime(stats.totalSeconds)}
+                  icon="⏱️"
+                />
+              </View>
+            ) : null}
+
+            <View className="gap-3">
+              <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+                By Difficulty
+              </Text>
+              {DIFFICULTIES.map((difficulty) => {
+                const stat = stats.byDifficulty[difficulty];
+                const empty = stat.completed === 0;
+                const barPct = Math.round((stat.completed / maxCompleted) * 100);
+                return (
+                  <View
+                    key={difficulty}
+                    className={clsx(
+                      "border-line bg-surface gap-2.5 rounded-2xl border px-4 py-3",
+                      empty && "opacity-50",
+                    )}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-3">
+                        <View
+                          className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])}
+                        />
+                        <View>
+                          <Text className="text-ink text-base font-medium">
+                            {DIFFICULTY_LABELS[difficulty]}
+                          </Text>
+                          {DIFFICULTY_NOTE[difficulty] ? (
+                            <Text className="text-ink-soft text-xs">
+                              {DIFFICULTY_NOTE[difficulty]}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                      <View className="items-end">
+                        <Text className="text-ink text-base tabular-nums">
+                          {stat.completed} done
                         </Text>
-                        {DIFFICULTY_NOTE[difficulty] ? (
-                          <Text className="text-ink-soft text-xs">
-                            {DIFFICULTY_NOTE[difficulty]}
+                        {settings.timerEnabled && stat.bestSeconds != null ? (
+                          <Text className="text-ink-soft text-sm tabular-nums">
+                            best {formatDuration(stat.bestSeconds)} · avg{" "}
+                            {formatDuration(stat.averageSeconds ?? 0)}
                           </Text>
                         ) : null}
                       </View>
                     </View>
-                    <View className="items-end">
-                      <Text className="text-ink text-base tabular-nums">{stat.completed} done</Text>
-                      {settings.timerEnabled && stat.bestSeconds != null ? (
-                        <Text className="text-ink-soft text-sm tabular-nums">
-                          best {formatDuration(stat.bestSeconds)} · avg{" "}
-                          {formatDuration(stat.averageSeconds ?? 0)}
-                        </Text>
-                      ) : null}
+                    {/* Completion bar, sized relative to your most-played difficulty. */}
+                    <View className="bg-surface-muted h-1.5 overflow-hidden rounded-full">
+                      <View
+                        className={clsx("h-full rounded-full", DIFFICULTY_DOT[difficulty])}
+                        style={{ width: `${barPct}%` }}
+                      />
                     </View>
                   </View>
-                  {/* Completion bar, sized relative to your most-played difficulty. */}
-                  <View className="bg-surface-muted h-1.5 overflow-hidden rounded-full">
-                    <View
-                      className={clsx("h-full rounded-full", DIFFICULTY_DOT[difficulty])}
-                      style={{ width: `${barPct}%` }}
-                    />
-                  </View>
-                </View>
-              );
-            })}
+                );
+              })}
+            </View>
           </View>
         </ScrollView>
       )}

@@ -80,6 +80,13 @@ export function SudokuBoard({ size }: { size?: number }) {
 
   const selectedValue = selectedCell == null ? null : game.values[selectedCell];
 
+  // Scale the digit/note type to the cell so big boards (e.g. iPad) don't show
+  // small numbers in large cells. Floored at the phone defaults so small screens
+  // are unchanged. Undefined when unmeasured (cells fall back to fixed sizes).
+  const cellSize = size != null ? size / BOARD_SIZE : null;
+  const fontSize = cellSize != null ? Math.max(24, Math.round(cellSize * 0.5)) : undefined;
+  const noteFontSize = cellSize != null ? Math.max(10, Math.round(cellSize * 0.2)) : undefined;
+
   return (
     <View
       // When a measured `size` is supplied the board renders as an exact square
@@ -110,6 +117,8 @@ export function SudokuBoard({ size }: { size?: number }) {
                 isSameValue={highlightSameNumbers && value != null && value === selectedValue}
                 isConflict={conflicts?.[index] ?? false}
                 onPress={pressCell}
+                fontSize={fontSize}
+                noteFontSize={noteFontSize}
               />
             );
           })}

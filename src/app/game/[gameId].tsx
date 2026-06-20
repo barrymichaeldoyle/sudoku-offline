@@ -110,7 +110,7 @@ export default function GameScreen() {
 
   return (
     <Screen className="bg-canvas flex-1">
-      <View className="w-full max-w-[640px] flex-1 gap-3 self-center p-4">
+      <View className="w-full flex-1 gap-3 self-center p-4">
         <GameHeader onBack={() => router.back()} onSettings={() => router.push("/settings")} />
         <View
           // Bottom-aligned so the grid→actions gap equals the actions→numbers

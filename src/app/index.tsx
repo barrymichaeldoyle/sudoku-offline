@@ -3,7 +3,7 @@ import type { DailyTrack } from "@/domain/daily";
 import { clsx } from "clsx";
 import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert } from "react-native";
+import { Alert, useWindowDimensions } from "react-native";
 
 import { Screen } from "@/components/Screen";
 import { SimpleIcon } from "@/components/SimpleIcon";
@@ -58,6 +58,9 @@ type DailyCardState = {
 
 export default function Home() {
   const router = useRouter();
+  // Short screens (e.g. iPhone SE, 667pt) tighten spacing so the home screen
+  // fits without scrolling; taller phones keep the roomier layout.
+  const compact = useWindowDimensions().height < 720;
   // `daily=1` arrives from a daily-reminder notification tap (see
   // notificationService); it means "take me to today's Daily Puzzle".
   const params = useLocalSearchParams<{ daily?: string }>();
@@ -192,86 +195,96 @@ export default function Home() {
 
   return (
     <Screen className="bg-canvas flex-1">
-      <ScrollView contentContainerClassName="gap-7 px-5 pt-6 pb-10">
-        <View className="items-center gap-3">
-          <AppMark />
-          <View className="items-center gap-1">
-            <Text className="text-ink text-center text-4xl font-bold tracking-tight">Sudoku</Text>
-            <Text className="text-ink-soft text-center text-sm font-medium">
-              Classic puzzles · Works offline
-            </Text>
-          </View>
-        </View>
-
-        {activeGame ? (
-          <ContinueCard
-            game={activeGame}
-            settings={settings}
-            onPress={() => openGame(activeGame)}
-          />
-        ) : null}
-
-        <View className="flex-row gap-3">
-          <DailyCard
-            title="Daily Puzzle"
-            subtitle="Today's puzzle"
-            accent="bg-accent"
-            progress={dailyCards.daily}
-            settings={settings}
-            onPress={() =>
-              dailyCards.daily.completed && dailyCards.daily.game
-                ? openGame(dailyCards.daily.game)
-                : startFromPuzzle(() => getDailyPuzzle("daily"), "daily", dailyCards.daily.game)
-            }
-          />
-          <DailyCard
-            title="Daily Challenge"
-            subtitle="A tougher grid"
-            accent="bg-warning"
-            progress={dailyCards.challenge}
-            settings={settings}
-            onPress={() =>
-              dailyCards.challenge.completed && dailyCards.challenge.game
-                ? openGame(dailyCards.challenge.game)
-                : startFromPuzzle(
-                    () => getDailyPuzzle("challenge"),
-                    "challenge",
-                    dailyCards.challenge.game,
-                  )
-            }
-          />
-        </View>
-
-        <View className="gap-3">
-          <SectionLabel>New Game</SectionLabel>
-          <View className="border-line bg-surface overflow-hidden rounded-2xl border">
-            {NEW_GAME_DIFFICULTIES.map((difficulty, i) => (
-              <Pressable
-                key={difficulty}
-                onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
-                accessibilityRole="button"
-                accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
+      <ScrollView contentContainerClassName={clsx("px-5", compact ? "pt-3 pb-4" : "pt-4 pb-6")}>
+        <View className={clsx("w-full max-w-[640px] self-center", compact ? "gap-3" : "gap-5")}>
+          <View className={clsx("items-center", compact ? "gap-2" : "gap-3")}>
+            <AppMark compact={compact} />
+            <View className="items-center gap-1">
+              <Text
                 className={clsx(
-                  "flex-row items-center gap-3 px-5 py-4 active:opacity-70",
-                  i > 0 && "border-line border-t",
+                  "text-ink text-center font-bold tracking-tight",
+                  compact ? "text-3xl" : "text-4xl",
                 )}
               >
-                <View className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])} />
-                <View className="flex-1">
-                  <Text className="text-ink text-base font-semibold">
-                    {DIFFICULTY_LABELS[difficulty]}
-                  </Text>
-                  <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
-                </View>
-                <Text className="text-ink-soft text-xl">›</Text>
-              </Pressable>
-            ))}
+                Sudoku
+              </Text>
+              <Text className="text-ink-soft text-center text-sm font-medium">
+                Classic puzzles · Works offline
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View className="flex-row gap-3">
-          <MiniButton label="Stats" icon="stats" onPress={() => router.push("/stats")} />
-          <MiniButton label="Settings" icon="settings" onPress={() => router.push("/settings")} />
+          {activeGame ? (
+            <ContinueCard
+              game={activeGame}
+              settings={settings}
+              onPress={() => openGame(activeGame)}
+            />
+          ) : null}
+
+          <View className="flex-row gap-3">
+            <DailyCard
+              title="Daily Puzzle"
+              subtitle="Today's puzzle"
+              accent="bg-accent"
+              progress={dailyCards.daily}
+              settings={settings}
+              onPress={() =>
+                dailyCards.daily.completed && dailyCards.daily.game
+                  ? openGame(dailyCards.daily.game)
+                  : startFromPuzzle(() => getDailyPuzzle("daily"), "daily", dailyCards.daily.game)
+              }
+            />
+            <DailyCard
+              title="Daily Challenge"
+              subtitle="A tougher grid"
+              accent="bg-warning"
+              progress={dailyCards.challenge}
+              settings={settings}
+              onPress={() =>
+                dailyCards.challenge.completed && dailyCards.challenge.game
+                  ? openGame(dailyCards.challenge.game)
+                  : startFromPuzzle(
+                      () => getDailyPuzzle("challenge"),
+                      "challenge",
+                      dailyCards.challenge.game,
+                    )
+              }
+            />
+          </View>
+
+          <View className="gap-3">
+            <SectionLabel>New Game</SectionLabel>
+            <View className="border-line bg-surface overflow-hidden rounded-2xl border">
+              {NEW_GAME_DIFFICULTIES.map((difficulty, i) => (
+                <Pressable
+                  key={difficulty}
+                  onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
+                  accessibilityRole="button"
+                  accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
+                  className={clsx(
+                    "flex-row items-center gap-3 px-5 active:opacity-70",
+                    compact ? "py-3" : "py-4",
+                    i > 0 && "border-line border-t",
+                  )}
+                >
+                  <View className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])} />
+                  <View className="flex-1">
+                    <Text className="text-ink text-base font-semibold">
+                      {DIFFICULTY_LABELS[difficulty]}
+                    </Text>
+                    <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
+                  </View>
+                  <Text className="text-ink-soft text-xl">›</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View className="flex-row gap-3">
+            <MiniButton label="Stats" icon="stats" onPress={() => router.push("/stats")} />
+            <MiniButton label="Settings" icon="settings" onPress={() => router.push("/settings")} />
+          </View>
         </View>
       </ScrollView>
     </Screen>
@@ -288,7 +301,7 @@ async function loadDailyCard(track: DailyTrack): Promise<DailyCardState> {
 // Brand mark: a mini Sudoku board with an indigo grid and one gold cell
 // (top-right), mirroring the app icon (see scripts/generate-icons.mjs). Drawn
 // with theme tokens so it adapts to light/dark rather than baking the icon PNG.
-function AppMark() {
+function AppMark({ compact = false }: { compact?: boolean }) {
   return (
     <View className="border-primary bg-surface overflow-hidden rounded-2xl border-2">
       {[0, 1, 2].map((r) => (
@@ -297,7 +310,7 @@ function AppMark() {
             <View
               key={c}
               className={clsx(
-                "h-6 w-6",
+                compact ? "h-5 w-5" : "h-6 w-6",
                 c < 2 && "border-primary border-r",
                 r < 2 && "border-primary border-b",
                 r === 0 && c === 2 ? "bg-warning" : "bg-surface",

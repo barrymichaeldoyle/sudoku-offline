@@ -17,27 +17,27 @@ type SudokuCellProps = {
   isSameValue: boolean;
   isConflict: boolean;
   onPress: (index: number) => void;
+  // Pixel font sizes scaled to the cell; when omitted, fixed Tailwind sizes are
+  // used (board renders at its container width with no measured size).
+  fontSize?: number;
+  noteFontSize?: number;
 };
 
 const NOTE_NUMBERS = Array.from({ length: 9 }, (_, i) => i + 1);
 
-// Cell background follows the state priority from the design guidelines:
-// error > selected > same-number > peer > given > default.
+// Cell background follows the state priority from the design guidelines.
+// Givens are intentionally NOT shaded (traditional Sudoku leaves them on the
+// plain cell); they're distinguished from user entries by font weight + colour.
 function background({
   isConflict,
   isSelected,
   isSameValue,
   isPeer,
-  isGiven,
-}: Pick<
-  SudokuCellProps,
-  "isConflict" | "isSelected" | "isSameValue" | "isPeer" | "isGiven"
->): string {
+}: Pick<SudokuCellProps, "isConflict" | "isSelected" | "isSameValue" | "isPeer">): string {
   if (isConflict) return "bg-cell-error";
   if (isSelected) return "bg-cell-selected";
   if (isSameValue) return "bg-cell-same";
   if (isPeer) return "bg-cell-peer";
-  if (isGiven) return "bg-cell-given";
   return "bg-cell";
 }
 
@@ -56,7 +56,7 @@ function numberColor({
 }
 
 function SudokuCellComponent(props: SudokuCellProps) {
-  const { index, value, notes, isGiven, isSelected, onPress } = props;
+  const { index, value, notes, isGiven, isSelected, onPress, fontSize, noteFontSize } = props;
   const row = getRowIndex(index);
   const col = getColIndex(index);
   const a11yLabel =
@@ -79,8 +79,9 @@ function SudokuCellComponent(props: SudokuCellProps) {
     >
       {value != null ? (
         <Text
+          style={fontSize != null ? { fontSize } : undefined}
           className={clsx(
-            "text-2xl",
+            fontSize == null && "text-2xl",
             isGiven || props.isConflict ? "font-bold" : "font-semibold",
             numberColor(props),
           )}
@@ -92,8 +93,10 @@ function SudokuCellComponent(props: SudokuCellProps) {
           {NOTE_NUMBERS.map((n) => (
             <View key={n} className="h-1/3 w-1/3 items-center justify-center">
               <Text
+                style={noteFontSize != null ? { fontSize: noteFontSize } : undefined}
                 className={clsx(
-                  "text-[9px] font-medium leading-none",
+                  noteFontSize == null && "text-[9px]",
+                  "font-medium leading-none",
                   isSelected ? "text-cell-selected-ink" : "text-num-note",
                 )}
               >
