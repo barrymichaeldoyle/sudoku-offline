@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   Cog,
   Eraser,
+  Eye,
   House,
   Keyboard,
   Lightbulb,
@@ -13,6 +14,7 @@ import {
   Plus,
   Share2,
   StickyNote,
+  Trophy,
   Undo2,
   X,
 } from "lucide-react-native";
@@ -23,6 +25,7 @@ export type SimpleIconName =
   | "back"
   | "close"
   | "erase"
+  | "eye"
   | "hint"
   | "home"
   | "input"
@@ -33,6 +36,7 @@ export type SimpleIconName =
   | "settings"
   | "share"
   | "stats"
+  | "trophy"
   | "undo";
 
 type SimpleIconProps = {
@@ -47,6 +51,7 @@ const ICONS: Record<SimpleIconName, LucideComponent> = {
   back: ChevronLeft,
   close: X,
   erase: Eraser,
+  eye: Eye,
   hint: Lightbulb,
   home: House,
   input: Keyboard,
@@ -57,6 +62,7 @@ const ICONS: Record<SimpleIconName, LucideComponent> = {
   settings: Cog,
   share: Share2,
   stats: ChartColumn,
+  trophy: Trophy,
   undo: Undo2,
 };
 

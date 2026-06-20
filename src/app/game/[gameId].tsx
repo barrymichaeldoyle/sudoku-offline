@@ -141,10 +141,12 @@ export default function GameScreen() {
         </View>
       </View>
       {hintPromptVisible && !paused && !justCompleted ? <HintPromptOverlay /> : null}
-      {justCompleted ? (
+      {game.status === "completed" ? (
         <>
-          <ConfettiBurst />
-          <CompletionOverlay />
+          {/* Confetti only celebrates the actual win, not a later revisit of a
+              completed daily/challenge from Home. */}
+          {justCompleted ? <ConfettiBurst /> : null}
+          <CompletionOverlay justCompleted={justCompleted} />
         </>
       ) : null}
     </Screen>
@@ -425,7 +427,7 @@ function HintPromptOverlay() {
   );
 }
 
-function CompletionOverlay() {
+function CompletionOverlay({ justCompleted }: { justCompleted: boolean }) {
   const router = useRouter();
   const game = useGameStore((s) => s.game);
   const setGame = useGameStore((s) => s.setGame);
@@ -433,17 +435,27 @@ function CompletionOverlay() {
   const [daily, setDaily] = useState<DailyCompletionInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
+  // Lets the player peek at the solved grid behind the results card; a floating
+  // button brings the results back.
+  const [viewingBoard, setViewingBoard] = useState(false);
 
   useEffect(() => {
     if (!game) {
       return;
     }
     let cancelled = false;
+    // Always load daily info so the heading, streak, and share text are correct
+    // — even when revisiting an already-completed daily from Home.
     getDailyCompletionInfo(game.id).then(async (info) => {
       if (cancelled || !info) {
         return;
       }
       setDaily(info);
+      // The one-time celebration side effects (analytics, reminder rescheduling,
+      // the reminder opt-in) belong to the actual win, not a later revisit.
+      if (!justCompleted) {
+        return;
+      }
       void track("daily_completed", { track: info.track });
       if (info.track === "daily") {
         // Don't nag about a daily the player just finished — push the reminder
@@ -466,7 +478,7 @@ function CompletionOverlay() {
     return () => {
       cancelled = true;
     };
-  }, [game]);
+  }, [game, justCompleted]);
 
   const onEnableReminder = async () => {
     setShowReminderPrompt(false);
@@ -481,21 +493,34 @@ function CompletionOverlay() {
     return null;
   }
 
-  const onShare = () => {
+  const onShare = async () => {
     void track("share_result_tapped", { difficulty: game.difficulty });
-    void Share.share({
-      message: formatShareText({
-        difficulty: game.difficulty,
-        elapsedSeconds: game.elapsedSeconds,
-        mistakes: game.mistakes,
-        hintsUsed: game.hintsUsed,
-        showTimer: settings.timerEnabled,
-        showMistakes: settings.mistakeCheckingEnabled,
-        daily: daily
-          ? { kind: daily.track, dateKey: daily.dateKey, streak: daily.streak?.current ?? 0 }
-          : null,
-      }),
-    }).catch(() => {});
+    try {
+      const result = await Share.share(
+        {
+          title: "My Sudoku result",
+          message: formatShareText({
+            difficulty: game.difficulty,
+            elapsedSeconds: game.elapsedSeconds,
+            mistakes: game.mistakes,
+            hintsUsed: game.hintsUsed,
+            showTimer: settings.timerEnabled,
+            showMistakes: settings.mistakeCheckingEnabled,
+            daily: daily
+              ? { kind: daily.track, dateKey: daily.dateKey, streak: daily.streak?.current ?? 0 }
+              : null,
+          }),
+        },
+        { dialogTitle: "Share your result" },
+      );
+      // result.action distinguishes a real send from a dismissed share sheet, so
+      // we only count completions when the player actually shared.
+      if (result.action === Share.sharedAction) {
+        void track("share_result_completed", { difficulty: game.difficulty });
+      }
+    } catch {
+      // Share sheet failed to open — nothing actionable for the player.
+    }
   };
 
   const onNewGame = async () => {
@@ -524,6 +549,22 @@ function CompletionOverlay() {
   // difficulty-pool games (daily/challenge have no such pool to draw from).
   const canReplay = !daily && NEW_GAME_DIFFICULTIES.includes(game.difficulty);
 
+  // Peeking at the completed grid: hide the card (and its dimming scrim) and
+  // float a single control to bring the results back.
+  if (viewingBoard) {
+    return (
+      <View className="absolute inset-x-0 bottom-0 items-center p-8">
+        <OverlayButton
+          icon="trophy"
+          label="View Results"
+          primary
+          onPress={() => setViewingBoard(false)}
+          accessibilityLabel="View results"
+        />
+      </View>
+    );
+  }
+
   return (
     <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
       <View className="border-line bg-surface max-h-full w-full overflow-hidden rounded-3xl border">
@@ -551,6 +592,12 @@ function CompletionOverlay() {
             onPress={onShare}
             accessibilityLabel="Share result"
             className="mt-4"
+          />
+          <OverlayButton
+            icon="eye"
+            label="View Board"
+            onPress={() => setViewingBoard(true)}
+            accessibilityLabel="View your completed board"
           />
           {canReplay ? (
             <OverlayButton

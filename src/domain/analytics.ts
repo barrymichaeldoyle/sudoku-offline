@@ -18,6 +18,7 @@ export type AnalyticsEventName =
   | "setting_changed"
   | "onboarding_completed"
   | "share_result_tapped"
+  | "share_result_completed"
   | "daily_reminder_permission_requested"
   | "daily_reminder_permission_granted"
   | "daily_reminder_permission_denied"

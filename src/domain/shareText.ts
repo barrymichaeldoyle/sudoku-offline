@@ -24,6 +24,22 @@ export type ShareResultInput = {
   daily?: { kind: DailyTrack; dateKey: string; streak: number } | null;
 };
 
+/** Where the app lives on each store — also used as the share call-to-action. */
+export const STORE_URLS = {
+  ios: "https://apps.apple.com/app/id6782209083",
+  // TODO: add `android` Play Store link to SHARE_APP_FOOTER when we go live on Android:
+  // "https://play.google.com/store/apps/details?id=com.barrymichaeldoyle.sudokuoffline"
+} as const;
+
+/**
+ * Download call-to-action appended to every shared result. A shared score is
+ * free marketing, so it always carries a link to the app. iOS-only for now —
+ * add the Android line here once we launch on the Play Store.
+ */
+export const SHARE_APP_FOOTER = ["Play Sudoku Offline — free, works offline:", STORE_URLS.ios].join(
+  "\n",
+);
+
 function pluralize(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
@@ -66,5 +82,5 @@ export function formatShareText(input: ShareResultInput): string {
   if (daily?.kind === "daily" && daily.streak > 0) {
     lines.push(`🔥 ${daily.streak} day streak`);
   }
-  return lines.join("\n");
+  return [lines.join("\n"), SHARE_APP_FOOTER].join("\n\n");
 }

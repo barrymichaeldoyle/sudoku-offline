@@ -219,7 +219,9 @@ export default function Home() {
             progress={dailyCards.daily}
             settings={settings}
             onPress={() =>
-              startFromPuzzle(() => getDailyPuzzle("daily"), "daily", dailyCards.daily.game)
+              dailyCards.daily.completed && dailyCards.daily.game
+                ? openGame(dailyCards.daily.game)
+                : startFromPuzzle(() => getDailyPuzzle("daily"), "daily", dailyCards.daily.game)
             }
           />
           <DailyCard
@@ -229,11 +231,13 @@ export default function Home() {
             progress={dailyCards.challenge}
             settings={settings}
             onPress={() =>
-              startFromPuzzle(
-                () => getDailyPuzzle("challenge"),
-                "challenge",
-                dailyCards.challenge.game,
-              )
+              dailyCards.challenge.completed && dailyCards.challenge.game
+                ? openGame(dailyCards.challenge.game)
+                : startFromPuzzle(
+                    () => getDailyPuzzle("challenge"),
+                    "challenge",
+                    dailyCards.challenge.game,
+                  )
             }
           />
         </View>
@@ -343,8 +347,10 @@ function DailyCard({
 }) {
   const completed = progress.completed;
   const inProgress = progress.game != null;
+  // A completed daily can still be opened to revisit its result + solved grid.
+  const canViewResult = completed && progress.game != null;
   const meta = completed
-    ? "Completed today"
+    ? "Completed · View result"
     : inProgress
       ? `Resume · ${progressDetail(progress.game as GameState, settings)}`
       : subtitle;
@@ -352,13 +358,13 @@ function DailyCard({
   return (
     <Pressable
       onPress={onPress}
-      disabled={completed}
+      disabled={completed && !canViewResult}
       accessibilityRole="button"
-      accessibilityState={{ disabled: completed }}
-      accessibilityLabel={completed ? `${title}, completed today` : title}
+      accessibilityState={{ disabled: completed && !canViewResult }}
+      accessibilityLabel={completed ? `${title}, completed today, view result` : title}
       className={clsx(
         "border-line bg-surface flex-1 gap-2 rounded-2xl border p-4",
-        completed ? "opacity-70" : "active:opacity-80",
+        completed && !canViewResult ? "opacity-70" : "active:opacity-80",
       )}
     >
       <View className="flex-row items-center justify-between">
