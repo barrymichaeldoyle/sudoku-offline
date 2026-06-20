@@ -285,17 +285,22 @@ async function loadDailyCard(track: DailyTrack): Promise<DailyCardState> {
 }
 
 /** A small 3x3 grid mark with one highlighted cell — the app's visual motif. */
+// Brand mark: a mini Sudoku board with an indigo grid and one gold cell
+// (top-right), mirroring the app icon (see scripts/generate-icons.mjs). Drawn
+// with theme tokens so it adapts to light/dark rather than baking the icon PNG.
 function AppMark() {
   return (
-    <View className="border-line bg-surface gap-1 rounded-2xl border p-2.5">
+    <View className="border-primary bg-surface overflow-hidden rounded-2xl border-2">
       {[0, 1, 2].map((r) => (
-        <View key={r} className="flex-row gap-1">
+        <View key={r} className="flex-row">
           {[0, 1, 2].map((c) => (
             <View
               key={c}
               className={clsx(
-                "h-3 w-3 rounded-sm",
-                r === 0 && c === 1 ? "bg-warning" : "bg-primary/15",
+                "h-6 w-6",
+                c < 2 && "border-primary border-r",
+                r < 2 && "border-primary border-b",
+                r === 0 && c === 2 ? "bg-warning" : "bg-surface",
               )}
             />
           ))}

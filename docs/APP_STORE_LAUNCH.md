@@ -22,11 +22,22 @@ Last reviewed: 2026-06-20.
 - **Privacy policy** — `website/privacy.html` Advertising section rewritten to
   accurately disclose Google AdMob (rewarded + native ads) instead of the old
   hypothetical "if ad partners are integrated" wording.
-- **Hid the "Remove Ads" IAP for v1.0** (decision: ship ads-supported, add IAP
-  later). Gated behind `IAP_ENABLED = false` in `src/domain/entitlements.ts`:
-  `RemoveAdsButton` renders nothing, and the settings "Ads & Purchases" section
-  (incl. Restore Purchases) is hidden. Flip the flag to `true` to restore the
-  whole surface once real purchases land.
+- **"Remove Ads" IAP is live** — `IAP_ENABLED = true` in
+  `src/domain/entitlements.ts`, backed by a real `expo-iap` implementation in
+  `src/services/purchaseService.ts` (StoreKit 2 on iOS). This lights up the
+  `RemoveAdsButton` (settings + completion screen) and the settings "Ads &
+  Purchases" section incl. Restore Purchases. **Before this works in production**
+  the `remove_ads` non-consumable (store id `REMOVE_ADS_PRODUCT_ID =
+  com.barrymichaeldoyle.sudokuoffline.remove_ads`) must be created and approved
+  in App Store Connect, the Paid Apps agreement must be active, and the IAP must
+  be submitted attached to an app version for first review. Web is stubbed via
+  `purchaseService.web.ts`.
+  - **Launch price: USD $2.99** (one tier; Apple auto-generates local prices per
+    storefront). Chosen as an impulse "support the dev" price — the ads are
+    deliberately non-intrusive (no interstitials), so the unlock is a nice-to-have
+    rather than pain relief, which caps willingness to pay. Price tiers can be
+    changed later without resubmitting the app, so this is a safe starting point
+    to revisit once real conversion data comes in.
 - **App Review contact** — real reviewer details now in `store.config.json`.
 - **SKAdNetwork configured** — added the 50 Google-published AdMob
   `skAdNetworkItems` to the `react-native-google-mobile-ads` plugin in `app.json`.

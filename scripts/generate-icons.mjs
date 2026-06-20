@@ -1,11 +1,12 @@
 // Build-time app icon generator.
 //
-// Renders the Sudoku "S-grid" monogram (an S spelled out by filled Sudoku cells)
-// to the PNG asset set Expo expects, plus a master assets/logo.svg source.
-// Run with: pnpm generate:icons
+// Renders the Sudoku brand mark — a rounded board with a 3x3 grid and a single
+// highlighted (gold) cell — to the PNG asset set Expo expects, plus a master
+// assets/logo.svg source. Run with: pnpm generate:icons
 //
-// The mark is defined once as a 3x5 cell grid; colors/sizes are parameterized
-// per output so every asset stays visually identical.
+// Palette follows docs/DESIGN_GUIDELINES.md (§20.1, §24): cream tile, white
+// board surface, indigo grid, one gold selected cell. The mark is defined once
+// and parameterized per output so every asset stays visually identical.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -16,61 +17,77 @@ import { Resvg } from "@resvg/resvg-js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const IMAGES_DIR = resolve(__dirname, "../assets/images");
 const ASSETS_DIR = resolve(__dirname, "../assets");
+const STORE_DIR = resolve(__dirname, "../assets/store");
 
-const BLUE = "#208AEF";
-const WHITE = "#FFFFFF";
-const EMPTY_STROKE = "#CBD5E1";
+const CREAM = "#F7F3EA"; // background tile / app surface
+const WHITE = "#FFFFFF"; // board surface
+const INDIGO = "#2F3A5F"; // grid lines + frame (primary)
+const GOLD = "#DDBB72"; // highlighted cell (cellSelected)
+const BLACK = "#000000"; // android monochrome silhouette
 
-// 1 = filled cell, 0 = empty cell. Reads as the letter "S".
-const PATTERN = [
-  [1, 1, 1],
-  [1, 0, 0],
-  [1, 1, 1],
-  [0, 0, 1],
-  [1, 1, 1],
-];
-const COLS = 3;
-const ROWS = 5;
+// Which cell is highlighted, as [row, col] in the 3x3 grid. Top-right.
+const HIGHLIGHT = [0, 2];
 
 /**
- * Build an SVG string for the monogram.
+ * Build an SVG string for the brand mark.
  * @param {object} o
- * @param {number} o.size          square canvas size
- * @param {string|null} o.bg       background fill, or null for transparent
- * @param {string} o.fill          filled-cell color
- * @param {string|null} o.stroke   empty-cell outline color, or null to hide them
- * @param {number} o.heightRatio   mark height as a fraction of the canvas
+ * @param {number} o.size           square canvas size
+ * @param {string|null} o.bg        tile background fill, or null for transparent
+ * @param {string|null} o.board     board surface fill, or null for transparent
+ * @param {string} o.line           grid line color
+ * @param {string} o.cell           highlighted cell fill
+ * @param {string} o.frame          board outline color
+ * @param {number} o.heightRatio    board size as a fraction of the canvas
  */
-function buildSvg({ size, bg, fill, stroke, heightRatio }) {
-  const markHeight = size * heightRatio;
-  const gapRatio = 0.16;
-  const cell = markHeight / (ROWS + (ROWS - 1) * gapRatio);
-  const gap = cell * gapRatio;
-  const step = cell + gap;
-  const markWidth = COLS * cell + (COLS - 1) * gap;
-  const x0 = (size - markWidth) / 2;
-  const y0 = (size - markHeight) / 2;
-  const r = cell * 0.16;
+function buildSvg({ size, bg, board, line, cell, frame, heightRatio }) {
+  const boardSize = size * heightRatio;
+  const x0 = (size - boardSize) / 2;
+  const y0 = (size - boardSize) / 2;
+  const cellSize = boardSize / 3;
+  const radius = boardSize * 0.1;
+  const lineW = boardSize * 0.022;
+  const frameW = boardSize * 0.03;
+  const [hr, hc] = HIGHLIGHT;
 
-  const rects = [];
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      const x = x0 + col * step;
-      const y = y0 + row * step;
-      if (PATTERN[row][col]) {
-        rects.push(
-          `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}" rx="${r.toFixed(2)}" fill="${fill}"/>`,
-        );
-      } else if (stroke) {
-        rects.push(
-          `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}" rx="${r.toFixed(2)}" fill="none" stroke="${stroke}" stroke-width="${(cell * 0.06).toFixed(2)}"/>`,
-        );
-      }
-    }
+  const f = (n) => n.toFixed(2);
+  // Reusable board rect prefix (no closing bracket — callers append attrs).
+  const boardRect = `<rect x="${f(x0)}" y="${f(y0)}" width="${f(boardSize)}" height="${f(boardSize)}" rx="${f(radius)}"`;
+  const clipId = `clip${size}`;
+
+  const parts = [];
+  if (bg) {
+    parts.push(`<rect width="${size}" height="${size}" fill="${bg}"/>`);
+  }
+  parts.push(`<defs><clipPath id="${clipId}">${boardRect} /></clipPath></defs>`);
+  if (board) {
+    parts.push(`${boardRect} fill="${board}"/>`);
   }
 
-  const background = bg ? `<rect width="${size}" height="${size}" fill="${bg}"/>` : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${background}${rects.join("")}</svg>`;
+  // Highlighted cell, clipped so it respects the board's rounded corners.
+  const cx = x0 + hc * cellSize;
+  const cy = y0 + hr * cellSize;
+  parts.push(
+    `<g clip-path="url(#${clipId})"><rect x="${f(cx)}" y="${f(cy)}" width="${f(cellSize)}" height="${f(cellSize)}" fill="${cell}"/></g>`,
+  );
+
+  // Internal 3x3 grid lines (clipped to the board).
+  const lines = [];
+  for (let i = 1; i < 3; i++) {
+    const x = x0 + i * cellSize;
+    const y = y0 + i * cellSize;
+    lines.push(
+      `<line x1="${f(x)}" y1="${f(y0)}" x2="${f(x)}" y2="${f(y0 + boardSize)}" stroke="${line}" stroke-width="${f(lineW)}"/>`,
+    );
+    lines.push(
+      `<line x1="${f(x0)}" y1="${f(y)}" x2="${f(x0 + boardSize)}" y2="${f(y)}" stroke="${line}" stroke-width="${f(lineW)}"/>`,
+    );
+  }
+  parts.push(`<g clip-path="url(#${clipId})">${lines.join("")}</g>`);
+
+  // Outer frame on top so the board edge stays crisp over the fill and lines.
+  parts.push(`${boardRect} fill="none" stroke="${frame}" stroke-width="${f(frameW)}"/>`);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${parts.join("")}</svg>`;
 }
 
 function renderPng(svg, width) {
@@ -79,43 +96,80 @@ function renderPng(svg, width) {
 
 async function main() {
   await mkdir(IMAGES_DIR, { recursive: true });
+  await mkdir(STORE_DIR, { recursive: true });
 
-  // Master vector source (blue on white, with faint empty cells).
+  // Master vector source: cream tile, white board, indigo grid, gold cell.
   const masterSvg = buildSvg({
     size: 1024,
-    bg: WHITE,
-    fill: BLUE,
-    stroke: EMPTY_STROKE,
-    heightRatio: 0.66,
+    bg: CREAM,
+    board: WHITE,
+    line: INDIGO,
+    cell: GOLD,
+    frame: INDIGO,
+    heightRatio: 0.62,
   });
   await writeFile(resolve(ASSETS_DIR, "logo.svg"), `${masterSvg}\n`, "utf8");
 
   const outputs = [
-    // App icon: full white tile, blue S with faint empty cells.
+    // App icon: full cream tile with the white board mark.
     { file: `${IMAGES_DIR}/icon.png`, width: 1024, svg: masterSvg },
-    // Web favicon: blue S on white, no faint cells (too small to read).
+    // App Store Connect IAP image (1024x1024, optional) for "Remove Ads".
+    { file: `${STORE_DIR}/remove-ads-iap.png`, width: 1024, svg: masterSvg },
+    // Web favicon: same mark, board slightly larger so it reads when tiny.
     {
       file: `${IMAGES_DIR}/favicon.png`,
       width: 196,
-      svg: buildSvg({ size: 196, bg: WHITE, fill: BLUE, stroke: null, heightRatio: 0.72 }),
+      svg: buildSvg({
+        size: 196,
+        bg: CREAM,
+        board: WHITE,
+        line: INDIGO,
+        cell: GOLD,
+        frame: INDIGO,
+        heightRatio: 0.72,
+      }),
     },
     // Android adaptive foreground: transparent, mark kept inside the safe zone.
     {
       file: `${IMAGES_DIR}/android-icon-foreground.png`,
       width: 1024,
-      svg: buildSvg({ size: 1024, bg: null, fill: BLUE, stroke: null, heightRatio: 0.5 }),
+      svg: buildSvg({
+        size: 1024,
+        bg: null,
+        board: WHITE,
+        line: INDIGO,
+        cell: GOLD,
+        frame: INDIGO,
+        heightRatio: 0.46,
+      }),
     },
     // Android monochrome (themed icons): single-color silhouette on transparent.
     {
       file: `${IMAGES_DIR}/android-icon-monochrome.png`,
       width: 1024,
-      svg: buildSvg({ size: 1024, bg: null, fill: "#000000", stroke: null, heightRatio: 0.5 }),
+      svg: buildSvg({
+        size: 1024,
+        bg: null,
+        board: null,
+        line: BLACK,
+        cell: BLACK,
+        frame: BLACK,
+        heightRatio: 0.46,
+      }),
     },
-    // Splash mark: white S on transparent (splash background is blue).
+    // Splash mark: white board mark on transparent (splash background is indigo).
     {
       file: `${IMAGES_DIR}/splash-icon.png`,
       width: 512,
-      svg: buildSvg({ size: 512, bg: null, fill: WHITE, stroke: null, heightRatio: 0.8 }),
+      svg: buildSvg({
+        size: 512,
+        bg: null,
+        board: WHITE,
+        line: INDIGO,
+        cell: GOLD,
+        frame: INDIGO,
+        heightRatio: 0.66,
+      }),
     },
   ];
 
