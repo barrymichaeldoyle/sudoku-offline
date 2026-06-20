@@ -20,6 +20,7 @@
     "knip": "knip",
     "generate:puzzles": "node ./scripts/generate-puzzles.mjs",
     "generate:icons": "node ./scripts/generate-icons.mjs",
+    "generate:screenshots": "node ./scripts/generate-store-screenshots.mjs",
     "metadata:pull": "eas metadata:pull",
     "metadata:push": "eas metadata:push"
   },
