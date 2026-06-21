@@ -24,8 +24,15 @@ const BG_BOTTOM = "#EFE7D6";
 const INK = "#1F2937";
 const SOFT = "#667085";
 const ACCENT = "#DDBB72"; // gold brand accent rule under the caption
-const BORDER = "#E4DCCB";
 const SHADOW = "#2F3A5F"; // tinted (indigo) soft shadow under the device
+
+// Device body (drawn as a stylised metal frame around the screenshot).
+const BODY_TOP = "#3B3F48"; // body gradient top (lighter, like a top edge highlight)
+const BODY_BOTTOM = "#191B20"; // body gradient bottom
+const RIM = "#53575F"; // thin outer edge highlight
+const SCREEN_EDGE = "#000000"; // subtle dark line where the screen meets the bezel
+const BUTTON = "#202329"; // side buttons
+
 const FONT = "Helvetica Neue, Helvetica, Arial, sans-serif";
 
 // Per-device canvas (the required App Store size), the raw capture size, and the
@@ -34,16 +41,17 @@ const DEVICES = {
   iphone: {
     canvas: { w: 1320, h: 2868 },
     src: { w: 1206, h: 2622 },
-    caption: { size: 96, top: 215 },
-    subtitle: { size: 46, gap: 78 },
-    device: { width: 1000, top: 470, radius: 64 },
+    caption: { size: 92, top: 210 },
+    subtitle: { size: 46, gap: 74 },
+    // screenW drives everything; the body adds `bezel` on every side.
+    frame: { screenW: 968, bezel: 20, top: 500, bodyRadius: 150 },
   },
   ipad: {
     canvas: { w: 2064, h: 2752 },
     src: { w: 2064, h: 2752 },
-    caption: { size: 116, top: 250 },
-    subtitle: { size: 56, gap: 92 },
-    device: { width: 1560, top: 560, radius: 40 },
+    caption: { size: 112, top: 244 },
+    subtitle: { size: 54, gap: 88 },
+    frame: { screenW: 1480, bezel: 26, top: 474, bodyRadius: 80 },
   },
 };
 
@@ -67,12 +75,19 @@ function buildSvg(device, shot, dataUri) {
   const d = DEVICES[device];
   const { w, h } = d.canvas;
   const cx = w / 2;
+  const fr = d.frame;
 
-  const dw = d.device.width;
-  const dh = Math.round(dw * (d.src.h / d.src.w));
-  const dx = Math.round((w - dw) / 2);
-  const dy = d.device.top;
-  const r = d.device.radius;
+  // Screen (the screenshot) and the body that wraps it with a uniform bezel.
+  const screenW = fr.screenW;
+  const screenH = Math.round(screenW * (d.src.h / d.src.w));
+  const bodyW = screenW + fr.bezel * 2;
+  const bodyH = screenH + fr.bezel * 2;
+  const bodyX = Math.round((w - bodyW) / 2);
+  const bodyY = fr.top;
+  const sx = bodyX + fr.bezel;
+  const sy = bodyY + fr.bezel;
+  const bodyR = fr.bodyRadius;
+  const screenR = bodyR - fr.bezel; // concentric inner corners
 
   const caption = `<text x="${cx}" y="${d.caption.top}" font-family="${FONT}" font-size="${d.caption.size}" font-weight="700" fill="${INK}" text-anchor="middle">${escapeXml(shot.caption)}</text>`;
   const subtitle = shot.subtitle
@@ -83,9 +98,40 @@ function buildSvg(device, shot, dataUri) {
   const accentW = Math.round(w * 0.07);
   const accent = `<rect x="${cx - accentW / 2}" y="${accentY}" width="${accentW}" height="6" rx="3" fill="${ACCENT}"/>`;
 
-  // Soft tinted drop shadow so the screenshot reads as a floating device card.
-  const shadowDy = Math.round(dw * 0.018);
-  const shadowBlur = Math.round(dw * 0.03);
+  // Side buttons — drawn before the body so the body overlaps their inner edge
+  // and they read as protruding from under it.
+  const btn = (x, y, bw, bh) =>
+    `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="${Math.min(bw, bh) / 2}" fill="${BUTTON}"/>`;
+  let buttons = "";
+  if (device === "iphone") {
+    const t = 9; // protrusion thickness
+    const tuck = 4; // how far it tucks under the body
+    // Left: mute switch + two volume buttons.
+    buttons += btn(
+      bodyX - t + tuck,
+      bodyY + Math.round(bodyH * 0.17),
+      t,
+      Math.round(bodyH * 0.035),
+    );
+    buttons += btn(bodyX - t + tuck, bodyY + Math.round(bodyH * 0.25), t, Math.round(bodyH * 0.07));
+    buttons += btn(bodyX - t + tuck, bodyY + Math.round(bodyH * 0.34), t, Math.round(bodyH * 0.07));
+    // Right: power button.
+    buttons += btn(
+      bodyX + bodyW - tuck,
+      bodyY + Math.round(bodyH * 0.27),
+      t,
+      Math.round(bodyH * 0.11),
+    );
+  } else {
+    const t = 8;
+    const tuck = 3;
+    // Top edge: power + volume (iPad Pro/Air placement).
+    buttons += btn(bodyX + Math.round(bodyW * 0.72), bodyY - t + tuck, Math.round(bodyW * 0.09), t);
+    buttons += btn(bodyX + Math.round(bodyW * 0.83), bodyY - t + tuck, Math.round(bodyW * 0.06), t);
+  }
+
+  const shadowDy = Math.round(bodyW * 0.02);
+  const shadowBlur = Math.round(bodyW * 0.035);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
     <defs>
@@ -93,18 +139,25 @@ function buildSvg(device, shot, dataUri) {
         <stop offset="0%" stop-color="${BG_TOP}"/>
         <stop offset="100%" stop-color="${BG_BOTTOM}"/>
       </linearGradient>
-      <clipPath id="r"><rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="${r}"/></clipPath>
+      <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${BODY_TOP}"/>
+        <stop offset="100%" stop-color="${BODY_BOTTOM}"/>
+      </linearGradient>
+      <clipPath id="screen"><rect x="${sx}" y="${sy}" width="${screenW}" height="${screenH}" rx="${screenR}"/></clipPath>
       <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
-        <feDropShadow dx="0" dy="${shadowDy}" stdDeviation="${shadowBlur}" flood-color="${SHADOW}" flood-opacity="0.20"/>
+        <feDropShadow dx="0" dy="${shadowDy}" stdDeviation="${shadowBlur}" flood-color="${SHADOW}" flood-opacity="0.22"/>
       </filter>
     </defs>
     <rect width="${w}" height="${h}" fill="url(#bg)"/>
     ${caption}
     ${subtitle}
     ${accent}
-    <rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="${r}" fill="#FFFFFF" filter="url(#shadow)"/>
-    <image x="${dx}" y="${dy}" width="${dw}" height="${dh}" href="${dataUri}" clip-path="url(#r)"/>
-    <rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="${r}" fill="none" stroke="${BORDER}" stroke-width="2"/>
+    <g filter="url(#shadow)">
+      ${buttons}
+      <rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="${bodyR}" fill="url(#body)" stroke="${RIM}" stroke-width="2"/>
+    </g>
+    <image x="${sx}" y="${sy}" width="${screenW}" height="${screenH}" href="${dataUri}" clip-path="url(#screen)"/>
+    <rect x="${sx}" y="${sy}" width="${screenW}" height="${screenH}" rx="${screenR}" fill="none" stroke="${SCREEN_EDGE}" stroke-opacity="0.35" stroke-width="2"/>
   </svg>`;
 }
 
