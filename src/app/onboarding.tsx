@@ -1,8 +1,7 @@
 import { clsx } from "clsx";
 import { useRouter } from "expo-router";
-import { Image } from "react-native";
 
-import icon from "@/assets/images/icon.png";
+import { AppMark } from "@/components/AppMark";
 import { Screen } from "@/components/Screen";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
@@ -26,11 +25,7 @@ export default function OnboardingScreen() {
       <ScrollView contentContainerClassName="grow justify-center p-6">
         <View className="w-full max-w-[420px] gap-10 self-center">
           <View className="items-center gap-3">
-            <Image
-              source={icon}
-              accessibilityIgnoresInvertColors
-              style={{ width: 88, height: 88, borderRadius: 20 }}
-            />
+            <AppMark size="lg" />
             <Text className="text-ink text-3xl font-bold">Welcome to Sudoku</Text>
             <View className="items-center gap-0">
               <Text className="text-ink-soft text-center text-base">
