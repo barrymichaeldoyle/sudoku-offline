@@ -4,7 +4,7 @@ import type { PropsWithChildren } from "react";
 import { clsx } from "clsx";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { AppState, Share } from "react-native";
+import { AppState, Share, useWindowDimensions } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
@@ -161,6 +161,7 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
   const mistakeCheckingEnabled = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
   const elapsed = useElapsedSeconds();
+  const large = useWindowDimensions().width >= 700;
 
   // Daily puzzles surface their track ("Daily Puzzle"/"Daily Challenge") in place
   // of the raw difficulty, so the player can see they're on the special game.
@@ -203,7 +204,7 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
         <View className="flex-1 items-start">
           <NavBackButton onPress={onBack} />
         </View>
-        <Text className="text-ink text-lg font-bold">Sudoku</Text>
+        <Text className={clsx("text-ink font-bold", large ? "text-2xl" : "text-lg")}>Sudoku</Text>
         <View className="flex-1 items-end">
           <Pressable
             onPress={onSettings}
@@ -221,13 +222,15 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
           timer/mistakes from shifting. */}
       <View className="flex-row">
         <StatItem label={dailyTrack ? "Daily" : "Difficulty"}>
-          <Text className="text-ink text-center text-xl font-bold">{difficultyLabel}</Text>
+          <Text className={clsx("text-ink text-center font-bold", large ? "text-3xl" : "text-xl")}>
+            {difficultyLabel}
+          </Text>
         </StatItem>
         {timerEnabled ? (
           <StatItem label="Time">
             <View className="flex-row items-center gap-2">
               <Text
-                className="text-ink text-xl font-bold"
+                className={clsx("text-ink font-bold", large ? "text-3xl" : "text-xl")}
                 style={{ fontVariant: ["tabular-nums"] }}
               >
                 {formatDuration(elapsed)}
@@ -247,7 +250,11 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
         {mistakeCheckingEnabled ? (
           <StatItem label="Mistakes">
             <Text
-              className={clsx("text-xl font-bold", game.mistakes > 0 ? "text-danger" : "text-ink")}
+              className={clsx(
+                "font-bold",
+                large ? "text-3xl" : "text-xl",
+                game.mistakes > 0 ? "text-danger" : "text-ink",
+              )}
               style={{ fontVariant: ["tabular-nums"] }}
             >
               {game.mistakes}
@@ -262,9 +269,17 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
 /** One game stat: a small uppercase label above its value, centered and
  * equal-width so a row of them is evenly spaced. */
 function StatItem({ label, children }: PropsWithChildren<{ label: string }>) {
+  const large = useWindowDimensions().width >= 700;
   return (
     <View className="flex-1 items-center gap-0.5">
-      <Text className="text-ink-soft text-xs font-semibold tracking-widest uppercase">{label}</Text>
+      <Text
+        className={clsx(
+          "text-ink-soft font-semibold tracking-widest uppercase",
+          large ? "text-sm" : "text-xs",
+        )}
+      >
+        {label}
+      </Text>
       {children}
     </View>
   );

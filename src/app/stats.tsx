@@ -145,32 +145,49 @@ export default function StatsScreen() {
                   <View
                     key={difficulty}
                     className={clsx(
-                      "border-line bg-surface gap-2.5 rounded-2xl border px-4 py-3",
+                      "border-line bg-surface rounded-2xl border",
+                      large ? "gap-3 px-5 py-4" : "gap-2.5 px-4 py-3",
                       empty && "opacity-50",
                     )}
                   >
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-3">
                         <View
-                          className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])}
+                          className={clsx(
+                            "rounded-full",
+                            large ? "h-3 w-3" : "h-2.5 w-2.5",
+                            DIFFICULTY_DOT[difficulty],
+                          )}
                         />
                         <View>
-                          <Text className="text-ink text-base font-medium">
+                          <Text
+                            className={clsx(
+                              "text-ink font-medium",
+                              large ? "text-lg" : "text-base",
+                            )}
+                          >
                             {DIFFICULTY_LABELS[difficulty]}
                           </Text>
                           {DIFFICULTY_NOTE[difficulty] ? (
-                            <Text className="text-ink-soft text-xs">
+                            <Text className={clsx("text-ink-soft", large ? "text-sm" : "text-xs")}>
                               {DIFFICULTY_NOTE[difficulty]}
                             </Text>
                           ) : null}
                         </View>
                       </View>
                       <View className="items-end">
-                        <Text className="text-ink text-base tabular-nums">
+                        <Text
+                          className={clsx("text-ink tabular-nums", large ? "text-lg" : "text-base")}
+                        >
                           {stat.completed} done
                         </Text>
                         {settings.timerEnabled && stat.bestSeconds != null ? (
-                          <Text className="text-ink-soft text-sm tabular-nums">
+                          <Text
+                            className={clsx(
+                              "text-ink-soft tabular-nums",
+                              large ? "text-base" : "text-sm",
+                            )}
+                          >
                             best {formatDuration(stat.bestSeconds)} · avg{" "}
                             {formatDuration(stat.averageSeconds ?? 0)}
                           </Text>
@@ -178,7 +195,12 @@ export default function StatsScreen() {
                       </View>
                     </View>
                     {/* Completion bar, sized relative to your most-played difficulty. */}
-                    <View className="bg-surface-muted h-1.5 overflow-hidden rounded-full">
+                    <View
+                      className={clsx(
+                        "bg-surface-muted overflow-hidden rounded-full",
+                        large ? "h-2" : "h-1.5",
+                      )}
+                    >
                       <View
                         className={clsx("h-full rounded-full", DIFFICULTY_DOT[difficulty])}
                         style={{ width: `${barPct}%` }}
@@ -219,13 +241,21 @@ function StatCard({
   icon?: string;
   hint?: string;
 }) {
+  const large = useWindowDimensions().width >= 700;
   return (
-    <View className="border-line bg-surface flex-1 gap-1 rounded-2xl border p-4">
+    <View
+      className={clsx(
+        "border-line bg-surface flex-1 gap-1 rounded-2xl border",
+        large ? "p-5" : "p-4",
+      )}
+    >
       <View className="flex-row items-center justify-between">
-        <Text className="text-ink text-3xl font-bold tabular-nums">{value}</Text>
-        {icon ? <Text className="text-xl">{icon}</Text> : null}
+        <Text className={clsx("text-ink font-bold tabular-nums", large ? "text-4xl" : "text-3xl")}>
+          {value}
+        </Text>
+        <Text className={large ? "text-2xl" : "text-xl"}>{icon ?? ""}</Text>
       </View>
-      <Text className="text-ink-soft text-sm">{label}</Text>
+      <Text className={clsx("text-ink-soft", large ? "text-base" : "text-sm")}>{label}</Text>
       {hint ? <Text className="text-ink-dim text-xs">{hint}</Text> : null}
     </View>
   );

@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
 import { useMemo } from "react";
+import { useWindowDimensions } from "react-native";
 
 import { BOARD_SIZE } from "@/domain/sudoku/types";
 import { useGameStore } from "@/state/useGameStore";
@@ -14,6 +15,7 @@ export function NumberPad() {
   const selectedNumber = useGameStore((s) => s.selectedNumber);
   const pressNumber = useGameStore((s) => s.pressNumber);
   const showRemainingCounts = useSettingsStore((s) => s.settings.showRemainingCounts);
+  const large = useWindowDimensions().width >= 700;
 
   const remaining = useMemo(() => {
     const counts = Array.from({ length: BOARD_SIZE + 1 }, () => BOARD_SIZE);
@@ -44,13 +46,20 @@ export function NumberPad() {
             accessibilityState={{ selected: isSelected, disabled: isExhausted }}
             className={clsx(
               "flex-1 items-center justify-center rounded-xl",
-              showRemainingCounts ? "py-2" : "py-3.5",
+              large
+                ? showRemainingCounts
+                  ? "py-4"
+                  : "py-6"
+                : showRemainingCounts
+                  ? "py-2"
+                  : "py-3.5",
               isSelected ? "bg-primary" : "bg-surface-muted",
             )}
           >
             <Text
               className={clsx(
-                "text-2xl font-semibold leading-tight",
+                "font-semibold leading-tight",
+                large ? "text-4xl" : "text-2xl",
                 isSelected ? "text-on-primary" : isExhausted ? "text-ink-soft" : "text-ink",
               )}
             >
@@ -59,7 +68,8 @@ export function NumberPad() {
             {showRemainingCounts ? (
               <Text
                 className={clsx(
-                  "text-[10px] font-semibold leading-none",
+                  "font-semibold leading-none",
+                  large ? "text-sm" : "text-[10px]",
                   isSelected ? "text-on-primary" : isExhausted ? "text-ink-dim" : "text-ink-soft",
                 )}
               >

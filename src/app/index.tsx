@@ -383,18 +383,23 @@ function ContinueCard({
   settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean };
   onPress: () => void;
 }) {
+  const large = useWindowDimensions().width >= 700;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel="Continue your current game"
-      className="bg-primary gap-1 rounded-2xl p-5 active:opacity-80"
+      className={clsx("bg-primary gap-1 rounded-2xl active:opacity-80", large ? "p-6" : "p-5")}
     >
       <Text className="text-on-primary/80 text-xs font-semibold tracking-widest uppercase">
         Resume game
       </Text>
-      <Text className="text-on-primary text-2xl font-bold">Continue</Text>
-      <Text className="text-on-primary/80 text-sm">{progressText(game, settings)}</Text>
+      <Text className={clsx("text-on-primary font-bold", large ? "text-4xl" : "text-2xl")}>
+        Continue
+      </Text>
+      <Text className={clsx("text-on-primary/80", large ? "text-base" : "text-sm")}>
+        {progressText(game, settings)}
+      </Text>
     </Pressable>
   );
 }
@@ -414,6 +419,7 @@ function DailyCard({
   settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean };
   onPress: () => void;
 }) {
+  const large = useWindowDimensions().width >= 700;
   const completed = progress.completed;
   const inProgress = progress.game != null;
   // A completed daily can still be opened to revisit its result + solved grid.
@@ -432,7 +438,8 @@ function DailyCard({
       accessibilityState={{ disabled: completed && !canViewResult }}
       accessibilityLabel={completed ? `${title}, completed today, view result` : title}
       className={clsx(
-        "border-line bg-surface flex-1 gap-2 rounded-2xl border p-4",
+        "border-line bg-surface flex-1 gap-2 rounded-2xl border",
+        large ? "p-5" : "p-4",
         completed && !canViewResult ? "opacity-70" : "active:opacity-80",
       )}
     >
@@ -441,8 +448,15 @@ function DailyCard({
         {completed ? <Text className="text-success text-sm font-bold">✓</Text> : null}
       </View>
       <View className="gap-0.5">
-        <Text className="text-ink text-base font-semibold">{title}</Text>
-        <Text className={clsx("text-sm", completed ? "text-success font-medium" : "text-ink-soft")}>
+        <Text className={clsx("text-ink font-semibold", large ? "text-xl" : "text-base")}>
+          {title}
+        </Text>
+        <Text
+          className={clsx(
+            large ? "text-base" : "text-sm",
+            completed ? "text-success font-medium" : "text-ink-soft",
+          )}
+        >
           {meta}
         </Text>
       </View>
@@ -468,15 +482,21 @@ function MiniButton({
   icon: "stats" | "settings";
   onPress: () => void;
 }) {
+  const large = useWindowDimensions().width >= 700;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="border-line bg-surface flex-1 flex-row items-center justify-center gap-2 rounded-2xl border py-3.5 active:opacity-80"
+      className={clsx(
+        "border-line bg-surface flex-1 flex-row items-center justify-center gap-2 rounded-2xl border active:opacity-80",
+        large ? "py-4" : "py-3.5",
+      )}
     >
       <SimpleIcon name={icon} />
-      <Text className="text-ink text-base font-semibold">{label}</Text>
+      <Text className={clsx("text-ink font-semibold", large ? "text-lg" : "text-base")}>
+        {label}
+      </Text>
     </Pressable>
   );
 }

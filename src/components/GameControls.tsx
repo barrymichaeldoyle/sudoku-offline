@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import { useWindowDimensions } from "react-native";
 
 import { SimpleIcon, type SimpleIconName } from "@/components/SimpleIcon";
 import { useGameStore } from "@/state/useGameStore";
@@ -16,6 +17,7 @@ type ControlButtonProps = {
 };
 
 function ControlButton({ label, icon, active, checked, disabled, onPress }: ControlButtonProps) {
+  const large = useWindowDimensions().width >= 700;
   return (
     <Pressable
       onPress={onPress}
@@ -24,13 +26,20 @@ function ControlButton({ label, icon, active, checked, disabled, onPress }: Cont
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled, selected: !!active || !!checked }}
       className={clsx(
-        "flex-1 items-center justify-center rounded-xl py-3",
+        "flex-1 items-center justify-center rounded-xl",
+        large ? "gap-1 py-5" : "py-3",
         active ? "bg-primary" : "bg-surface-muted",
         disabled && "opacity-40",
       )}
     >
-      <SimpleIcon name={icon} tone={active ? "onPrimary" : "muted"} />
-      <Text className={clsx("text-sm font-semibold", active ? "text-on-primary" : "text-ink-soft")}>
+      <SimpleIcon name={icon} tone={active ? "onPrimary" : "muted"} size={large ? 30 : undefined} />
+      <Text
+        className={clsx(
+          "font-semibold",
+          large ? "text-base" : "text-sm",
+          active ? "text-on-primary" : "text-ink-soft",
+        )}
+      >
         {label}
       </Text>
       {/* Absolutely positioned so toggling it never shifts the icon/label. */}
