@@ -73,7 +73,7 @@ export default function StatsScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerClassName="p-6">
+        <ScrollView className="flex-1" contentContainerClassName="grow justify-center p-6">
           <View className="w-full max-w-[640px] gap-6 self-center">
             <View className="flex-row gap-3">
               <StatCard label="Completed" value={String(stats.totalCompleted)} icon="🏆" />

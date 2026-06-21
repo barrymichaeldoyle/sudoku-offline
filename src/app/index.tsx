@@ -195,7 +195,13 @@ export default function Home() {
 
   return (
     <Screen className="bg-canvas flex-1">
-      <ScrollView contentContainerClassName={clsx("px-5", compact ? "pt-3 pb-4" : "pt-4 pb-6")}>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName={clsx(
+          "grow justify-center px-5",
+          compact ? "pt-3 pb-4" : "pt-4 pb-6",
+        )}
+      >
         <View className={clsx("w-full max-w-[640px] self-center", compact ? "gap-3" : "gap-5")}>
           <View className={clsx("items-center", compact ? "gap-2" : "gap-3")}>
             <AppMark compact={compact} />
