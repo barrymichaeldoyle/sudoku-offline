@@ -15,6 +15,7 @@ export function NumberPad() {
   const selectedNumber = useGameStore((s) => s.selectedNumber);
   const pressNumber = useGameStore((s) => s.pressNumber);
   const showRemainingCounts = useSettingsStore((s) => s.settings.showRemainingCounts);
+  const disableCompletedNumbers = useSettingsStore((s) => s.settings.disableCompletedNumbers);
   const large = useWindowDimensions().width >= 700;
 
   const remaining = useMemo(() => {
@@ -34,16 +35,20 @@ export function NumberPad() {
       {NUMBERS.map((num) => {
         const isSelected = inputMode === "number" && selectedNumber === num;
         const left = Math.max(0, remaining[num]);
-        const isExhausted = left <= 0;
+        // A digit is "complete" once all nine are placed. Only dim/lock it when
+        // the player opted in; otherwise it stays a normal, tappable button.
+        const isComplete = left <= 0;
+        const locked = disableCompletedNumbers && isComplete;
         return (
           <Pressable
             key={num}
             onPress={() => pressNumber(num)}
+            disabled={locked}
             accessibilityRole="button"
             accessibilityLabel={
               showRemainingCounts ? `Number ${num}, ${left} remaining` : `Number ${num}`
             }
-            accessibilityState={{ selected: isSelected, disabled: isExhausted }}
+            accessibilityState={{ selected: isSelected, disabled: locked }}
             className={clsx(
               "flex-1 items-center justify-center rounded-xl",
               large
@@ -54,13 +59,14 @@ export function NumberPad() {
                   ? "py-2"
                   : "py-3.5",
               isSelected ? "bg-primary" : "bg-surface-muted",
+              locked && "opacity-40",
             )}
           >
             <Text
               className={clsx(
                 "font-semibold leading-tight",
                 large ? "text-4xl" : "text-2xl",
-                isSelected ? "text-on-primary" : isExhausted ? "text-ink-soft" : "text-ink",
+                isSelected ? "text-on-primary" : locked ? "text-ink-soft" : "text-ink",
               )}
             >
               {num}
@@ -70,7 +76,7 @@ export function NumberPad() {
                 className={clsx(
                   "font-semibold leading-none",
                   large ? "text-sm" : "text-[10px]",
-                  isSelected ? "text-on-primary" : isExhausted ? "text-ink-dim" : "text-ink-soft",
+                  isSelected ? "text-on-primary" : locked ? "text-ink-dim" : "text-ink-soft",
                 )}
               >
                 {left}

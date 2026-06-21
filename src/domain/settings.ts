@@ -10,6 +10,8 @@ export type Settings = {
   autoNoteCleanup: boolean;
   /** Show how many of each digit remain to place, under the number pad. */
   showRemainingCounts: boolean;
+  /** Grey out and lock a number-pad digit once all nine are placed. */
+  disableCompletedNumbers: boolean;
   /** Premium-only: skip the hint confirmation dialog. */
   instantHintsEnabled: boolean;
   /** Opt-in local reminder to come back for today's unfinished Daily Puzzle. */
@@ -30,6 +32,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hapticsEnabled: true,
   autoNoteCleanup: true,
   showRemainingCounts: true,
+  disableCompletedNumbers: true,
   instantHintsEnabled: false,
   dailyReminderEnabled: false,
   dailyReminderTimeMinutes: DEFAULT_REMINDER_TIME_MINUTES,
@@ -47,6 +50,7 @@ export const MINIMAL_SETTINGS: Settings = {
   highlightPeers: false,
   autoNoteCleanup: false,
   showRemainingCounts: false,
+  disableCompletedNumbers: false,
 };
 
 /**

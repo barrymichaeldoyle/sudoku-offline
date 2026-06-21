@@ -60,6 +60,11 @@ const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
     label: "Remaining counts",
     hint: "Show how many of each number are left under the number pad",
   },
+  {
+    key: "disableCompletedNumbers",
+    label: "Disable completed numbers",
+    hint: "Grey out and lock a number once all nine are placed",
+  },
   { key: "hapticsEnabled", label: "Haptics", hint: "Vibration feedback on actions" },
 ];
 

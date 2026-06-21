@@ -20,6 +20,11 @@ function computeConflicts(
   solution: string,
   mistakeChecking: boolean,
 ): boolean[] {
+  // Mistake checking off → reveal nothing, not even duplicate-in-row/col/box
+  // warnings. The board should never flag anything as wrong in this mode.
+  if (!mistakeChecking) {
+    return Array<boolean>(CELL_COUNT).fill(false);
+  }
   const rows = Array.from({ length: BOARD_SIZE }, () => Array<number>(BOARD_SIZE + 1).fill(0));
   const cols = Array.from({ length: BOARD_SIZE }, () => Array<number>(BOARD_SIZE + 1).fill(0));
   const boxes = Array.from({ length: BOARD_SIZE }, () => Array<number>(BOARD_SIZE + 1).fill(0));
@@ -50,7 +55,7 @@ function computeConflicts(
       rows[row][value] > 1 ||
       cols[col][value] > 1 ||
       boxes[box][value] > 1 ||
-      (mistakeChecking && value !== Number(solution[index]));
+      value !== Number(solution[index]);
   }
   return conflicts;
 }

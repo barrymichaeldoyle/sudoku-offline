@@ -745,7 +745,8 @@ If mistake checking is disabled:
 
 - Do not reveal correctness
 - Do not track or show mistake counts in stats or share text
-- Still allow duplicate visual warning if the setting supports it
+- Do not show any error state at all, including duplicate-in-row/column/box
+  warnings — the board must never flag anything as wrong in this mode
 
 ---
 
