@@ -59,8 +59,12 @@ type DailyCardState = {
 export default function Home() {
   const router = useRouter();
   // Short screens (e.g. iPhone SE, 667pt) tighten spacing so the home screen
-  // fits without scrolling; taller phones keep the roomier layout.
-  const compact = useWindowDimensions().height < 720;
+  // fits without scrolling; taller phones keep the roomier layout. Wide screens
+  // (iPad, ≥700pt) scale the brand mark and title up so they don't look small
+  // inside the centered column.
+  const { width, height } = useWindowDimensions();
+  const compact = height < 720;
+  const large = width >= 700;
   // `daily=1` arrives from a daily-reminder notification tap (see
   // notificationService); it means "take me to today's Daily Puzzle".
   const params = useLocalSearchParams<{ daily?: string }>();
@@ -202,19 +206,29 @@ export default function Home() {
           compact ? "pt-3 pb-4" : "pt-4 pb-6",
         )}
       >
-        <View className={clsx("w-full max-w-[640px] self-center", compact ? "gap-3" : "gap-5")}>
-          <View className={clsx("items-center", compact ? "gap-2" : "gap-3")}>
-            <AppMark compact={compact} />
+        <View
+          className={clsx(
+            "w-full max-w-[640px] self-center",
+            compact ? "gap-3" : large ? "gap-7" : "gap-5",
+          )}
+        >
+          <View className={clsx("items-center", compact ? "gap-2" : large ? "gap-4" : "gap-3")}>
+            <AppMark size={compact ? "sm" : large ? "lg" : "md"} />
             <View className="items-center gap-1">
               <Text
                 className={clsx(
                   "text-ink text-center font-bold tracking-tight",
-                  compact ? "text-3xl" : "text-4xl",
+                  compact ? "text-3xl" : large ? "text-5xl" : "text-4xl",
                 )}
               >
                 Sudoku
               </Text>
-              <Text className="text-ink-soft text-center text-sm font-medium">
+              <Text
+                className={clsx(
+                  "text-ink-soft text-center font-medium",
+                  large ? "text-lg" : "text-sm",
+                )}
+              >
                 Classic puzzles · Works offline
               </Text>
             </View>
@@ -307,7 +321,9 @@ async function loadDailyCard(track: DailyTrack): Promise<DailyCardState> {
 // Brand mark: a mini Sudoku board with an indigo grid and one gold cell
 // (top-right), mirroring the app icon (see scripts/generate-icons.mjs). Drawn
 // with theme tokens so it adapts to light/dark rather than baking the icon PNG.
-function AppMark({ compact = false }: { compact?: boolean }) {
+const APP_MARK_CELL = { sm: "h-5 w-5", md: "h-6 w-6", lg: "h-9 w-9" } as const;
+
+function AppMark({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   return (
     <View className="border-primary bg-surface overflow-hidden rounded-2xl border-2">
       {[0, 1, 2].map((r) => (
@@ -316,7 +332,7 @@ function AppMark({ compact = false }: { compact?: boolean }) {
             <View
               key={c}
               className={clsx(
-                compact ? "h-5 w-5" : "h-6 w-6",
+                APP_MARK_CELL[size],
                 c < 2 && "border-primary border-r",
                 r < 2 && "border-primary border-b",
                 r === 0 && c === 2 ? "bg-warning" : "bg-surface",
