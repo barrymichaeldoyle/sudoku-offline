@@ -19,10 +19,13 @@ const ROOT = resolve(__dirname, "..");
 const RAW = resolve(ROOT, "assets/store/screenshots/raw");
 const OUT = resolve(ROOT, "assets/store/screenshots");
 
-const CREAM = "#F7F3EA";
+const BG_TOP = "#FBF9F3"; // subtle warm gradient (top → bottom)
+const BG_BOTTOM = "#EFE7D6";
 const INK = "#1F2937";
 const SOFT = "#667085";
-const BORDER = "#E2DAC9";
+const ACCENT = "#DDBB72"; // gold brand accent rule under the caption
+const BORDER = "#E4DCCB";
+const SHADOW = "#2F3A5F"; // tinted (indigo) soft shadow under the device
 const FONT = "Helvetica Neue, Helvetica, Arial, sans-serif";
 
 // Per-device canvas (the required App Store size), the raw capture size, and the
@@ -75,12 +78,31 @@ function buildSvg(device, shot, dataUri) {
   const subtitle = shot.subtitle
     ? `<text x="${cx}" y="${d.caption.top + d.subtitle.gap}" font-family="${FONT}" font-size="${d.subtitle.size}" font-weight="500" fill="${SOFT}" text-anchor="middle">${escapeXml(shot.subtitle)}</text>`
     : "";
+  // Short gold rule under the caption block — a small calm brand accent.
+  const accentY = d.caption.top + d.subtitle.gap + Math.round(d.subtitle.size * 0.9);
+  const accentW = Math.round(w * 0.07);
+  const accent = `<rect x="${cx - accentW / 2}" y="${accentY}" width="${accentW}" height="6" rx="3" fill="${ACCENT}"/>`;
+
+  // Soft tinted drop shadow so the screenshot reads as a floating device card.
+  const shadowDy = Math.round(dw * 0.018);
+  const shadowBlur = Math.round(dw * 0.03);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-    <rect width="${w}" height="${h}" fill="${CREAM}"/>
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${BG_TOP}"/>
+        <stop offset="100%" stop-color="${BG_BOTTOM}"/>
+      </linearGradient>
+      <clipPath id="r"><rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="${r}"/></clipPath>
+      <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="${shadowDy}" stdDeviation="${shadowBlur}" flood-color="${SHADOW}" flood-opacity="0.20"/>
+      </filter>
+    </defs>
+    <rect width="${w}" height="${h}" fill="url(#bg)"/>
     ${caption}
     ${subtitle}
-    <defs><clipPath id="r"><rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="${r}"/></clipPath></defs>
+    ${accent}
+    <rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="${r}" fill="#FFFFFF" filter="url(#shadow)"/>
     <image x="${dx}" y="${dy}" width="${dw}" height="${dh}" href="${dataUri}" clip-path="url(#r)"/>
     <rect x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="${r}" fill="none" stroke="${BORDER}" stroke-width="2"/>
   </svg>`;

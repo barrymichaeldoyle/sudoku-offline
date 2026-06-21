@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
+import { useWindowDimensions } from "react-native";
 
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -37,6 +38,9 @@ export default function StatsScreen() {
   const router = useRouter();
   const settings = useSettingsStore((s) => s.settings);
   const [stats, setStats] = useState<GameStats | null>(null);
+  // Wide screens (iPad) use a wider column and a single 4-across stat row so the
+  // content fills the canvas instead of floating as a narrow strip.
+  const large = useWindowDimensions().width >= 700;
 
   useFocusEffect(
     useCallback(() => {
@@ -74,10 +78,14 @@ export default function StatsScreen() {
         </View>
       ) : (
         <ScrollView className="flex-1" contentContainerClassName="grow justify-center p-6">
-          <View className="w-full max-w-[640px] gap-6 self-center">
-            <View className="flex-row gap-3">
-              <StatCard label="Completed" value={String(stats.totalCompleted)} icon="🏆" />
-              {settings.mistakeCheckingEnabled ? (
+          <View
+            className={clsx("w-full gap-6 self-center", large ? "max-w-[820px]" : "max-w-[640px]")}
+          >
+            {(() => {
+              const completed = (
+                <StatCard label="Completed" value={String(stats.totalCompleted)} icon="🏆" />
+              );
+              const mistakeFree = settings.mistakeCheckingEnabled ? (
                 <StatCard
                   label="Mistake-free"
                   value={String(stats.mistakeFreeCompleted)}
@@ -86,13 +94,34 @@ export default function StatsScreen() {
                     (stats.mistakeFreeCompleted / stats.totalCompleted) * 100,
                   )}% of completed`}
                 />
-              ) : null}
-            </View>
-
-            <View className="flex-row gap-3">
-              <StatCard label="Current streak" value={String(stats.streak.current)} icon="🔥" />
-              <StatCard label="Longest streak" value={String(stats.streak.longest)} icon="🏅" />
-            </View>
+              ) : null;
+              const current = (
+                <StatCard label="Current streak" value={String(stats.streak.current)} icon="🔥" />
+              );
+              const longest = (
+                <StatCard label="Longest streak" value={String(stats.streak.longest)} icon="🏅" />
+              );
+              // Tablet: all the headline stats sit in one row across the width.
+              return large ? (
+                <View className="flex-row gap-3">
+                  {completed}
+                  {mistakeFree}
+                  {current}
+                  {longest}
+                </View>
+              ) : (
+                <>
+                  <View className="flex-row gap-3">
+                    {completed}
+                    {mistakeFree}
+                  </View>
+                  <View className="flex-row gap-3">
+                    {current}
+                    {longest}
+                  </View>
+                </>
+              );
+            })()}
 
             {settings.timerEnabled ? (
               <View className="flex-row">

@@ -208,7 +208,8 @@ export default function Home() {
       >
         <View
           className={clsx(
-            "w-full max-w-[640px] self-center",
+            "w-full self-center",
+            large ? "max-w-[820px]" : "max-w-[640px]",
             compact ? "gap-3" : large ? "gap-7" : "gap-5",
           )}
         >
@@ -275,30 +276,58 @@ export default function Home() {
 
           <View className="gap-3">
             <SectionLabel>New Game</SectionLabel>
-            <View className="border-line bg-surface overflow-hidden rounded-2xl border">
-              {NEW_GAME_DIFFICULTIES.map((difficulty, i) => (
-                <Pressable
-                  key={difficulty}
-                  onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
-                  accessibilityRole="button"
-                  accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
-                  className={clsx(
-                    "flex-row items-center gap-3 px-5 active:opacity-70",
-                    compact ? "py-3" : "py-4",
-                    i > 0 && "border-line border-t",
-                  )}
-                >
-                  <View className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])} />
-                  <View className="flex-1">
-                    <Text className="text-ink text-base font-semibold">
-                      {DIFFICULTY_LABELS[difficulty]}
-                    </Text>
-                    <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
-                  </View>
-                  <Text className="text-ink-soft text-xl">›</Text>
-                </Pressable>
-              ))}
-            </View>
+            {large ? (
+              // Tablet: a 2x2 card grid that fills the wider canvas, instead of
+              // a thin single-column list floating in the middle.
+              <View className="flex-row flex-wrap gap-3">
+                {NEW_GAME_DIFFICULTIES.map((difficulty) => (
+                  <Pressable
+                    key={difficulty}
+                    onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
+                    accessibilityRole="button"
+                    accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
+                    style={{ width: "48.5%" }}
+                    className="border-line bg-surface grow flex-row items-center gap-3 rounded-2xl border px-5 py-5 active:opacity-70"
+                  >
+                    <View className={clsx("h-3 w-3 rounded-full", DIFFICULTY_DOT[difficulty])} />
+                    <View className="flex-1">
+                      <Text className="text-ink text-lg font-semibold">
+                        {DIFFICULTY_LABELS[difficulty]}
+                      </Text>
+                      <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
+                    </View>
+                    <Text className="text-ink-soft text-xl">›</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <View className="border-line bg-surface overflow-hidden rounded-2xl border">
+                {NEW_GAME_DIFFICULTIES.map((difficulty, i) => (
+                  <Pressable
+                    key={difficulty}
+                    onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
+                    accessibilityRole="button"
+                    accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
+                    className={clsx(
+                      "flex-row items-center gap-3 px-5 active:opacity-70",
+                      compact ? "py-3" : "py-4",
+                      i > 0 && "border-line border-t",
+                    )}
+                  >
+                    <View
+                      className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])}
+                    />
+                    <View className="flex-1">
+                      <Text className="text-ink text-base font-semibold">
+                        {DIFFICULTY_LABELS[difficulty]}
+                      </Text>
+                      <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
+                    </View>
+                    <Text className="text-ink-soft text-xl">›</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
 
           <View className="flex-row gap-3">
