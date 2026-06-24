@@ -162,7 +162,11 @@ export default function GameScreen() {
         />
       ) : null}
       {incorrectComplete && !paused && game.status !== "completed" ? (
-        <IncorrectCompleteOverlay onKeepTrying={dismissIncorrectComplete} onRestart={restart} />
+        <IncorrectCompleteOverlay
+          timerEnabled={timerEnabled}
+          onKeepTrying={dismissIncorrectComplete}
+          onRestart={(keepTime) => restart({ keepTime })}
+        />
       ) : null}
       {game.status === "completed" ? (
         <>
@@ -266,14 +270,17 @@ function ResetConfirmOverlay({
  * so the wrong cells light up red (it can be turned off again in Settings).
  */
 function IncorrectCompleteOverlay({
+  timerEnabled,
   onKeepTrying,
   onRestart,
 }: {
+  timerEnabled: boolean;
   onKeepTrying: () => void;
-  onRestart: () => void;
+  onRestart: (keepTime: boolean) => void;
 }) {
   const mistakeChecking = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
   const setSetting = useSettingsStore((s) => s.setSetting);
+  const [keepTime, setKeepTime] = useState(false);
 
   const onEnableChecking = () => {
     setSetting("mistakeCheckingEnabled", true);
@@ -332,8 +339,24 @@ function IncorrectCompleteOverlay({
           </Text>
         </Pressable>
 
+        {timerEnabled ? (
+          <View className="border-line bg-canvas mt-2 flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+            <View className="flex-1 gap-0.5">
+              <Text className="text-ink text-base font-medium">Keep my time on restart</Text>
+              <Text className="text-ink-soft text-sm">
+                Carry over the time you've already spent instead of resetting to 0:00.
+              </Text>
+            </View>
+            <Switch
+              value={keepTime}
+              onValueChange={setKeepTime}
+              accessibilityLabel="Keep my time on restart"
+            />
+          </View>
+        ) : null}
+
         <Pressable
-          onPress={onRestart}
+          onPress={() => onRestart(keepTime)}
           accessibilityRole="button"
           accessibilityLabel="Restart this puzzle"
           className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl py-3 active:opacity-60"
