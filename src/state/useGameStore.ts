@@ -5,6 +5,7 @@ import { create } from "zustand";
 
 import { completeGame, getGameById, saveGame } from "@/data/repositories/gameRepository";
 import {
+  isBoardFull,
   isGivenCell,
   isPuzzleComplete,
   isValueCorrect,
@@ -32,6 +33,8 @@ type GameStore = {
   /** Number-first only: the erase tool is the active selection (no number). */
   eraseArmed: boolean;
   justCompleted: boolean;
+  /** Board is completely filled but does not match the solution. */
+  incorrectComplete: boolean;
   undoStack: GameAction[];
 
   /** True while a hint confirmation prompt is shown. */
@@ -68,6 +71,8 @@ type GameStore = {
   /** Watch the rewarded ad and, if granted, reveal one hint. */
   confirmRewardedHint: () => Promise<void>;
   dismissHintPrompt: () => void;
+  /** Close the "board full but incorrect" modal (keep playing). */
+  dismissIncorrectComplete: () => void;
   undo: () => void;
 
   pause: () => void;
@@ -133,6 +138,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   notesMode: false,
   eraseArmed: false,
   justCompleted: false,
+  incorrectComplete: false,
   undoStack: [],
   hintPromptVisible: false,
   hintPromptMode: null,
@@ -164,6 +170,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       notesMode: false,
       eraseArmed: false,
       justCompleted: false,
+      incorrectComplete: false,
       undoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
@@ -182,6 +189,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       notesMode: false,
       eraseArmed: false,
       justCompleted: false,
+      incorrectComplete: false,
       undoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
@@ -198,6 +206,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedNumber: null,
       eraseArmed: false,
       justCompleted: false,
+      incorrectComplete: false,
       undoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
@@ -234,6 +243,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       notesMode: false,
       eraseArmed: false,
       justCompleted: false,
+      incorrectComplete: false,
       undoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
@@ -349,6 +359,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   dismissHintPrompt() {
     set({ hintPromptVisible: false, hintPromptMode: null });
+  },
+
+  dismissIncorrectComplete() {
+    set({ incorrectComplete: false });
   },
 
   undo() {
@@ -548,7 +562,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
   };
   const next: GameState = { ...game, values, notes, mistakes };
   set({ game: next, undoStack: [...undoStack, action] });
-  finalizeAfterPlacement(set, get, next, values);
+  finalizeAfterPlacement(set, get, next, values, isBoardFull(game.values));
 }
 
 /**
@@ -607,7 +621,7 @@ function revealHint(set: SetFn, get: GetFn): void {
     hintPromptMode: null,
     hintCooldownUntil: Date.now() + HINT_COOLDOWN_MS,
   });
-  finalizeAfterPlacement(set, get, next, values);
+  finalizeAfterPlacement(set, get, next, values, isBoardFull(game.values));
 }
 
 /** Shared completion/persistence path for value placements and hints. */
@@ -616,6 +630,7 @@ function finalizeAfterPlacement(
   get: GetFn,
   next: GameState,
   values: CellValue[],
+  wasFull: boolean,
 ): void {
   if (isPuzzleComplete(values, next.solution)) {
     const committed = getSettings().timerEnabled ? commitElapsed({ ...get(), game: next }) : next;
@@ -635,6 +650,14 @@ function finalizeAfterPlacement(
     });
     void completeGame(completed).catch(() => {});
     return;
+  }
+  // The board just became completely filled but doesn't match the solution.
+  // Only fire on the not-full → full transition so editing an already-full board
+  // (replacing one wrong digit with another) doesn't re-pop the modal each tap.
+  if (!wasFull && isBoardFull(values)) {
+    haptics.invalid();
+    void track("puzzle_filled_incorrect", { difficulty: next.difficulty });
+    set({ incorrectComplete: true });
   }
   scheduleSave(next);
 }

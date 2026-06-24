@@ -57,6 +57,15 @@ function load(): void {
   useGameStore.getState().setGame(freshGame());
 }
 
+/** The solved board, optionally with some cells overridden (e.g. one left null). */
+function valuesFromSolution(overrides: Record<number, number | null> = {}): (number | null)[] {
+  const values = SOLUTION.split("").map((c) => Number(c) as number | null);
+  for (const [index, value] of Object.entries(overrides)) {
+    values[Number(index)] = value;
+  }
+  return values;
+}
+
 describe("useGameStore reducers", () => {
   beforeEach(() => {
     mockHasRemoveAds.mockReturnValue(false);
@@ -189,6 +198,61 @@ describe("useGameStore reducers", () => {
     useGameStore.getState().setInputMode("cell");
     expect(useSettingsStore.getState().settings.inputMode).toBe("cell");
     expect(useGameStore.getState().selectedNumber).toBeNull();
+  });
+
+  describe("filled-but-incorrect board", () => {
+    // Pre-fill 80 cells from the solution, leaving the last one (index 80) empty.
+    function loadNearlyComplete(): void {
+      useGameStore.getState().setGame({ ...freshGame(), values: valuesFromSolution({ 80: null }) });
+      useGameStore.getState().setInputMode("cell");
+    }
+
+    it("flags incorrectComplete when the last cell makes the board full but wrong", () => {
+      loadNearlyComplete();
+      const s = useGameStore.getState();
+      s.pressCell(80);
+      s.pressNumber(8); // SOLUTION[80] === 9, so 8 is wrong
+      const state = useGameStore.getState();
+      expect(state.incorrectComplete).toBe(true);
+      expect(state.justCompleted).toBe(false);
+      expect(state.game!.status).toBe("active");
+    });
+
+    it("does not flag when the board is completed correctly", () => {
+      loadNearlyComplete();
+      const s = useGameStore.getState();
+      s.pressCell(80);
+      s.pressNumber(9); // correct
+      const state = useGameStore.getState();
+      expect(state.incorrectComplete).toBe(false);
+      expect(state.justCompleted).toBe(true);
+      expect(state.game!.status).toBe("completed");
+    });
+
+    it("does not re-flag while editing an already-full wrong board", () => {
+      loadNearlyComplete();
+      const s = useGameStore.getState();
+      s.pressCell(80);
+      s.pressNumber(8); // full + wrong → flagged
+      useGameStore.getState().dismissIncorrectComplete();
+      expect(useGameStore.getState().incorrectComplete).toBe(false);
+
+      // Replace a different cell while the board stays full — no transition, so
+      // the modal must not re-appear on each tap.
+      s.pressCell(79);
+      s.pressNumber(1); // SOLUTION[79] === 7; board remains full and wrong
+      expect(useGameStore.getState().incorrectComplete).toBe(false);
+    });
+
+    it("restart clears the incorrectComplete flag", () => {
+      loadNearlyComplete();
+      const s = useGameStore.getState();
+      s.pressCell(80);
+      s.pressNumber(8);
+      expect(useGameStore.getState().incorrectComplete).toBe(true);
+      useGameStore.getState().restart();
+      expect(useGameStore.getState().incorrectComplete).toBe(false);
+    });
   });
 
   it("activates a paused game when setGame is called", () => {

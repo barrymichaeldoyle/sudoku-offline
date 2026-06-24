@@ -54,6 +54,8 @@ export default function GameScreen() {
   const loading = useGameStore((s) => s.loading);
   const justCompleted = useGameStore((s) => s.justCompleted);
   const hintPromptVisible = useGameStore((s) => s.hintPromptVisible);
+  const incorrectComplete = useGameStore((s) => s.incorrectComplete);
+  const dismissIncorrectComplete = useGameStore((s) => s.dismissIncorrectComplete);
   const loadGame = useGameStore((s) => s.loadGame);
   const restart = useGameStore((s) => s.restart);
   const flushAndPause = useGameStore((s) => s.flushAndPause);
@@ -153,6 +155,9 @@ export default function GameScreen() {
           onCancel={() => setShowResetConfirm(false)}
         />
       ) : null}
+      {incorrectComplete && !paused && game.status !== "completed" ? (
+        <IncorrectCompleteOverlay onKeepTrying={dismissIncorrectComplete} onRestart={restart} />
+      ) : null}
       {game.status === "completed" ? (
         <>
           {/* Confetti only celebrates the actual win, not a later revisit of a
@@ -215,6 +220,89 @@ function ResetConfirmOverlay({
         >
           <SimpleIcon name="close" tone="muted" />
           <Text className="text-ink-soft text-base font-medium">Cancel</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Shown when the board is completely filled but doesn't match the solution.
+ * Offers to keep trying, restart, or — when mistake checking is off — turn it on
+ * so the wrong cells light up red (it can be turned off again in Settings).
+ */
+function IncorrectCompleteOverlay({
+  onKeepTrying,
+  onRestart,
+}: {
+  onKeepTrying: () => void;
+  onRestart: () => void;
+}) {
+  const mistakeChecking = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
+  const setSetting = useSettingsStore((s) => s.setSetting);
+
+  const onEnableChecking = () => {
+    setSetting("mistakeCheckingEnabled", true);
+    onKeepTrying(); // close the modal so the now-highlighted cells are visible
+  };
+
+  return (
+    <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+      <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
+        <Text className="text-ink text-center text-2xl font-bold">Not quite right</Text>
+        <Text className="text-ink-soft text-center">
+          {mistakeChecking
+            ? "The board's full, but some cells don't match the solution — they're highlighted in red."
+            : "The board's full, but it doesn't match the solution yet."}
+        </Text>
+
+        {mistakeChecking ? null : (
+          <>
+            <Pressable
+              onPress={onEnableChecking}
+              accessibilityRole="button"
+              accessibilityLabel="Turn on mistake checking to highlight wrong cells"
+              className="bg-primary mt-4 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-80"
+            >
+              <SimpleIcon name="eye" tone="onPrimary" />
+              <Text className="text-on-primary text-lg font-semibold">Show my mistakes</Text>
+            </Pressable>
+            <Text className="text-ink-soft text-center text-sm">
+              Turns on mistake checking — you can turn it off again in Settings.
+            </Text>
+          </>
+        )}
+
+        <Pressable
+          onPress={onKeepTrying}
+          accessibilityRole="button"
+          accessibilityLabel="Keep trying"
+          className={clsx(
+            "flex-row items-center justify-center gap-2 rounded-2xl active:opacity-80",
+            mistakeChecking
+              ? "bg-primary mt-4 py-4"
+              : "border-line bg-surface-muted mt-2 border py-3",
+          )}
+        >
+          <SimpleIcon name="undo" tone={mistakeChecking ? "onPrimary" : "muted"} />
+          <Text
+            className={clsx(
+              "font-semibold",
+              mistakeChecking ? "text-on-primary text-lg" : "text-ink text-base",
+            )}
+          >
+            Keep trying
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={onRestart}
+          accessibilityRole="button"
+          accessibilityLabel="Restart this puzzle"
+          className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl py-3 active:opacity-60"
+        >
+          <SimpleIcon name="restart" tone="muted" />
+          <Text className="text-ink-soft text-base font-medium">Restart</Text>
         </Pressable>
       </View>
     </View>

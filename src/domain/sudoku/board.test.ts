@@ -4,6 +4,7 @@ import {
   getPeerIndices,
   getRowIndex,
   hasDuplicate,
+  isBoardFull,
   isGivenCell,
   isPuzzleComplete,
   isValueCorrect,
@@ -128,5 +129,19 @@ describe("isPuzzleComplete", () => {
     const values = parseValuesString(SOLUTION);
     values[0] = values[0] === 9 ? 1 : 9;
     expect(isPuzzleComplete(values, SOLUTION)).toBe(false);
+  });
+});
+
+describe("isBoardFull", () => {
+  it("is true when every cell holds a value, even if wrong", () => {
+    const values = parseValuesString(SOLUTION);
+    values[0] = values[0] === 9 ? 1 : 9; // wrong but still filled
+    expect(isBoardFull(values)).toBe(true);
+  });
+
+  it("is false when any cell is empty", () => {
+    const values = parseValuesString(SOLUTION);
+    values[42] = null;
+    expect(isBoardFull(values)).toBe(false);
   });
 });

@@ -124,6 +124,16 @@ export function hasDuplicate(values: CellValue[], cellIndex: number): boolean {
 }
 
 /** True when every cell is filled and matches the solution string. */
+/** True when every cell holds a value, regardless of correctness. */
+export function isBoardFull(values: CellValue[]): boolean {
+  for (let i = 0; i < CELL_COUNT; i++) {
+    if (values[i] == null) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function isPuzzleComplete(values: CellValue[], solution: string): boolean {
   for (let i = 0; i < CELL_COUNT; i++) {
     const v = values[i];
