@@ -78,7 +78,7 @@ const CLEANUP_SCOPE_OPTIONS: { value: NoteCleanupScope; label: string; hint: str
   {
     value: "all",
     label: "Row, column & box",
-    hint: "Standard — clear every cell the number rules out",
+    hint: "Clear every cell the number rules out (standard)",
   },
   { value: "box", label: "Box only", hint: "Clear notes only within the same 3x3 box" },
 ];

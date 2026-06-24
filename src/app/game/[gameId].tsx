@@ -296,7 +296,7 @@ function IncorrectCompleteOverlay({
         <Text className="text-ink text-center text-2xl font-bold">Not quite right</Text>
         <Text className="text-ink-soft text-center">
           {mistakeChecking
-            ? "The board's full, but some cells don't match the solution — they're highlighted in red."
+            ? "The board's full, but some cells don't match the solution. They're highlighted in red."
             : "The board's full, but it doesn't match the solution yet."}
         </Text>
 
@@ -312,7 +312,7 @@ function IncorrectCompleteOverlay({
               <Text className="text-on-primary text-lg font-semibold">Show my mistakes</Text>
             </Pressable>
             <Text className="text-ink-soft text-center text-sm">
-              Turns on mistake checking — you can turn it off again in Settings.
+              Turns on mistake checking. You can turn it off again in Settings.
             </Text>
           </>
         )}
