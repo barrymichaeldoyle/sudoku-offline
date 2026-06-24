@@ -20,6 +20,7 @@ import {
   type Puzzle,
 } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
+import { track } from "@/services/analyticsService";
 import { getDailyPuzzle, getLocalDateKey } from "@/services/dailyService";
 import { launchPuzzle } from "@/services/gameLauncher";
 import { useGameStore } from "@/state/useGameStore";
@@ -149,6 +150,7 @@ export default function Home() {
         try {
           if (inProgress) {
             await abandonGame(activeGame.id);
+            void track("puzzle_abandoned", { difficulty: activeGame.difficulty });
           }
           const game = await launchPuzzle(loadPuzzle);
           if (game) {

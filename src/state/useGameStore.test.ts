@@ -381,6 +381,38 @@ describe("useGameStore reducers", () => {
       expect(useGameStore.getState().game!.hintsUsed).toBe(1);
     });
 
+    it("undoing a hint lifts the cooldown but keeps hintsUsed counted", async () => {
+      mockIsRewardedHintAvailable.mockResolvedValue(false);
+      await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
+      const revealed = useGameStore.getState();
+      const placed = revealed.game!.values.findIndex((v) => v != null);
+      expect(revealed.hintCooldownUntil).not.toBeNull();
+
+      useGameStore.getState().undo();
+      const after = useGameStore.getState();
+      expect(after.game!.values[placed]).toBeNull(); // the hint is undone
+      expect(after.hintCooldownUntil).toBeNull(); // cooldown lifted
+      expect(after.game!.hintsUsed).toBe(1); // but the hint was still spent
+    });
+
+    it("undoing a normal placement leaves the hint cooldown intact", async () => {
+      // Reveal a hint to start a cooldown, then make a manual placement on top.
+      mockIsRewardedHintAvailable.mockResolvedValue(false);
+      await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
+      const cooldown = useGameStore.getState().hintCooldownUntil;
+      expect(cooldown).not.toBeNull();
+
+      const empty = useGameStore.getState().game!.values.findIndex((v) => v == null);
+      const s = useGameStore.getState();
+      s.pressCell(empty);
+      s.pressNumber(Number(SOLUTION[empty]));
+      // Undoing the manual placement must not touch the hint cooldown.
+      useGameStore.getState().undo();
+      expect(useGameStore.getState().hintCooldownUntil).toBe(cooldown);
+    });
+
     it("allows another hint once the cooldown elapses", async () => {
       mockIsRewardedHintAvailable.mockResolvedValue(false);
       await useGameStore.getState().requestHint();

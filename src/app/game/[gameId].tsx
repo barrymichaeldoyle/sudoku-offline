@@ -23,6 +23,7 @@ import {
   setReminderPromptSeen,
 } from "@/data/repositories/settingsRepository";
 import { formatShareText } from "@/domain/shareText";
+import { isGivenCell } from "@/domain/sudoku/board";
 import { NEW_GAME_DIFFICULTIES, type GameState } from "@/domain/sudoku/types";
 import { track } from "@/services/analyticsService";
 import { launchPuzzle } from "@/services/gameLauncher";
@@ -111,6 +112,10 @@ export default function GameScreen() {
   }
 
   const paused = timerEnabled && game.status === "paused" && !justCompleted;
+  // Reset is only meaningful once the player has entered a value or a note.
+  const hasProgress =
+    game.values.some((v, i) => v != null && !isGivenCell(game.givens, i)) ||
+    game.notes.some((n) => n !== 0);
 
   return (
     <Screen className="bg-canvas flex-1">
@@ -130,7 +135,7 @@ export default function GameScreen() {
           {boardSize > 0 ? (
             <View style={{ width: boardSize }} className="gap-2">
               <View className="flex-row items-center justify-between">
-                <ResetButton onPress={() => setShowResetConfirm(true)} />
+                <ResetButton disabled={!hasProgress} onPress={() => setShowResetConfirm(true)} />
                 <InputModeToggle />
               </View>
               <View style={{ width: boardSize, height: boardSize }}>
@@ -171,13 +176,18 @@ export default function GameScreen() {
 }
 
 /** Pill that opens the restart confirmation; mirrors the InputModeToggle's look. */
-function ResetButton({ onPress }: { onPress: () => void }) {
+function ResetButton({ onPress, disabled }: { onPress: () => void; disabled?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel="Restart puzzle"
-      className="bg-surface-muted flex-row items-center gap-2 rounded-full px-3 py-1.5 active:opacity-70"
+      accessibilityState={{ disabled: !!disabled }}
+      className={clsx(
+        "bg-surface-muted flex-row items-center gap-2 rounded-full px-3 py-1.5",
+        disabled ? "opacity-40" : "active:opacity-70",
+      )}
     >
       <SimpleIcon name="restart" tone="muted" size={16} />
       <Text className="text-ink text-center text-xs font-semibold">Reset</Text>
@@ -194,7 +204,10 @@ function ResetConfirmOverlay({
   onCancel: () => void;
 }) {
   return (
-    <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+    <View
+      accessibilityViewIsModal
+      className="absolute inset-0 items-center justify-center bg-black/50 p-8"
+    >
       <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
         <Text className="text-ink text-center text-2xl font-bold">Restart puzzle?</Text>
         <Text className="text-ink-soft text-center">
@@ -247,7 +260,10 @@ function IncorrectCompleteOverlay({
   };
 
   return (
-    <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+    <View
+      accessibilityViewIsModal
+      className="absolute inset-0 items-center justify-center bg-black/50 p-8"
+    >
       <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
         <Text className="text-ink text-center text-2xl font-bold">Not quite right</Text>
         <Text className="text-ink-soft text-center">
@@ -447,7 +463,7 @@ function PausedOverlay({ boardSize }: { boardSize: number }) {
   const inset = Math.round(boardSize * 0.04);
 
   return (
-    <View className="absolute inset-0">
+    <View accessibilityViewIsModal className="absolute inset-0">
       <View className="absolute inset-0 rounded-2xl bg-black/70" />
       <View
         className="border-line bg-surface absolute items-center justify-center gap-3 rounded-3xl border p-6"
@@ -484,7 +500,10 @@ function HintPromptOverlay() {
 
   if (hintPromptMode === "confirm") {
     return (
-      <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+      <View
+        accessibilityViewIsModal
+        className="absolute inset-0 items-center justify-center bg-black/50 p-8"
+      >
         <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
           <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
           <Text className="text-ink-soft text-center">
@@ -545,7 +564,10 @@ function HintPromptOverlay() {
   };
 
   return (
-    <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+    <View
+      accessibilityViewIsModal
+      className="absolute inset-0 items-center justify-center bg-black/50 p-8"
+    >
       <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
         <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
         <Text className="text-ink-soft text-center">Watch a short ad to reveal one hint.</Text>
@@ -737,7 +759,10 @@ function CompletionOverlay({ justCompleted }: { justCompleted: boolean }) {
   }
 
   return (
-    <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+    <View
+      accessibilityViewIsModal
+      className="absolute inset-0 items-center justify-center bg-black/50 p-8"
+    >
       <View className="border-line bg-surface max-h-full w-full overflow-hidden rounded-3xl border">
         <ScrollView contentContainerClassName="gap-2 p-6" showsVerticalScrollIndicator={false}>
           <Text className="text-center text-4xl">🏆</Text>

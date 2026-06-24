@@ -394,6 +394,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       game: next,
       selectedCell: action.cellIndex,
       undoStack: undoStack.slice(0, -1),
+      // Undoing a revealed hint lifts its cooldown so the button is usable again
+      // (the hintsUsed tally stays — the hint was still spent).
+      ...(action.type === "place_value" && action.fromHint ? { hintCooldownUntil: null } : {}),
     });
     scheduleSave(next);
   },
@@ -609,6 +612,7 @@ function revealHint(set: SetFn, get: GetFn): void {
     previousNotes,
     nextNotes: 0,
     clearedNotes,
+    fromHint: true,
   };
   const next: GameState = { ...game, values, notes, hintsUsed: game.hintsUsed + 1 };
   haptics.place();
@@ -654,8 +658,8 @@ function finalizeAfterPlacement(
   // The board just became completely filled but doesn't match the solution.
   // Only fire on the not-full → full transition so editing an already-full board
   // (replacing one wrong digit with another) doesn't re-pop the modal each tap.
+  // The placement itself already fired a haptic, so we don't add a second here.
   if (!wasFull && isBoardFull(values)) {
-    haptics.invalid();
     void track("puzzle_filled_incorrect", { difficulty: next.difficulty });
     set({ incorrectComplete: true });
   }
