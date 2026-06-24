@@ -40,7 +40,9 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /**
  * First-launch "minimal" preset: a distraction-free board. Every assist is off
- * except haptics (and theme stays on system). Picked from the onboarding screen.
+ * except haptics (and theme stays on system) — plus auto-clear notes, which is
+ * pure bookkeeping players expect rather than a visual aid. Picked from the
+ * onboarding screen.
  */
 export const MINIMAL_SETTINGS: Settings = {
   ...DEFAULT_SETTINGS,
@@ -48,7 +50,6 @@ export const MINIMAL_SETTINGS: Settings = {
   mistakeCheckingEnabled: false,
   highlightSameNumbers: false,
   highlightPeers: false,
-  autoNoteCleanup: false,
   showRemainingCounts: false,
   disableCompletedNumbers: false,
 };

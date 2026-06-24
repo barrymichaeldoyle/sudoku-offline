@@ -325,6 +325,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const next: GameState = { ...game, values, notes };
+    haptics.place();
     set({
       game: next,
       selectedCell: action.cellIndex,
@@ -419,6 +420,7 @@ function eraseCellAt(set: SetFn, get: GetFn, index: number): void {
   notes[index] = 0;
   const next: GameState = { ...game, values, notes };
   const action: GameAction = { type: "erase", cellIndex: index, previousValue, previousNotes };
+  haptics.place();
   set({ game: next, undoStack: [...undoStack, action] });
   scheduleSave(next);
 }
@@ -440,7 +442,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
       previousNotes,
       nextNotes: notes[index],
     };
-    haptics.toggle();
+    haptics.place();
     set({ game: next, undoStack: [...undoStack, action] });
     scheduleSave(next);
     return;
@@ -470,6 +472,9 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
     } else {
       haptics.place();
     }
+  } else {
+    // Re-tapping the same value clears the cell — give the same tap as erasing.
+    haptics.place();
   }
 
   const action: GameAction = {
