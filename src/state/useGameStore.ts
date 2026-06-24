@@ -1,18 +1,25 @@
+import type { InputMode } from "@/domain/settings";
 import type { CellValue, GameAction, GameState, NoteMask } from "@/domain/sudoku/types";
 
 import { create } from "zustand";
 
 import { completeGame, getGameById, saveGame } from "@/data/repositories/gameRepository";
-import { isGivenCell, isPuzzleComplete, isValueCorrect } from "@/domain/sudoku/board";
+import {
+  isGivenCell,
+  isPuzzleComplete,
+  isValueCorrect,
+  parseValuesString,
+} from "@/domain/sudoku/board";
 import { findHintCell, HINT_COOLDOWN_MS } from "@/domain/sudoku/hints";
 import { cleanupNotesAfterPlacement, toggleNote } from "@/domain/sudoku/notes";
+import { CELL_COUNT } from "@/domain/sudoku/types";
 import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
 import { haptics } from "@/services/haptics";
 import { hasRemoveAds } from "@/state/useEntitlementStore";
-import { getSettings } from "@/state/useSettingsStore";
+import { getSettings, useSettingsStore } from "@/state/useSettingsStore";
 
-export type InputMode = "cell" | "number";
+export type { InputMode };
 
 const SAVE_DEBOUNCE_MS = 600;
 
@@ -21,7 +28,6 @@ type GameStore = {
   loading: boolean;
   selectedCell: number | null;
   selectedNumber: number | null;
-  inputMode: InputMode;
   notesMode: boolean;
   /** Number-first only: the erase tool is the active selection (no number). */
   eraseArmed: boolean;
@@ -42,6 +48,8 @@ type GameStore = {
   loadGame: (id: string) => Promise<void>;
   setGame: (game: GameState) => void;
   reset: () => void;
+  /** Restart the current puzzle: board back to givens, progress cleared. */
+  restart: () => void;
 
   setInputMode: (mode: InputMode) => void;
   toggleNotesMode: () => void;
@@ -122,7 +130,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   loading: false,
   selectedCell: null,
   selectedNumber: null,
-  inputMode: "cell",
   notesMode: false,
   eraseArmed: false,
   justCompleted: false,
@@ -200,8 +207,47 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  restart() {
+    const { game } = get();
+    if (!game) {
+      return;
+    }
+    // Rebuild the board from the givens and wipe all progress, keeping the same
+    // game id (so a daily/challenge stays linked to its day).
+    const next: GameState = {
+      ...game,
+      values: parseValuesString(game.givens),
+      notes: Array.from({ length: CELL_COUNT }, () => 0),
+      mistakes: 0,
+      hintsUsed: 0,
+      elapsedSeconds: 0,
+      status: "active",
+      completedAt: null,
+      updatedAt: new Date().toISOString(),
+    };
+    void track("puzzle_restarted", { difficulty: game.difficulty });
+    haptics.place();
+    set({
+      game: next,
+      selectedCell: null,
+      selectedNumber: null,
+      notesMode: false,
+      eraseArmed: false,
+      justCompleted: false,
+      undoStack: [],
+      hintPromptVisible: false,
+      hintPromptMode: null,
+      hintCooldownUntil: null,
+      ...timerStateForActiveGame(true),
+    });
+    scheduleSave(next);
+  },
+
   setInputMode(mode) {
-    set({ inputMode: mode, selectedCell: null, selectedNumber: null, eraseArmed: false });
+    // Input mode is a persisted setting shared with the Settings screen; the
+    // selection state it governs is per-game, so clear it on every switch.
+    useSettingsStore.getState().setSetting("inputMode", mode);
+    set({ selectedCell: null, selectedNumber: null, eraseArmed: false });
   },
 
   toggleNotesMode() {
@@ -210,8 +256,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pressCell(index) {
-    const { inputMode, selectedNumber, eraseArmed } = get();
-    if (inputMode === "number") {
+    const { selectedNumber, eraseArmed } = get();
+    if (getSettings().inputMode === "number") {
       // Erase tool armed → tapping a cell clears it; otherwise place the number.
       if (eraseArmed) {
         eraseCellAt(set, get, index);
@@ -226,8 +272,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pressNumber(num) {
-    const { inputMode, selectedCell } = get();
-    if (inputMode === "number") {
+    const { selectedCell } = get();
+    if (getSettings().inputMode === "number") {
       // Selecting a number always disarms the erase tool.
       set((state) => ({
         selectedNumber: state.selectedNumber === num ? null : num,
@@ -241,9 +287,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   erase() {
-    const { inputMode, selectedCell } = get();
+    const { selectedCell } = get();
     // Number-first: erase is a toggleable tool (clears any selected number).
-    if (inputMode === "number") {
+    if (getSettings().inputMode === "number") {
       set((state) => ({ eraseArmed: !state.eraseArmed, selectedNumber: null }));
       return;
     }
@@ -317,6 +363,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (action.type === "place_value") {
       values[action.cellIndex] = action.previousValue;
       notes[action.cellIndex] = action.previousNotes;
+      // Restore peer notes that auto-cleanup removed when this value was placed.
+      for (const cleared of action.clearedNotes ?? []) {
+        notes[cleared.cellIndex] = cleared.previousNotes;
+      }
     } else if (action.type === "set_notes") {
       notes[action.cellIndex] = action.previousNotes;
     } else {
@@ -458,11 +508,21 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
 
   let notes: NoteMask[] = game.notes;
   let mistakes = game.mistakes;
+  let clearedNotes: { cellIndex: number; previousNotes: NoteMask }[] | undefined;
   const correct = nextValue == null || isValueCorrect(game.solution, index, nextValue);
   if (nextValue != null) {
-    notes = getSettings().autoNoteCleanup
-      ? cleanupNotesAfterPlacement(game.notes, index, nextValue)
-      : game.notes.slice();
+    if (getSettings().autoNoteCleanup) {
+      const cleanup = cleanupNotesAfterPlacement(
+        game.notes,
+        index,
+        nextValue,
+        getSettings().autoNoteCleanupScope,
+      );
+      notes = cleanup.notes;
+      clearedNotes = cleanup.cleared;
+    } else {
+      notes = game.notes.slice();
+    }
     notes[index] = 0;
     if (!correct && getSettings().mistakeCheckingEnabled) {
       mistakes += 1;
@@ -484,6 +544,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
     nextValue,
     previousNotes,
     nextNotes: nextValue == null ? previousNotes : 0,
+    clearedNotes,
   };
   const next: GameState = { ...game, values, notes, mistakes };
   set({ game: next, undoStack: [...undoStack, action] });
@@ -510,9 +571,20 @@ function revealHint(set: SetFn, get: GetFn): void {
   const previousNotes = game.notes[index];
   const values = game.values.slice();
   values[index] = value;
-  const notes = getSettings().autoNoteCleanup
-    ? cleanupNotesAfterPlacement(game.notes, index, value)
-    : game.notes.slice();
+  let notes: NoteMask[];
+  let clearedNotes: { cellIndex: number; previousNotes: NoteMask }[] | undefined;
+  if (getSettings().autoNoteCleanup) {
+    const cleanup = cleanupNotesAfterPlacement(
+      game.notes,
+      index,
+      value,
+      getSettings().autoNoteCleanupScope,
+    );
+    notes = cleanup.notes;
+    clearedNotes = cleanup.cleared;
+  } else {
+    notes = game.notes.slice();
+  }
   notes[index] = 0;
 
   const action: GameAction = {
@@ -522,6 +594,7 @@ function revealHint(set: SetFn, get: GetFn): void {
     nextValue: value,
     previousNotes,
     nextNotes: 0,
+    clearedNotes,
   };
   const next: GameState = { ...game, values, notes, hintsUsed: game.hintsUsed + 1 };
   haptics.place();

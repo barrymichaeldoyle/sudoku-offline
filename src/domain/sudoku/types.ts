@@ -54,6 +54,8 @@ export type GameAction =
       nextValue: CellValue;
       previousNotes: NoteMask;
       nextNotes: NoteMask;
+      /** Peer cells whose notes auto-cleanup removed, for restoring on undo. */
+      clearedNotes?: { cellIndex: number; previousNotes: NoteMask }[];
     }
   | {
       type: "set_notes";

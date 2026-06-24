@@ -12,6 +12,7 @@ import {
   Pause,
   Play,
   Plus,
+  RotateCcw,
   Share2,
   StickyNote,
   Trophy,
@@ -33,6 +34,7 @@ export type SimpleIconName =
   | "pause"
   | "play"
   | "plus"
+  | "restart"
   | "settings"
   | "share"
   | "stats"
@@ -59,6 +61,7 @@ const ICONS: Record<SimpleIconName, LucideComponent> = {
   pause: Pause,
   play: Play,
   plus: Plus,
+  restart: RotateCcw,
   settings: Cog,
   share: Share2,
   stats: ChartColumn,

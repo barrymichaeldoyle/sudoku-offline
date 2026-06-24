@@ -11,7 +11,7 @@ const NUMBERS = Array.from({ length: BOARD_SIZE }, (_, i) => i + 1);
 
 export function NumberPad() {
   const game = useGameStore((s) => s.game);
-  const inputMode = useGameStore((s) => s.inputMode);
+  const inputMode = useSettingsStore((s) => s.settings.inputMode);
   const selectedNumber = useGameStore((s) => s.selectedNumber);
   const pressNumber = useGameStore((s) => s.pressNumber);
   const showRemainingCounts = useSettingsStore((s) => s.settings.showRemainingCounts);

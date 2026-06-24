@@ -9,6 +9,7 @@ export type AnalyticsEventName =
   | "puzzle_started"
   | "puzzle_completed"
   | "puzzle_abandoned"
+  | "puzzle_restarted"
   | "hint_used"
   | "rewarded_hint_offered"
   | "rewarded_hint_watched"

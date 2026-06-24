@@ -1,9 +1,10 @@
 import { SimpleIcon } from "@/components/SimpleIcon";
 import { useGameStore } from "@/state/useGameStore";
+import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, Text } from "@/tw";
 
 export function InputModeToggle() {
-  const inputMode = useGameStore((s) => s.inputMode);
+  const inputMode = useSettingsStore((s) => s.settings.inputMode);
   const setInputMode = useGameStore((s) => s.setInputMode);
 
   return (

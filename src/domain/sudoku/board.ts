@@ -53,6 +53,31 @@ export function getPeerIndices(cellIndex: number): number[] {
   return PEER_CACHE[cellIndex];
 }
 
+// Box-only peers: the eight other cells in the same 3x3 box. Cached like above.
+const BOX_PEER_CACHE: number[][] = (() => {
+  const cache: number[][] = [];
+  for (let cellIndex = 0; cellIndex < CELL_COUNT; cellIndex++) {
+    const boxRowStart = Math.floor(getRowIndex(cellIndex) / BOX_SIZE) * BOX_SIZE;
+    const boxColStart = Math.floor(getColIndex(cellIndex) / BOX_SIZE) * BOX_SIZE;
+    const peers: number[] = [];
+    for (let r = 0; r < BOX_SIZE; r++) {
+      for (let c = 0; c < BOX_SIZE; c++) {
+        const peer = (boxRowStart + r) * BOARD_SIZE + (boxColStart + c);
+        if (peer !== cellIndex) {
+          peers.push(peer);
+        }
+      }
+    }
+    cache.push(peers);
+  }
+  return cache;
+})();
+
+/** The eight other cells sharing the same 3x3 box as `cellIndex` (excluding itself). */
+export function getBoxPeerIndices(cellIndex: number): number[] {
+  return BOX_PEER_CACHE[cellIndex];
+}
+
 export function parseValuesString(input: string): CellValue[] {
   const values: CellValue[] = Array.from({ length: CELL_COUNT });
   for (let i = 0; i < CELL_COUNT; i++) {

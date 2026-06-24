@@ -1,4 +1,4 @@
-import type { Settings, ThemePreference } from "@/domain/settings";
+import type { InputMode, NoteCleanupScope, Settings, ThemePreference } from "@/domain/settings";
 
 import { useRouter } from "expo-router";
 import { lazy, Suspense } from "react";
@@ -13,6 +13,7 @@ import { formatReminderTime } from "@/domain/reminder";
 import { track } from "@/services/analyticsService";
 import { requestDailyReminderPermission } from "@/services/notificationService";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
+import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
 
@@ -23,6 +24,11 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "System" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
+];
+
+const INPUT_MODE_OPTIONS: { value: InputMode; label: string }[] = [
+  { value: "cell", label: "Cell-first" },
+  { value: "number", label: "Number-first" },
 ];
 
 type ToggleKey = {
@@ -68,6 +74,15 @@ const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
   { key: "hapticsEnabled", label: "Haptics", hint: "Vibration feedback on actions" },
 ];
 
+const CLEANUP_SCOPE_OPTIONS: { value: NoteCleanupScope; label: string; hint: string }[] = [
+  {
+    value: "all",
+    label: "Row, column & box",
+    hint: "Standard — clear every cell the number rules out",
+  },
+  { value: "box", label: "Box only", hint: "Clear notes only within the same 3x3 box" },
+];
+
 // A few sensible reminder times (minutes after local midnight). Kept to presets
 // so we don't need a native time-picker dependency for v1.
 const REMINDER_TIMES = [8 * 60, 9 * 60, 12 * 60, 18 * 60, 20 * 60];
@@ -76,6 +91,9 @@ export default function SettingsScreen() {
   const router = useRouter();
   const settings = useSettingsStore((s) => s.settings);
   const setSetting = useSettingsStore((s) => s.setSetting);
+  // Routed through the game store so the live board's selection state is cleared
+  // alongside persisting the choice — same entry point as the in-game toggle.
+  const setInputMode = useGameStore((s) => s.setInputMode);
   const isPremium = useEntitlementStore((s) => s.entitlements[ENTITLEMENT_REMOVE_ADS] === true);
   const restorePurchases = useEntitlementStore((s) => s.restorePurchases);
 
@@ -161,22 +179,89 @@ export default function SettingsScreen() {
 
           <View className="gap-3">
             <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              Input mode
+            </Text>
+            <View className="flex-row gap-2">
+              {INPUT_MODE_OPTIONS.map((opt) => {
+                const active = settings.inputMode === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setInputMode(opt.value)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`${opt.label} input`}
+                    className={
+                      active
+                        ? "bg-primary flex-1 items-center rounded-xl py-3"
+                        : "border-line bg-surface flex-1 items-center rounded-xl border py-3"
+                    }
+                  >
+                    <Text
+                      className={active ? "text-on-primary font-semibold" : "text-ink font-medium"}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text className="text-ink-soft px-1 text-sm">
+              {settings.inputMode === "cell"
+                ? "Tap a cell, then a number to fill it."
+                : "Tap a number, then the cells to place it in."}
+            </Text>
+          </View>
+
+          <View className="gap-3">
+            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
               Gameplay
             </Text>
             {TOGGLES.map((t) => (
-              <View
-                key={t.key}
-                className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3"
-              >
-                <View className="flex-1 gap-0.5">
-                  <Text className="text-ink text-base font-medium">{t.label}</Text>
-                  <Text className="text-ink-soft text-sm">{t.hint}</Text>
+              <View key={t.key} className="gap-2">
+                <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+                  <View className="flex-1 gap-0.5">
+                    <Text className="text-ink text-base font-medium">{t.label}</Text>
+                    <Text className="text-ink-soft text-sm">{t.hint}</Text>
+                  </View>
+                  <Switch
+                    value={settings[t.key]}
+                    onValueChange={(v) => setSetting(t.key, v)}
+                    accessibilityLabel={t.label}
+                  />
                 </View>
-                <Switch
-                  value={settings[t.key]}
-                  onValueChange={(v) => setSetting(t.key, v)}
-                  accessibilityLabel={t.label}
-                />
+                {t.key === "autoNoteCleanup" && settings.autoNoteCleanup ? (
+                  <View className="flex-row gap-2 px-1">
+                    {CLEANUP_SCOPE_OPTIONS.map((opt) => {
+                      const active = settings.autoNoteCleanupScope === opt.value;
+                      return (
+                        <Pressable
+                          key={opt.value}
+                          onPress={() => setSetting("autoNoteCleanupScope", opt.value)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          accessibilityLabel={`Auto-clear scope: ${opt.label}`}
+                          accessibilityHint={opt.hint}
+                          className={
+                            active
+                              ? "bg-primary flex-1 rounded-xl px-3 py-2.5"
+                              : "border-line bg-surface flex-1 rounded-xl border px-3 py-2.5"
+                          }
+                        >
+                          <Text
+                            className={
+                              active
+                                ? "text-on-primary text-center text-sm font-semibold"
+                                : "text-ink text-center text-sm font-medium"
+                            }
+                          >
+                            {opt.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
               </View>
             ))}
           </View>

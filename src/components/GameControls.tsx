@@ -4,6 +4,7 @@ import { useWindowDimensions } from "react-native";
 import { SimpleIcon, type SimpleIconName } from "@/components/SimpleIcon";
 import { useGameStore } from "@/state/useGameStore";
 import { useHintCooldownRemaining } from "@/state/useHintCooldown";
+import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, Text, View } from "@/tw";
 
 type ControlButtonProps = {
@@ -55,7 +56,7 @@ function ControlButton({ label, icon, active, checked, disabled, onPress }: Cont
 }
 
 export function GameControls() {
-  const inputMode = useGameStore((s) => s.inputMode);
+  const inputMode = useSettingsStore((s) => s.settings.inputMode);
   const eraseArmed = useGameStore((s) => s.eraseArmed);
   const notesMode = useGameStore((s) => s.notesMode);
   const canUndo = useGameStore((s) => s.undoStack.length > 0);

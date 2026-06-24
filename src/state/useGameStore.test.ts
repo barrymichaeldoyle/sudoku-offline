@@ -122,6 +122,75 @@ describe("useGameStore reducers", () => {
     expect(useGameStore.getState().undoStack).toHaveLength(0);
   });
 
+  it("undo restores peer notes cleared by auto note cleanup", () => {
+    const s = useGameStore.getState();
+    const NOTE_5 = 1 << 4; // note 5 -> bit 4
+    // Pencil note 5 into cell 1 (a peer of cell 0 in the same row).
+    s.toggleNotesMode();
+    s.pressCell(1);
+    s.pressNumber(5);
+    s.toggleNotesMode();
+    expect(useGameStore.getState().game!.notes[1]).toBe(NOTE_5);
+
+    // Placing 5 in cell 0 auto-clears the note 5 from peer cell 1.
+    s.pressCell(0);
+    s.pressNumber(5); // SOLUTION[0] === 5
+    expect(useGameStore.getState().game!.notes[1]).toBe(0);
+
+    // Undo must put the value back to null AND restore the peer note.
+    useGameStore.getState().undo();
+    const game = useGameStore.getState().game!;
+    expect(game.values[0]).toBeNull();
+    expect(game.notes[1]).toBe(NOTE_5);
+  });
+
+  it("restart clears the board back to givens and resets progress", () => {
+    const s = useGameStore.getState();
+    s.pressCell(0);
+    s.pressNumber(3); // wrong → a mistake
+    // A pencil note elsewhere, to confirm notes are wiped too.
+    s.toggleNotesMode();
+    s.pressCell(1);
+    s.pressNumber(7);
+    s.toggleNotesMode();
+    expect(useGameStore.getState().game!.mistakes).toBe(1);
+    expect(useGameStore.getState().game!.notes[1]).not.toBe(0);
+
+    useGameStore.getState().restart();
+    const game = useGameStore.getState().game!;
+    // GIVENS is all-empty, so every value resets to null.
+    expect(game.values.every((v) => v === null)).toBe(true);
+    expect(game.notes.every((n) => n === 0)).toBe(true);
+    expect(game.mistakes).toBe(0);
+    expect(game.hintsUsed).toBe(0);
+    expect(game.elapsedSeconds).toBe(0);
+    expect(game.status).toBe("active");
+    expect(useGameStore.getState().undoStack).toHaveLength(0);
+  });
+
+  it("restart keeps the same game id (daily stays linked)", () => {
+    const id = useGameStore.getState().game!.id;
+    useGameStore.getState().pressCell(0);
+    useGameStore.getState().pressNumber(5);
+    useGameStore.getState().restart();
+    expect(useGameStore.getState().game!.id).toBe(id);
+  });
+
+  it("setInputMode persists to settings and is shared, clearing selection", () => {
+    const s = useGameStore.getState();
+    s.setInputMode("number");
+    expect(useSettingsStore.getState().settings.inputMode).toBe("number");
+
+    // Number-first: tapping a number selects it (rather than needing a cell first).
+    useGameStore.getState().pressNumber(5);
+    expect(useGameStore.getState().selectedNumber).toBe(5);
+
+    // Switching modes clears the live selection.
+    useGameStore.getState().setInputMode("cell");
+    expect(useSettingsStore.getState().settings.inputMode).toBe("cell");
+    expect(useGameStore.getState().selectedNumber).toBeNull();
+  });
+
   it("activates a paused game when setGame is called", () => {
     useGameStore.getState().setGame({ ...freshGame(), status: "paused" });
     const game = useGameStore.getState().game!;

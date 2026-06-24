@@ -1,13 +1,27 @@
 export type ThemePreference = "system" | "light" | "dark";
 
+/** Board input style: pick a cell then a number, or a number then cells. */
+export type InputMode = "cell" | "number";
+
+/**
+ * Which pencil notes auto-clear removes when a digit is placed:
+ * - "all": every peer sharing a row, column, or box (standard sudoku).
+ * - "box": only the same 3x3 box.
+ */
+export type NoteCleanupScope = "all" | "box";
+
 export type Settings = {
   theme: ThemePreference;
+  /** Cell-first vs number-first board input; shared by the in-game toggle. */
+  inputMode: InputMode;
   timerEnabled: boolean;
   mistakeCheckingEnabled: boolean;
   highlightSameNumbers: boolean;
   highlightPeers: boolean;
   hapticsEnabled: boolean;
   autoNoteCleanup: boolean;
+  /** Scope of auto-clear notes; only applies when `autoNoteCleanup` is on. */
+  autoNoteCleanupScope: NoteCleanupScope;
   /** Show how many of each digit remain to place, under the number pad. */
   showRemainingCounts: boolean;
   /** Grey out and lock a number-pad digit once all nine are placed. */
@@ -25,12 +39,14 @@ export const DEFAULT_REMINDER_TIME_MINUTES = 9 * 60;
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
+  inputMode: "cell",
   timerEnabled: true,
   mistakeCheckingEnabled: true,
   highlightSameNumbers: true,
   highlightPeers: true,
   hapticsEnabled: true,
   autoNoteCleanup: true,
+  autoNoteCleanupScope: "all",
   showRemainingCounts: true,
   disableCompletedNumbers: true,
   instantHintsEnabled: false,
@@ -41,8 +57,9 @@ export const DEFAULT_SETTINGS: Settings = {
 /**
  * First-launch "minimal" preset: a distraction-free board. Every assist is off
  * except haptics (and theme stays on system) — plus auto-clear notes, which is
- * pure bookkeeping players expect rather than a visual aid. Picked from the
- * onboarding screen.
+ * pure bookkeeping players expect rather than a visual aid. Its scope is kept to
+ * the 3x3 box here, matching the lighter-touch feel of the minimal preset.
+ * Picked from the onboarding screen.
  */
 export const MINIMAL_SETTINGS: Settings = {
   ...DEFAULT_SETTINGS,
@@ -52,6 +69,7 @@ export const MINIMAL_SETTINGS: Settings = {
   highlightPeers: false,
   showRemainingCounts: false,
   disableCompletedNumbers: false,
+  autoNoteCleanupScope: "box",
 };
 
 /**

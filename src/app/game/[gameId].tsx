@@ -55,10 +55,12 @@ export default function GameScreen() {
   const justCompleted = useGameStore((s) => s.justCompleted);
   const hintPromptVisible = useGameStore((s) => s.hintPromptVisible);
   const loadGame = useGameStore((s) => s.loadGame);
+  const restart = useGameStore((s) => s.restart);
   const flushAndPause = useGameStore((s) => s.flushAndPause);
   const syncTimerFromSettings = useGameStore((s) => s.syncTimerFromSettings);
   const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
   const [boardSize, setBoardSize] = useState(0);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     if (gameId) {
@@ -125,7 +127,8 @@ export default function GameScreen() {
         >
           {boardSize > 0 ? (
             <View style={{ width: boardSize }} className="gap-2">
-              <View className="flex-row justify-end">
+              <View className="flex-row items-center justify-between">
+                <ResetButton onPress={() => setShowResetConfirm(true)} />
                 <InputModeToggle />
               </View>
               <View style={{ width: boardSize, height: boardSize }}>
@@ -141,6 +144,15 @@ export default function GameScreen() {
         </View>
       </View>
       {hintPromptVisible && !paused && !justCompleted ? <HintPromptOverlay /> : null}
+      {showResetConfirm && game.status !== "completed" ? (
+        <ResetConfirmOverlay
+          onConfirm={() => {
+            restart();
+            setShowResetConfirm(false);
+          }}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      ) : null}
       {game.status === "completed" ? (
         <>
           {/* Confetti only celebrates the actual win, not a later revisit of a
@@ -150,6 +162,62 @@ export default function GameScreen() {
         </>
       ) : null}
     </Screen>
+  );
+}
+
+/** Pill that opens the restart confirmation; mirrors the InputModeToggle's look. */
+function ResetButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Restart puzzle"
+      className="bg-surface-muted flex-row items-center gap-2 rounded-full px-3 py-1.5 active:opacity-70"
+    >
+      <SimpleIcon name="restart" tone="muted" size={16} />
+      <Text className="text-ink text-center text-xs font-semibold">Reset</Text>
+    </Pressable>
+  );
+}
+
+/** "Are you sure?" before wiping the current board back to its givens. */
+function ResetConfirmOverlay({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <View className="absolute inset-0 items-center justify-center bg-black/50 p-8">
+      <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
+        <Text className="text-ink text-center text-2xl font-bold">Restart puzzle?</Text>
+        <Text className="text-ink-soft text-center">
+          This clears every number, note, and your time and mistakes for this puzzle, and starts it
+          over. This can't be undone.
+        </Text>
+
+        <Pressable
+          onPress={onConfirm}
+          accessibilityRole="button"
+          accessibilityLabel="Restart this puzzle"
+          className="bg-danger mt-4 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-80"
+        >
+          <SimpleIcon name="restart" tone="onPrimary" />
+          <Text className="text-on-primary text-lg font-semibold">Restart</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={onCancel}
+          accessibilityRole="button"
+          accessibilityLabel="Keep playing"
+          className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl py-3 active:opacity-60"
+        >
+          <SimpleIcon name="close" tone="muted" />
+          <Text className="text-ink-soft text-base font-medium">Cancel</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
