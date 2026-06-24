@@ -27,8 +27,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm run format:check
-      - run: pnpm run lint
-      - run: pnpm run typecheck
-      - run: pnpm knip
-      - run: pnpm test
+      # Single source of truth for the quality gate — same command runs locally
+      # (`pnpm ci:check`) and before an EAS release (scripts/release-ios.sh).
+      - run: pnpm run ci:check
