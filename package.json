@@ -23,7 +23,7 @@
     "generate:screenshots": "node ./scripts/generate-store-screenshots.mjs",
     "metadata:pull": "eas metadata:pull",
     "metadata:push": "eas metadata:push",
-    "ci:check": "pnpm typecheck && oxlint --deny-warnings && pnpm format:check && pnpm knip && pnpm test",
+    "ci:check": "pnpm typecheck && oxlint --deny-warnings && pnpm format:check && pnpm knip && pnpm test && pnpm audit --audit-level moderate",
     "release:ios": "./scripts/release-ios.sh"
   },
   "dependencies": {
