@@ -5,3 +5,7 @@ minimumReleaseAgeExclude:
 overrides:
   lightningcss: 1.30.1
   uuid: 11.1.1
+  # GHSA-h67p-54hq-rp68: js-yaml@3.x reaches us only via
+  # babel-plugin-istanbul>load-nyc-config (Jest coverage), which we don't run, so
+  # it's dead code. Pin to the already-resolved patched 4.x to drop 3.14.2.
+  "@istanbuljs/load-nyc-config>js-yaml": ^4.2.0
