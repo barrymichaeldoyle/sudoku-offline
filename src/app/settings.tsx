@@ -179,47 +179,53 @@ export default function SettingsScreen() {
 
           <View className="gap-3">
             <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
-              Input mode
-            </Text>
-            <View className="flex-row gap-2">
-              {INPUT_MODE_OPTIONS.map((opt) => {
-                const active = settings.inputMode === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setInputMode(opt.value)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    accessibilityLabel={`${opt.label} input`}
-                    className={
-                      active
-                        ? "bg-primary flex-1 items-center rounded-xl py-3"
-                        : "border-line bg-surface flex-1 items-center rounded-xl border py-3"
-                    }
-                  >
-                    <Text
-                      className={active ? "text-on-primary font-semibold" : "text-ink font-medium"}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text className="text-ink-soft px-1 text-sm">
-              {settings.inputMode === "cell"
-                ? "Tap a cell, then a number to fill it."
-                : "Tap a number, then the cells to place it in."}
-            </Text>
-          </View>
-
-          <View className="gap-3">
-            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
               Gameplay
             </Text>
+            <View className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3">
+              <View className="gap-0.5">
+                <Text className="text-ink text-base font-medium">Input mode</Text>
+                <Text className="text-ink-soft text-sm">
+                  {settings.inputMode === "cell"
+                    ? "Tap a cell, then a number to fill it."
+                    : "Tap a number, then the cells to place it in."}
+                </Text>
+              </View>
+              <View className="flex-row gap-2">
+                {INPUT_MODE_OPTIONS.map((opt) => {
+                  const active = settings.inputMode === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setInputMode(opt.value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`${opt.label} input`}
+                      className={
+                        active
+                          ? "bg-primary flex-1 rounded-xl px-3 py-2.5"
+                          : "border-line bg-canvas flex-1 rounded-xl border px-3 py-2.5"
+                      }
+                    >
+                      <Text
+                        className={
+                          active
+                            ? "text-on-primary text-center text-sm font-semibold"
+                            : "text-ink text-center text-sm font-medium"
+                        }
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
             {TOGGLES.map((t) => (
-              <View key={t.key} className="gap-2">
-                <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+              <View
+                key={t.key}
+                className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3"
+              >
+                <View className="flex-row items-center justify-between gap-3">
                   <View className="flex-1 gap-0.5">
                     <Text className="text-ink text-base font-medium">{t.label}</Text>
                     <Text className="text-ink-soft text-sm">{t.hint}</Text>
@@ -231,7 +237,7 @@ export default function SettingsScreen() {
                   />
                 </View>
                 {t.key === "autoNoteCleanup" && settings.autoNoteCleanup ? (
-                  <View className="flex-row gap-2 px-1">
+                  <View className="flex-row gap-2">
                     {CLEANUP_SCOPE_OPTIONS.map((opt) => {
                       const active = settings.autoNoteCleanupScope === opt.value;
                       return (
@@ -245,7 +251,7 @@ export default function SettingsScreen() {
                           className={
                             active
                               ? "bg-primary flex-1 rounded-xl px-3 py-2.5"
-                              : "border-line bg-surface flex-1 rounded-xl border px-3 py-2.5"
+                              : "border-line bg-canvas flex-1 rounded-xl border px-3 py-2.5"
                           }
                         >
                           <Text
