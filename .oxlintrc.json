@@ -34,6 +34,14 @@
       }
     ]
   },
+  "overrides": [
+    {
+      "files": ["scripts/**"],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    }
+  ],
   "ignorePatterns": [
     ".expo",
     ".agents",

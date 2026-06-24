@@ -19,12 +19,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [ "${SKIP_CHECKS:-0}" != "1" ]; then
-  echo "▶ Typechecking…"
-  pnpm typecheck
-  echo "▶ Linting…"
-  pnpm lint
-  echo "▶ Running tests…"
-  pnpm test
+  echo "▶ Running CI checks (typecheck, lint, format, knip, tests)…"
+  pnpm ci:check
 else
   echo "⏭  Skipping local checks (SKIP_CHECKS=1)"
 fi
