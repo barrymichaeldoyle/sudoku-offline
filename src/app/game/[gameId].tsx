@@ -4,7 +4,7 @@ import type { PropsWithChildren } from "react";
 import { clsx } from "clsx";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { AppState, Share, useWindowDimensions } from "react-native";
+import { AppState, Share, Switch, useWindowDimensions } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
@@ -153,8 +153,9 @@ export default function GameScreen() {
       {hintPromptVisible && !paused && !justCompleted ? <HintPromptOverlay /> : null}
       {showResetConfirm && game.status !== "completed" ? (
         <ResetConfirmOverlay
-          onConfirm={() => {
-            restart();
+          timerEnabled={timerEnabled}
+          onConfirm={(keepTime) => {
+            restart({ keepTime });
             setShowResetConfirm(false);
           }}
           onCancel={() => setShowResetConfirm(false)}
@@ -197,12 +198,16 @@ function ResetButton({ onPress, disabled }: { onPress: () => void; disabled?: bo
 
 /** "Are you sure?" before wiping the current board back to its givens. */
 function ResetConfirmOverlay({
+  timerEnabled,
   onConfirm,
   onCancel,
 }: {
-  onConfirm: () => void;
+  timerEnabled: boolean;
+  onConfirm: (keepTime: boolean) => void;
   onCancel: () => void;
 }) {
+  const [keepTime, setKeepTime] = useState(false);
+
   return (
     <View
       accessibilityViewIsModal
@@ -211,12 +216,28 @@ function ResetConfirmOverlay({
       <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
         <Text className="text-ink text-center text-2xl font-bold">Restart puzzle?</Text>
         <Text className="text-ink-soft text-center">
-          This clears every number, note, and your time and mistakes for this puzzle, and starts it
-          over. This can't be undone.
+          This clears every number, note, and mistake for this puzzle and starts it over. This can't
+          be undone.
         </Text>
 
+        {timerEnabled ? (
+          <View className="border-line bg-canvas mt-4 flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+            <View className="flex-1 gap-0.5">
+              <Text className="text-ink text-base font-medium">Keep my time</Text>
+              <Text className="text-ink-soft text-sm">
+                Carry over the time you've already spent instead of resetting to 0:00.
+              </Text>
+            </View>
+            <Switch
+              value={keepTime}
+              onValueChange={setKeepTime}
+              accessibilityLabel="Keep my time"
+            />
+          </View>
+        ) : null}
+
         <Pressable
-          onPress={onConfirm}
+          onPress={() => onConfirm(keepTime)}
           accessibilityRole="button"
           accessibilityLabel="Restart this puzzle"
           className="bg-danger mt-4 flex-row items-center justify-center gap-2 rounded-2xl py-4 active:opacity-80"

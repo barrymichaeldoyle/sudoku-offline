@@ -185,6 +185,27 @@ describe("useGameStore reducers", () => {
     expect(useGameStore.getState().game!.id).toBe(id);
   });
 
+  it("restart resets the timer by default but keeps it with keepTime", () => {
+    const g = useGameStore.getState().game!;
+    // Freeze a known elapsed total (timer not running, so commitElapsed is exact).
+    useGameStore.setState({
+      game: { ...g, elapsedSeconds: 42 },
+      running: false,
+      lastStartedAt: null,
+    });
+
+    useGameStore.getState().restart({ keepTime: true });
+    expect(useGameStore.getState().game!.elapsedSeconds).toBe(42);
+
+    useGameStore.setState({
+      game: { ...useGameStore.getState().game!, elapsedSeconds: 42 },
+      running: false,
+      lastStartedAt: null,
+    });
+    useGameStore.getState().restart();
+    expect(useGameStore.getState().game!.elapsedSeconds).toBe(0);
+  });
+
   it("setInputMode persists to settings and is shared, clearing selection", () => {
     const s = useGameStore.getState();
     s.setInputMode("number");

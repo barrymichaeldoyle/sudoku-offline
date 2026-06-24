@@ -51,8 +51,11 @@ type GameStore = {
   loadGame: (id: string) => Promise<void>;
   setGame: (game: GameState) => void;
   reset: () => void;
-  /** Restart the current puzzle: board back to givens, progress cleared. */
-  restart: () => void;
+  /**
+   * Restart the current puzzle: board back to givens, progress cleared. By
+   * default the timer resets to 0; pass `keepTime` to carry over elapsed time.
+   */
+  restart: (options?: { keepTime?: boolean }) => void;
 
   setInputMode: (mode: InputMode) => void;
   toggleNotesMode: () => void;
@@ -216,11 +219,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  restart() {
-    const { game } = get();
+  restart(options) {
+    const { game, running, lastStartedAt } = get();
     if (!game) {
       return;
     }
+    // Optionally carry over the time already spent (committing any running
+    // segment first); otherwise the clock starts fresh at 0.
+    const elapsedSeconds = options?.keepTime
+      ? commitElapsed({ game, running, lastStartedAt }).elapsedSeconds
+      : 0;
     // Rebuild the board from the givens and wipe all progress, keeping the same
     // game id (so a daily/challenge stays linked to its day).
     const next: GameState = {
@@ -229,7 +237,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       notes: Array.from({ length: CELL_COUNT }, () => 0),
       mistakes: 0,
       hintsUsed: 0,
-      elapsedSeconds: 0,
+      elapsedSeconds,
       status: "active",
       completedAt: null,
       updatedAt: new Date().toISOString(),
