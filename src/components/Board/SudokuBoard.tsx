@@ -11,6 +11,33 @@ import { SudokuCell } from "./SudokuCell";
 
 const ROWS = Array.from({ length: BOARD_SIZE }, (_, i) => i);
 
+// The 3x3 box boundaries fall one third and two thirds across the board. Drawn
+// as a dedicated layer on top of the cells (centred 2px lines) so the major
+// lines never get painted over by an adjacent cell's lighter border.
+const BOX_FRACTIONS = [1 / 3, 2 / 3];
+const MAJOR_LINE = 2;
+
+function MajorGridLines() {
+  return (
+    <View pointerEvents="none" className="absolute inset-0">
+      {BOX_FRACTIONS.map((fraction) => (
+        <View
+          key={`v-${fraction}`}
+          className="bg-grid-major absolute top-0 bottom-0"
+          style={{ left: `${fraction * 100}%`, width: MAJOR_LINE, marginLeft: -MAJOR_LINE / 2 }}
+        />
+      ))}
+      {BOX_FRACTIONS.map((fraction) => (
+        <View
+          key={`h-${fraction}`}
+          className="bg-grid-major absolute right-0 left-0"
+          style={{ top: `${fraction * 100}%`, height: MAJOR_LINE, marginTop: -MAJOR_LINE / 2 }}
+        />
+      ))}
+    </View>
+  );
+}
+
 export function SudokuBoard({ size }: { size?: number }) {
   const game = useGameStore((s) => s.game);
   const selectedCell = useGameStore((s) => s.selectedCell);
@@ -80,6 +107,7 @@ export function SudokuBoard({ size }: { size?: number }) {
           })}
         </View>
       ))}
+      <MajorGridLines />
     </View>
   );
 }
