@@ -3,23 +3,33 @@ import type { DailyTrack } from "@/domain/daily";
 import { getCompletedDailyDateKeys, getDailyForGame } from "@/data/repositories/dailyRepository";
 import {
   getCompletedGameStats,
+  getDailyTrackStats,
   type CompletedGameStats,
+  type DailyTrackStat,
 } from "@/data/repositories/statsRepository";
 import { computeStreak, type Streak } from "@/domain/streak";
 import { getLocalDateKey } from "@/services/dailyService";
 
-export type GameStats = CompletedGameStats & {
-  streak: Streak;
+export type GameStats = {
+  /** Ordinary (non-daily) play, broken down by pickable difficulty. */
+  normal: CompletedGameStats;
+  /** Daily play, kept separate from normal so the two never blend. */
+  daily: {
+    byTrack: Record<DailyTrack, DailyTrackStat>;
+    /** Streak for the normal "daily" track (the challenge track has none). */
+    streak: Streak;
+  };
 };
 
-/** Everything the Stats screen needs: completed-game aggregates + daily streak. */
+/** Everything the Stats screen needs: normal aggregates + per-track daily stats + streak. */
 export async function getGameStats(): Promise<GameStats> {
-  const [completed, dailyKeys] = await Promise.all([
+  const [normal, byTrack, dailyKeys] = await Promise.all([
     getCompletedGameStats(),
-    getCompletedDailyDateKeys(),
+    getDailyTrackStats(),
+    getCompletedDailyDateKeys("daily"),
   ]);
   const streak = computeStreak(dailyKeys, getLocalDateKey());
-  return { ...completed, streak };
+  return { normal, daily: { byTrack, streak } };
 }
 
 export type DailyCompletionInfo = {
