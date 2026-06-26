@@ -114,9 +114,9 @@ function SudokuCellComponent(props: SudokuCellProps) {
       accessibilityState={{ selected: isSelected }}
       className={clsx(
         "flex-1 items-center justify-center border-[0.5px] border-grid-minor",
-        // Thicker, high-contrast separators on 3x3 box boundaries.
-        col % 3 === 2 && col !== 8 && "border-r-2 border-r-grid-major",
-        row % 3 === 2 && row !== 8 && "border-b-2 border-b-grid-major",
+        // The thicker 3x3 box boundaries are drawn as a single overlay layer in
+        // SudokuBoard so the major lines always sit on top of the lighter cell
+        // lines, rather than relying on per-cell border paint order.
         background(props),
       )}
     >
