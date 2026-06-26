@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.com.barrymichaeldoyle.sudokuoffline"],
+        "appIDs": ["LBZ6C9H52C.com.barrymichaeldoyle.sudokuoffline"],
         "components": [
           {
             "/": "/play/*",
