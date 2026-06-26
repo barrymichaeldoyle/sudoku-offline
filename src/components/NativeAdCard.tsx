@@ -1,34 +1,33 @@
 import { clsx } from "clsx";
 import { useEffect, useState } from "react";
-import { Image, Platform, StyleSheet } from "react-native";
+import { Image, StyleSheet } from "react-native";
 import {
   NativeAd,
   NativeAdView,
   NativeAsset,
   NativeAssetType,
   NativeMediaView,
-  TestIds,
 } from "react-native-google-mobile-ads";
 
+import { NATIVE_AD_UNIT_IDS } from "@/domain/adUnits";
 import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { Text, View } from "@/tw";
 
-// iOS uses the real AdMob native-completion unit. Android stays on Google's
-// test unit until the Android AdMob app and ad units exist. Requested
-// non-personalized per the app's ad policy (no ATT prompt).
-const NATIVE_AD_UNIT_ID = Platform.select({
-  ios: "ca-app-pub-3482457944656598/9438235844",
-  default: TestIds.NATIVE,
-});
-
 /**
  * A non-intrusive native ad styled to match the app, for non-gameplay surfaces
- * (e.g. the success screen). Renders nothing for premium ("Remove Ads") users,
- * on web (no SDK — see NativeAdCard.web.tsx), or until an ad has loaded, so it
- * can be dropped in unconditionally.
+ * (e.g. the success screen, the Stats page). Renders nothing for premium
+ * ("Remove Ads") users, on web (no SDK — see NativeAdCard.web.tsx), or until an
+ * ad has loaded, so it can be dropped in unconditionally. Pass `unitId` to pick
+ * the placement's AdMob unit (see NATIVE_AD_UNIT_IDS); defaults to completion.
  */
-export function NativeAdCard({ className }: { className?: string }) {
+export function NativeAdCard({
+  className,
+  unitId = NATIVE_AD_UNIT_IDS.completion,
+}: {
+  className?: string;
+  unitId?: string;
+}) {
   const isPremium = useEntitlementStore((s) => s.entitlements[ENTITLEMENT_REMOVE_ADS] === true);
   const [nativeAd, setNativeAd] = useState<NativeAd | null>(null);
 
@@ -37,7 +36,7 @@ export function NativeAdCard({ className }: { className?: string }) {
       return;
     }
     let cancelled = false;
-    NativeAd.createForAdRequest(NATIVE_AD_UNIT_ID, { requestNonPersonalizedAdsOnly: true })
+    NativeAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true })
       .then((ad) => {
         if (cancelled) {
           ad.destroy();
@@ -51,7 +50,7 @@ export function NativeAdCard({ className }: { className?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [isPremium]);
+  }, [isPremium, unitId]);
 
   // Free the native resources when the ad changes or the card unmounts.
   useEffect(() => {

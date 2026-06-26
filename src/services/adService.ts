@@ -32,6 +32,26 @@ const REWARDED_HINT_AD_UNIT_ID = Platform.select({
   default: TestIds.REWARDED,
 });
 
+/**
+ * Devices that should be served Google *test* ads from our **real** ad units —
+ * the safe, account-policy-compliant way to see the ad flow on a real device or
+ * TestFlight build (you must never tap your own live ads). Set
+ * `EXPO_PUBLIC_AD_TEST_DEVICE_IDS` to a comma-separated list of device hashes;
+ * absent/empty in production builds, so real users are unaffected. The
+ * simulator's built-in `EMULATOR` id is always included in dev so local runs
+ * get fills too.
+ *
+ * To find a device's hash, run a build, trigger an ad, and read the device log
+ * line: "To get test ads on this device, set ... testDeviceIdentifiers = @[ ... ]".
+ */
+function testDeviceIdentifiers(): string[] {
+  const fromEnv = (process.env.EXPO_PUBLIC_AD_TEST_DEVICE_IDS ?? "")
+    .split(",")
+    .map((id: string) => id.trim())
+    .filter(Boolean);
+  return __DEV__ ? ["EMULATOR", ...fromEnv] : fromEnv;
+}
+
 let sdkReady: Promise<void> | null = null;
 /** The currently loaded/loading rewarded ad and its listener cleanups. */
 let pending: { ad: RewardedAd; cleanup: () => void } | null = null;
@@ -39,9 +59,14 @@ let isLoaded = false;
 
 function ensureSdk(): Promise<void> {
   if (!sdkReady) {
-    sdkReady = mobileAds()
-      .initialize()
-      .then(() => undefined);
+    sdkReady = (async () => {
+      const ids = testDeviceIdentifiers();
+      if (ids.length > 0) {
+        // Must be set before initialize() so the very first request honours it.
+        await mobileAds().setRequestConfiguration({ testDeviceIdentifiers: ids });
+      }
+      await mobileAds().initialize();
+    })();
   }
   return sdkReady;
 }

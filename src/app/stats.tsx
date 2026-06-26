@@ -3,8 +3,10 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { useWindowDimensions } from "react-native";
 
+import { NativeAdCard } from "@/components/NativeAdCard";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { NATIVE_AD_UNIT_IDS } from "@/domain/adUnits";
 import { DAILY_TRACKS, type DailyTrack } from "@/domain/daily";
 import { NEW_GAME_DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
@@ -192,6 +194,11 @@ export default function StatsScreen() {
                 );
               })}
             </View>
+
+            {/* Calm, non-gameplay surface — a single native card below the stats.
+                Self-gates on premium / no-fill, so it just renders nothing when
+                there's no ad or the user has Remove Ads. */}
+            <NativeAdCard unitId={NATIVE_AD_UNIT_IDS.stats} />
           </View>
         </ScrollView>
       )}
