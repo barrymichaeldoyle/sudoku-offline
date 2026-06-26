@@ -451,15 +451,19 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
               >
                 {formatDuration(elapsed)}
               </Text>
-              {/* Always rendered (toggles pause/resume) so the row never reflows. */}
-              <Pressable
-                onPress={running ? pause : resume}
-                accessibilityRole="button"
-                accessibilityLabel={running ? "Pause game" : "Resume game"}
-                className="bg-surface-muted h-7 w-7 items-center justify-center rounded-full active:opacity-70"
-              >
-                <SimpleIcon name={running ? "pause" : "play"} tone="muted" size={14} />
-              </Pressable>
+              {/* Toggles pause/resume while the game is live; once completed the
+                  timer is frozen, so there's nothing to pause and the control is
+                  dropped. (No reflow concern after a win.) */}
+              {game.status === "completed" ? null : (
+                <Pressable
+                  onPress={running ? pause : resume}
+                  accessibilityRole="button"
+                  accessibilityLabel={running ? "Pause game" : "Resume game"}
+                  className="bg-surface-muted h-7 w-7 items-center justify-center rounded-full active:opacity-70"
+                >
+                  <SimpleIcon name={running ? "pause" : "play"} tone="muted" size={14} />
+                </Pressable>
+              )}
             </View>
           </StatItem>
         ) : null}

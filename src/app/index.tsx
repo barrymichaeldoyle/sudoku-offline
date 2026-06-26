@@ -397,46 +397,72 @@ function DailyCard({
   const large = useWindowDimensions().width >= 700;
   const completed = progress.completed;
   const inProgress = progress.game != null;
-  // A completed daily can still be opened to revisit its result + solved grid.
-  const canViewResult = completed && progress.game != null;
-  const meta = completed
-    ? "Completed · View result"
-    : inProgress
-      ? `Resume · ${progressDetail(progress.game as GameState, settings)}`
-      : subtitle;
+
+  // A finished daily gets its own celebratory, success-tinted treatment so it
+  // reads as an accomplishment rather than an unfinished task. It stays tappable
+  // to revisit the result + solved grid when we still have the game.
+  if (completed) {
+    const canViewResult = progress.game != null;
+    const solveTime =
+      settings.timerEnabled && progress.game
+        ? formatDuration((progress.game as GameState).elapsedSeconds)
+        : null;
+    const tail = canViewResult ? "View result ›" : "Done for today";
+    const footer = solveTime ? `${solveTime} · ${tail}` : tail;
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={!canViewResult}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !canViewResult }}
+        accessibilityLabel={
+          canViewResult ? `${title}, completed today, view result` : `${title}, completed today`
+        }
+        className={clsx(
+          "border-success/30 bg-success/10 flex-1 justify-between gap-3 rounded-2xl border",
+          large ? "p-5" : "p-4",
+          canViewResult ? "active:opacity-80" : "opacity-95",
+        )}
+      >
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-success text-base font-bold">✓</Text>
+          <Text className="text-success text-xs font-bold tracking-widest uppercase">Solved</Text>
+        </View>
+        <View className="gap-0.5">
+          <Text className={clsx("text-ink font-semibold", large ? "text-xl" : "text-base")}>
+            {title}
+          </Text>
+          <Text className={clsx("text-success font-medium", large ? "text-base" : "text-sm")}>
+            {footer}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
+
+  const meta = inProgress
+    ? `Resume · ${progressDetail(progress.game as GameState, settings)}`
+    : subtitle;
 
   return (
     <Pressable
       onPress={onPress}
-      disabled={completed && !canViewResult}
       accessibilityRole="button"
-      accessibilityState={{ disabled: completed && !canViewResult }}
-      accessibilityLabel={completed ? `${title}, completed today, view result` : title}
+      accessibilityLabel={title}
       className={clsx(
-        "border-line bg-surface flex-1 gap-2 rounded-2xl border",
+        "border-line bg-surface flex-1 gap-2 rounded-2xl border active:opacity-80",
         large ? "p-5" : "p-4",
-        completed && !canViewResult ? "opacity-70" : "active:opacity-80",
       )}
     >
-      <View className="flex-row items-center justify-between">
-        <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
-        {completed ? <Text className="text-success text-sm font-bold">✓</Text> : null}
-      </View>
+      <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
       <View className="gap-0.5">
         <Text className={clsx("text-ink font-semibold", large ? "text-xl" : "text-base")}>
           {title}
         </Text>
-        <Text
-          className={clsx(
-            large ? "text-base" : "text-sm",
-            completed ? "text-success font-medium" : "text-ink-soft",
-          )}
-        >
-          {meta}
-        </Text>
+        <Text className={clsx("text-ink-soft", large ? "text-base" : "text-sm")}>{meta}</Text>
       </View>
       {/* Slim progress bar for an in-progress daily — a nudge to come back. */}
-      {!completed && inProgress ? (
+      {inProgress ? (
         <View className="bg-surface-muted h-1 overflow-hidden rounded-full">
           <View
             className={clsx("h-full rounded-full", accent)}
