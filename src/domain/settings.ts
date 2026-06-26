@@ -47,7 +47,9 @@ export const DEFAULT_SETTINGS: Settings = {
   hapticsEnabled: true,
   autoNoteCleanup: true,
   autoNoteCleanupScope: "all",
-  showRemainingCounts: true,
+  // Off by default (incl. the full-experience preset): the under-pad counts are
+  // too noisy for the average player. Available as an opt-in toggle in Settings.
+  showRemainingCounts: false,
   disableCompletedNumbers: true,
   instantHintsEnabled: false,
   dailyReminderEnabled: false,

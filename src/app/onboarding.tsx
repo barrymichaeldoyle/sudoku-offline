@@ -45,7 +45,7 @@ export default function OnboardingScreen() {
             />
             <ChoiceCard
               title="Full experience"
-              description="Timer, mistake checking, helpful highlights, and remaining counts all switched on."
+              description="Timer, mistake checking, and helpful highlights all switched on."
               onPress={() => choose(false)}
               primary
             />
