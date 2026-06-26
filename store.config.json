@@ -1,6 +1,7 @@
 {
   "configVersion": 0,
   "apple": {
+    "version": "1.0.0",
     "categories": [["GAMES", "GAMES_PUZZLE"], "ENTERTAINMENT"],
     "advisory": {
       "alcoholTobaccoOrDrugUseOrReferences": "NONE",
