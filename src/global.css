@@ -51,6 +51,19 @@
   --color-danger: #c75c5c;
   --color-success: #5f9e7d;
 
+  /*
+   * Difficulty ramp — a dedicated, evenly-spaced hue progression
+   * (green → gold → orange → red → violet) so each level is distinct at a
+   * glance, even at a tiny dot. Kept separate from the semantic tokens above:
+   * easy and medium previously borrowed success + accent, two desaturated
+   * greens that were hard to tell apart.
+   */
+  --color-difficulty-easy: #4f9d6b; /* green */
+  --color-difficulty-medium: #d99a2b; /* gold */
+  --color-difficulty-hard: #dd6f3c; /* orange */
+  --color-difficulty-expert: #cf5151; /* red */
+  --color-difficulty-extreme: #8a5cc7; /* violet */
+
   /* Board grid */
   --color-grid-major: #2f3a5f; /* 3x3 box boundaries + board frame */
   --color-grid-minor: #c9c1b3; /* individual cell lines */
@@ -96,6 +109,13 @@
     --color-warning: #fdb022;
     --color-danger: #fda29b;
     --color-success: #75e0a7;
+
+    /* Difficulty ramp — brighter so each hue reads on the deep navy canvas. */
+    --color-difficulty-easy: #5fcf90; /* green */
+    --color-difficulty-medium: #f5c451; /* gold */
+    --color-difficulty-hard: #f59042; /* orange */
+    --color-difficulty-expert: #f87f7f; /* red */
+    --color-difficulty-extreme: #b78af0; /* violet */
 
     /* Board grid */
     --color-grid-major: #e4e7ec;

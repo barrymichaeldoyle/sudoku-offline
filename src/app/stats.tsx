@@ -8,28 +8,16 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { NATIVE_AD_UNIT_IDS } from "@/domain/adUnits";
 import { DAILY_TRACKS, type DailyTrack } from "@/domain/daily";
-import { NEW_GAME_DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
+import {
+  DAILY_TRACK_DOT,
+  DIFFICULTY_DOT,
+  DIFFICULTY_LABELS,
+} from "@/domain/sudoku/difficultyPresentation";
+import { NEW_GAME_DIFFICULTIES } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
 import { getGameStats, type GameStats } from "@/services/statsService";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { ScrollView, Text, View } from "@/tw";
-
-const DIFFICULTY_LABELS: Record<Difficulty, string> = {
-  easy: "Easy",
-  medium: "Medium",
-  hard: "Hard",
-  expert: "Expert",
-  extreme: "Extreme",
-};
-
-// A calm colour cue per difficulty, mirroring the Home screen.
-const DIFFICULTY_DOT: Record<Difficulty, string> = {
-  easy: "bg-success",
-  medium: "bg-accent",
-  hard: "bg-warning",
-  expert: "bg-danger",
-  extreme: "bg-primary",
-};
 
 // The two daily tracks, shown as their own cards so normal and daily never blend.
 const DAILY_TRACK_LABELS: Record<DailyTrack, string> = {
@@ -40,12 +28,6 @@ const DAILY_TRACK_LABELS: Record<DailyTrack, string> = {
 const DAILY_TRACK_NOTES: Record<DailyTrack, string> = {
   daily: "Medium · feeds your streak",
   challenge: "Extreme",
-};
-
-// Reuse the difficulty colour cue: the daily puzzle is medium, the challenge extreme.
-const DAILY_TRACK_DOT: Record<DailyTrack, string> = {
-  daily: DIFFICULTY_DOT.medium,
-  challenge: DIFFICULTY_DOT.extreme,
 };
 
 const SECTION_LABEL_CLASS = "text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase";
