@@ -45,3 +45,9 @@ example
 # generated native folders
 /ios
 /android
+
+# Playwright MCP screenshots/logs (not used for this app; web is unsupported)
+.playwright-mcp/
+
+# Local agent git worktrees
+.claude/worktrees/
