@@ -1,9 +1,9 @@
 // Build App Store marketing screenshots from raw device captures.
 //
 // Composites each real in-app capture (assets/store/screenshots/raw/) onto a
-// calm cream frame with a large caption, at the exact resolutions Apple
-// requires: iPhone 6.9" (1320x2868) and iPad 13" (2064x2752). App Store Connect
-// auto-scales those down for every smaller device, so these two slots cover all.
+// warm cream frame with a large caption, at the exact resolutions Apple
+// requires: iPhone 6.5" (1284x2778) and iPad 13" (2064x2752). These are the
+// sizes App Store Connect accepts in the respective upload slots.
 //
 // Re-capture the raw sources from the simulators, then run: pnpm generate:screenshots
 // Style follows docs/DESIGN_GUIDELINES.md §20.2.
@@ -39,12 +39,12 @@ const FONT = "Helvetica Neue, Helvetica, Arial, sans-serif";
 // caption/device frame geometry.
 const DEVICES = {
   iphone: {
-    canvas: { w: 1320, h: 2868 },
+    canvas: { w: 1284, h: 2778 },
     src: { w: 1206, h: 2622 },
-    caption: { size: 92, top: 210 },
-    subtitle: { size: 46, gap: 74 },
+    caption: { size: 90, top: 200 },
+    subtitle: { size: 45, gap: 72 },
     // screenW drives everything; the body adds `bezel` on every side.
-    frame: { screenW: 968, bezel: 20, top: 500, bodyRadius: 150 },
+    frame: { screenW: 940, bezel: 20, top: 470, bodyRadius: 146 },
   },
   ipad: {
     canvas: { w: 2064, h: 2752 },
@@ -57,14 +57,14 @@ const DEVICES = {
 
 // Each shot reuses the same raw filename across both devices (raw/<device>-<name>.png).
 const SHOTS = [
-  { name: "1-home", caption: "Calm, classic Sudoku", subtitle: "Works offline — no Wi-Fi needed" },
+  { name: "1-home", caption: "Clean, classic Sudoku", subtitle: "Works offline, no Wi-Fi needed" },
   {
     name: "2-game",
     caption: "No ads while you play",
     subtitle: "Stay focused from start to finish",
   },
   { name: "3-stats", caption: "Build a daily streak", subtitle: "Track your times and progress" },
-  { name: "4-dark", caption: "Easy on the eyes", subtitle: "A calm dark mode for night sessions" },
+  { name: "4-dark", caption: "Easy on the eyes", subtitle: "Dark mode for late-night solving" },
 ];
 
 function escapeXml(s) {
