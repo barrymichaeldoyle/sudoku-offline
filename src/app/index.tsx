@@ -13,6 +13,11 @@ import { abandonGame, getActiveGame, getGameById } from "@/data/repositories/gam
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import { isGivenCell } from "@/domain/sudoku/board";
 import {
+  DAILY_TRACK_DOT,
+  DIFFICULTY_DOT,
+  DIFFICULTY_LABELS,
+} from "@/domain/sudoku/difficultyPresentation";
+import {
   CELL_COUNT,
   NEW_GAME_DIFFICULTIES,
   type Difficulty,
@@ -27,30 +32,12 @@ import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { Pressable, ScrollView, Text, View } from "@/tw";
 
-const DIFFICULTY_LABELS: Record<Difficulty, string> = {
-  easy: "Easy",
-  medium: "Medium",
-  hard: "Hard",
-  expert: "Expert",
-  extreme: "Extreme",
-};
-
 const DIFFICULTY_HINTS: Record<Difficulty, string> = {
   easy: "Relaxed solving",
   medium: "A steady challenge",
   hard: "For regular players",
   expert: "Few givens, real focus",
   extreme: "The toughest grids",
-};
-
-// A calm colour cue per difficulty — paired with the text label, never the sole
-// indicator (see design guidelines §15.4).
-const DIFFICULTY_DOT: Record<Difficulty, string> = {
-  easy: "bg-success",
-  medium: "bg-accent",
-  hard: "bg-warning",
-  expert: "bg-danger",
-  extreme: "bg-primary",
 };
 
 type DailyCardState = {
@@ -250,7 +237,7 @@ export default function Home() {
             <DailyCard
               title="Daily Puzzle"
               subtitle="Today's puzzle"
-              accent="bg-accent"
+              accent={DAILY_TRACK_DOT.daily}
               progress={dailyCards.daily}
               settings={settings}
               onPress={() =>
@@ -262,7 +249,7 @@ export default function Home() {
             <DailyCard
               title="Daily Challenge"
               subtitle="A tougher grid"
-              accent="bg-warning"
+              accent={DAILY_TRACK_DOT.challenge}
               progress={dailyCards.challenge}
               settings={settings}
               onPress={() =>
