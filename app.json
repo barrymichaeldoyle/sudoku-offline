@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Sudoku Offline",
+    "name": "Offline Sudoku",
     "slug": "sudoku-offline",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,6 @@
     "scheme": "sudokuoffline",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.barrymichaeldoyle.sudokuoffline",
       "supportsTablet": true,
       "config": {
