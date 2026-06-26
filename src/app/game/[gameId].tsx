@@ -22,6 +22,7 @@ import {
   loadReminderPromptSeen,
   setReminderPromptSeen,
 } from "@/data/repositories/settingsRepository";
+import { describeChallengeOutcome, type ChallengeTarget } from "@/domain/shareLink";
 import { formatShareText } from "@/domain/shareText";
 import { isGivenCell } from "@/domain/sudoku/board";
 import { NEW_GAME_DIFFICULTIES, type GameState } from "@/domain/sudoku/types";
@@ -49,7 +50,10 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 
 export default function GameScreen() {
   const router = useRouter();
-  const { gameId } = useLocalSearchParams<{ gameId: string }>();
+  // `bt`/`bm` (beat-time / beat-mistakes) arrive when this game was opened from a
+  // shared challenge link — the target the player is trying to beat.
+  const { gameId, bt, bm } = useLocalSearchParams<{ gameId: string; bt?: string; bm?: string }>();
+  const beatTarget = parseBeatTarget(bt, bm);
 
   const game = useGameStore((s) => s.game);
   const loading = useGameStore((s) => s.loading);
@@ -121,6 +125,7 @@ export default function GameScreen() {
     <Screen className="bg-canvas flex-1">
       <View className="w-full flex-1 gap-3 self-center p-4">
         <GameHeader onBack={() => router.back()} onSettings={() => router.push("/settings")} />
+        {beatTarget && game.status !== "completed" ? <ChallengeBanner target={beatTarget} /> : null}
         <View
           // Bottom-aligned so the grid→actions gap equals the actions→numbers
           // gap (both the column's gap-3); leftover slack sits above the grid.
@@ -173,7 +178,7 @@ export default function GameScreen() {
           {/* Confetti only celebrates the actual win, not a later revisit of a
               completed daily/challenge from Home. */}
           {justCompleted ? <ConfettiBurst /> : null}
-          <CompletionOverlay justCompleted={justCompleted} />
+          <CompletionOverlay justCompleted={justCompleted} beatTarget={beatTarget} />
         </>
       ) : null}
     </Screen>
@@ -668,7 +673,13 @@ function HintPromptOverlay() {
   );
 }
 
-function CompletionOverlay({ justCompleted }: { justCompleted: boolean }) {
+function CompletionOverlay({
+  justCompleted,
+  beatTarget,
+}: {
+  justCompleted: boolean;
+  beatTarget: ChallengeTarget | null;
+}) {
   const router = useRouter();
   const game = useGameStore((s) => s.game);
   const setGame = useGameStore((s) => s.setGame);
@@ -734,6 +745,15 @@ function CompletionOverlay({ justCompleted }: { justCompleted: boolean }) {
     return null;
   }
 
+  // Verdict against a shared challenge's target, gated by the same settings that
+  // decide which stats the player can see.
+  const challengeOutcome = beatTarget
+    ? describeChallengeOutcome(beatTarget, {
+        timeSeconds: settings.timerEnabled ? game.elapsedSeconds : null,
+        mistakes: settings.mistakeCheckingEnabled ? game.mistakes : null,
+      })
+    : null;
+
   const onShare = async () => {
     void track("share_result_tapped", { difficulty: game.difficulty });
     try {
@@ -742,6 +762,7 @@ function CompletionOverlay({ justCompleted }: { justCompleted: boolean }) {
           title: "My Sudoku result",
           message: formatShareText({
             difficulty: game.difficulty,
+            puzzleId: game.puzzleId,
             elapsedSeconds: game.elapsedSeconds,
             mistakes: game.mistakes,
             hintsUsed: game.hintsUsed,
@@ -821,6 +842,11 @@ function CompletionOverlay({ justCompleted }: { justCompleted: boolean }) {
               🔥 {daily.streak.current} day streak
             </Text>
           ) : null}
+          {challengeOutcome ? (
+            <Text className="text-primary text-center text-base font-semibold">
+              {challengeOutcome}
+            </Text>
+          ) : null}
 
           {showReminderPrompt ? (
             <ReminderPrompt
@@ -892,6 +918,40 @@ function ReminderPrompt({ onEnable, onDismiss }: { onEnable: () => void; onDismi
       >
         <Text className="text-ink-soft text-sm font-medium">Not now</Text>
       </Pressable>
+    </View>
+  );
+}
+
+/** Parse the beat-time/beat-mistakes link params into a challenge target, or
+ * null when neither is present (a plain "play this puzzle" link). */
+function parseBeatTarget(bt?: string, bm?: string): ChallengeTarget | null {
+  const toCount = (value?: string) => {
+    if (value == null) {
+      return null;
+    }
+    const n = Number.parseInt(value, 10);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  const timeSeconds = toCount(bt);
+  const mistakes = toCount(bm);
+  return timeSeconds == null && mistakes == null ? null : { timeSeconds, mistakes };
+}
+
+/** Slim banner shown while playing a puzzle opened from a shared challenge link,
+ * reminding the player what they're racing against. */
+function ChallengeBanner({ target }: { target: ChallengeTarget }) {
+  const parts: string[] = [];
+  if (target.timeSeconds != null) {
+    parts.push(`⏱ ${formatDuration(target.timeSeconds)}`);
+  }
+  if (target.mistakes != null) {
+    parts.push(`❌ ${target.mistakes}`);
+  }
+  return (
+    <View className="border-line bg-surface-muted flex-row items-center justify-center rounded-2xl border px-4 py-2">
+      <Text className="text-ink text-center text-sm font-semibold">
+        🎯 Beat this run{parts.length > 0 ? `: ${parts.join(" · ")}` : ""}
+      </Text>
     </View>
   );
 }

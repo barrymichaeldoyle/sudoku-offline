@@ -21,6 +21,7 @@ export type AnalyticsEventName =
   | "onboarding_completed"
   | "share_result_tapped"
   | "share_result_completed"
+  | "challenge_link_opened"
   | "daily_reminder_permission_requested"
   | "daily_reminder_permission_granted"
   | "daily_reminder_permission_denied"

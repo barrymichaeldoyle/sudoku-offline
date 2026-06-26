@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.com.barrymichaeldoyle.sudokuoffline"],
+        "components": [
+          {
+            "/": "/play/*",
+            "comment": "Shared puzzle challenge links open the matching puzzle in the app"
+          }
+        ]
+      }
+    ]
+  }
+}

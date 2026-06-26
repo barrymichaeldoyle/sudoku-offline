@@ -10,6 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.barrymichaeldoyle.sudokuoffline",
       "supportsTablet": true,
+      "associatedDomains": ["applinks:sudokuoffline.expo.app"],
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -22,7 +23,15 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "https", "host": "sudokuoffline.expo.app" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",
