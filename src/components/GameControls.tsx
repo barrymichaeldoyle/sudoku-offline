@@ -60,6 +60,9 @@ export function GameControls() {
   const eraseArmed = useGameStore((s) => s.eraseArmed);
   const notesMode = useGameStore((s) => s.notesMode);
   const canUndo = useGameStore((s) => s.undoStack.length > 0);
+  // A finished board is read-only, so its edit tools are locked while the
+  // player reviews it (Reset stays available on the board itself).
+  const completed = useGameStore((s) => s.game?.status === "completed");
   const toggleNotesMode = useGameStore((s) => s.toggleNotesMode);
   const erase = useGameStore((s) => s.erase);
   const requestHint = useGameStore((s) => s.requestHint);
@@ -68,11 +71,12 @@ export function GameControls() {
 
   return (
     <View className="flex-row gap-2">
-      <ControlButton label="Undo" icon="undo" disabled={!canUndo} onPress={undo} />
+      <ControlButton label="Undo" icon="undo" disabled={completed || !canUndo} onPress={undo} />
       <ControlButton
         label="Erase"
         icon="erase"
         active={inputMode === "number" && eraseArmed}
+        disabled={completed}
         onPress={erase}
       />
       <ControlButton
@@ -80,12 +84,13 @@ export function GameControls() {
         icon="notes"
         active={notesMode}
         checked={notesMode}
+        disabled={completed}
         onPress={toggleNotesMode}
       />
       <ControlButton
         label={hintCooldown > 0 ? `Hint ${hintCooldown}s` : "Hint"}
         icon="hint"
-        disabled={hintCooldown > 0}
+        disabled={completed || hintCooldown > 0}
         onPress={requestHint}
       />
     </View>

@@ -116,6 +116,9 @@ export default function GameScreen() {
   }
 
   const paused = timerEnabled && game.status === "paused" && !justCompleted;
+  // A finished board is read-only: the inputs are locked while the player
+  // reviews it, but Reset stays live so they can start the puzzle over.
+  const completed = game.status === "completed";
   // Reset is only meaningful once the player has entered a value or a note.
   const hasProgress =
     game.values.some((v, i) => v != null && !isGivenCell(game.givens, i)) ||
@@ -124,7 +127,15 @@ export default function GameScreen() {
   return (
     <Screen className="bg-canvas flex-1">
       <View className="w-full flex-1 gap-3 self-center p-4">
-        <GameHeader onBack={() => router.back()} onSettings={() => router.push("/settings")} />
+        {/* Lifted above the completion scrim (z-10) so its back/settings stay
+            tappable while the results card is up; back goes Home once finished
+            so a tap there does the obvious thing instead of a dead click. */}
+        <View className="z-20">
+          <GameHeader
+            onBack={() => (game.status === "completed" ? router.replace("/") : router.back())}
+            onSettings={() => router.push("/settings")}
+          />
+        </View>
         {beatTarget && game.status !== "completed" ? <ChallengeBanner target={beatTarget} /> : null}
         <View
           // Bottom-aligned so the grid→actions gap equals the actions→numbers
@@ -154,11 +165,21 @@ export default function GameScreen() {
           <GameControls />
           <NumberPad />
         </View>
+        {/* Sits inside the content column (not the Screen) so the header above
+            can out-rank its scrim and stay tappable. */}
+        {game.status === "completed" ? (
+          <CompletionOverlay justCompleted={justCompleted} beatTarget={beatTarget} />
+        ) : null}
       </View>
+      {/* Confetti only celebrates the actual win, not a later revisit of a
+          completed daily/challenge from Home. Kept at the Screen level so it
+          bleeds to the edges. */}
+      {game.status === "completed" && justCompleted ? <ConfettiBurst /> : null}
       {hintPromptVisible && !paused && !justCompleted ? <HintPromptOverlay /> : null}
-      {showResetConfirm && game.status !== "completed" ? (
+      {showResetConfirm ? (
         <ResetConfirmOverlay
           timerEnabled={timerEnabled}
+          completed={completed}
           onConfirm={(keepTime) => {
             restart({ keepTime });
             setShowResetConfirm(false);
@@ -172,14 +193,6 @@ export default function GameScreen() {
           onKeepTrying={dismissIncorrectComplete}
           onRestart={(keepTime) => restart({ keepTime })}
         />
-      ) : null}
-      {game.status === "completed" ? (
-        <>
-          {/* Confetti only celebrates the actual win, not a later revisit of a
-              completed daily/challenge from Home. */}
-          {justCompleted ? <ConfettiBurst /> : null}
-          <CompletionOverlay justCompleted={justCompleted} beatTarget={beatTarget} />
-        </>
       ) : null}
     </Screen>
   );
@@ -208,10 +221,12 @@ function ResetButton({ onPress, disabled }: { onPress: () => void; disabled?: bo
 /** "Are you sure?" before wiping the current board back to its givens. */
 function ResetConfirmOverlay({
   timerEnabled,
+  completed,
   onConfirm,
   onCancel,
 }: {
   timerEnabled: boolean;
+  completed?: boolean;
   onConfirm: (keepTime: boolean) => void;
   onCancel: () => void;
 }) {
@@ -223,13 +238,18 @@ function ResetConfirmOverlay({
       className="absolute inset-0 items-center justify-center bg-black/50 p-8"
     >
       <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
-        <Text className="text-ink text-center text-2xl font-bold">Restart puzzle?</Text>
+        <Text className="text-ink text-center text-2xl font-bold">
+          {completed ? "Restart this puzzle?" : "Restart puzzle?"}
+        </Text>
         <Text className="text-ink-soft text-center">
-          This clears every number, note, and mistake for this puzzle and starts it over. This can't
-          be undone.
+          {completed
+            ? "This clears your finished result and starts the puzzle over from scratch. This can't be undone."
+            : "This clears every number, note, and mistake for this puzzle and starts it over. This can't be undone."}
         </Text>
 
-        {timerEnabled ? (
+        {/* A finished run always restarts from a fresh clock, so the keep-time
+            option only makes sense mid-game. */}
+        {timerEnabled && !completed ? (
           <View className="border-line bg-canvas mt-4 flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
             <View className="flex-1 gap-0.5">
               <Text className="text-ink text-base font-medium">Keep my time</Text>
@@ -815,7 +835,7 @@ function CompletionOverlay({
   // float a single control to bring the results back.
   if (viewingBoard) {
     return (
-      <View className="absolute inset-x-0 bottom-0 items-center p-8">
+      <View className="absolute inset-x-0 bottom-0 z-10 items-center p-8">
         <OverlayButton
           icon="trophy"
           label="View Results"
@@ -830,8 +850,19 @@ function CompletionOverlay({
   return (
     <View
       accessibilityViewIsModal
-      className="absolute inset-0 items-center justify-center bg-black/50 p-8"
+      // -inset-4 bleeds the dim past the content column's p-4 so it still
+      // reaches the screen edges; z-10 keeps it under the header (z-20).
+      className="absolute -inset-4 z-10 items-center justify-center p-8"
     >
+      {/* A tap on the dimmed area peeks the finished board rather than being a
+          dead zone — same outcome as the "View Board" button. The card below is
+          a sibling, so taps on it never fall through to this scrim. */}
+      <Pressable
+        className="absolute inset-0 bg-black/50"
+        onPress={() => setViewingBoard(true)}
+        accessibilityRole="button"
+        accessibilityLabel="View your completed board"
+      />
       <View className="border-line bg-surface max-h-full w-full overflow-hidden rounded-3xl border">
         <ScrollView contentContainerClassName="gap-2 p-6" showsVerticalScrollIndicator={false}>
           <Text className="text-center text-4xl">🏆</Text>

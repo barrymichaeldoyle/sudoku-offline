@@ -269,12 +269,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   toggleNotesMode() {
+    if (get().game?.status === "completed") {
+      return;
+    }
     haptics.toggle();
     set((state) => ({ notesMode: !state.notesMode }));
   },
 
   pressCell(index) {
-    const { selectedNumber, eraseArmed } = get();
+    const { game, selectedNumber, eraseArmed } = get();
+    // A finished board is read-only; ignore taps so it can't be edited while
+    // the player reviews it.
+    if (game?.status === "completed") {
+      return;
+    }
     if (getSettings().inputMode === "number") {
       // Erase tool armed → tapping a cell clears it; otherwise place the number.
       if (eraseArmed) {
@@ -290,7 +298,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pressNumber(num) {
-    const { selectedCell } = get();
+    const { game, selectedCell } = get();
+    if (game?.status === "completed") {
+      return;
+    }
     if (getSettings().inputMode === "number") {
       // Selecting a number always disarms the erase tool.
       set((state) => ({
@@ -305,7 +316,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   erase() {
-    const { selectedCell } = get();
+    const { game, selectedCell } = get();
+    if (game?.status === "completed") {
+      return;
+    }
     // Number-first: erase is a toggleable tool (clears any selected number).
     if (getSettings().inputMode === "number") {
       set((state) => ({ eraseArmed: !state.eraseArmed, selectedNumber: null }));
@@ -319,7 +333,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   async requestHint() {
     const { game, hintCooldownUntil } = get();
-    if (!game) {
+    if (!game || game.status === "completed") {
       return;
     }
     // Cooldown: stop hint spamming so the puzzle stays a challenge.
@@ -375,7 +389,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   undo() {
     const { game, undoStack } = get();
-    if (!game || undoStack.length === 0) {
+    if (!game || game.status === "completed" || undoStack.length === 0) {
       return;
     }
     const action = undoStack[undoStack.length - 1];

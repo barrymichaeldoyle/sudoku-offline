@@ -14,6 +14,8 @@ export function NumberPad() {
   const inputMode = useSettingsStore((s) => s.settings.inputMode);
   const selectedNumber = useGameStore((s) => s.selectedNumber);
   const pressNumber = useGameStore((s) => s.pressNumber);
+  // Lock the pad once the puzzle is finished so a peek at the board can't edit it.
+  const completed = game?.status === "completed";
   const showRemainingCounts = useSettingsStore((s) => s.settings.showRemainingCounts);
   const disableCompletedNumbers = useSettingsStore((s) => s.settings.disableCompletedNumbers);
   const large = useWindowDimensions().width >= 700;
@@ -38,7 +40,7 @@ export function NumberPad() {
         // A digit is "complete" once all nine are placed. Only dim/lock it when
         // the player opted in; otherwise it stays a normal, tappable button.
         const isComplete = left <= 0;
-        const locked = disableCompletedNumbers && isComplete;
+        const locked = completed || (disableCompletedNumbers && isComplete);
         return (
           <Pressable
             key={num}
