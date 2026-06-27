@@ -9,6 +9,8 @@ prioritized in [`ROADMAP.md`](./ROADMAP.md).
 ## Release state
 
 - Product name: **Offline Sudoku**.
+- Installed home-screen name: **Sudoku** for the next binary; the submitted
+  1.0.0 binary still displays **Offline Sudoku**.
 - Version: `1.0.0`.
 - iOS: submitted to App Store Connect and Waiting for Review.
 - Apple app ID: `6782209083`.

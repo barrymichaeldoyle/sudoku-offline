@@ -22,6 +22,8 @@ Last reviewed: 2026-06-27.
   substitute for manually releasing this first version.
 - Do not replace the submitted binary for documentation-only or roadmap work.
   If Apple reports an issue, address only that issue and resubmit.
+- The next binary changes `expo.name` to **Sudoku**, shortening the installed
+  home-screen label while retaining **Offline Sudoku** as the App Store title.
 
 ## Completed release setup
 

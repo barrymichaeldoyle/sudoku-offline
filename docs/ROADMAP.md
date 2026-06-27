@@ -71,7 +71,8 @@ paid marketing. Current implementation status lives in
 **Effort:** Small  
 **Dependency:** None for docs/web; app string changes target 1.0.1
 
-**Goal:** make **Offline Sudoku** the only public product name.
+**Goal:** use **Offline Sudoku** consistently as the public/store brand while
+intentionally using **Sudoku** as the shorter installed home-screen label.
 
 **Scope:**
 
@@ -83,8 +84,8 @@ paid marketing. Current implementation status lives in
 **Acceptance criteria:**
 
 - `rg "Sudoku Offline"` returns only intentionally archived/history text.
-- Store title, installed name, screenshots, support/privacy pages, and share
-  landing page all say Offline Sudoku.
+- Store title, screenshots, support/privacy pages, and share landing page say
+  Offline Sudoku; the installed home-screen label says Sudoku.
 - Universal links still open the exact puzzle when installed and show the correct
   App Store CTA when not installed.
 

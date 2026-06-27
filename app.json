@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Offline Sudoku",
+    "name": "Sudoku",
     "slug": "sudoku-offline",
     "version": "1.0.0",
     "orientation": "portrait",
