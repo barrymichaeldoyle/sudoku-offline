@@ -68,8 +68,9 @@ resolved. Remaining work is listing assets and QA (below).
 
 - **App icon** — confirm `assets/images/icon.png` + `assets/expo.icon` is the
   final branded icon, not a placeholder.
-- **Screenshots** — produce App Store screenshots (6.7" + 6.5" iPhone required;
-  iPad set if marked iPad-compatible). None exist yet.
+- **Screenshots** — produce App Store screenshots (6.5" iPhone `1284x2778`
+  and 13" iPad `2064x2752` are what this listing's slots accept). See
+  "Generating store screenshots" below.
 - **Verify live URLs** — privacy + support pages
   (`https://barrymichaeldoyle.github.io/sudoku-offline/privacy.html` and
   `/support.html`) must be reachable; confirm GitHub Pages is published.
@@ -90,3 +91,46 @@ resolved. Remaining work is listing assets and QA (below).
   features (streak restore, challenge archive) are "not yet built." The "Remove
   Ads" surface is hidden for v1 (`IAP_ENABLED = false`); make sure the store
   description and screenshots don't promise it.
+
+---
+
+## Generating store screenshots
+
+The framed marketing images in `assets/store/screenshots/{iphone,ipad}/` are
+built in two stages: capture raw in-app screens, then composite them onto framed
+captions.
+
+**1. Capture raw screens.** Build the app with screenshot mode on so the hidden
+`/shots` deep-link route is live, which seeds a fixed, photogenic state (stats,
+a 7-day streak, both dailies solved, and a known in-progress game) and lands on
+the target screen — no manual tapping:
+
+```
+EXPO_PUBLIC_SCREENSHOT_MODE=1 npx expo run:ios --device "<simulator udid>"
+```
+
+Then, per device, drive the four states via deep links and capture to
+`assets/store/screenshots/raw/<device>-<n>.png` (iPhone 17 Pro → `1206x2622`,
+iPad Pro 13" → `2064x2752`):
+
+```
+xcrun simctl status_bar <udid> override --time 09:41 --batteryState charged \
+  --batteryLevel 100 --cellularBars 4 --wifiBars 3            # clean status bar
+xcrun simctl openurl <udid> "sudokuoffline://shots/home?theme=light"   # 1-home
+xcrun simctl openurl <udid> "sudokuoffline://shots/game?theme=light"   # 2-game
+xcrun simctl openurl <udid> "sudokuoffline://shots/stats?theme=light"  # 3-stats
+xcrun simctl openurl <udid> "sudokuoffline://shots/game?theme=dark"    # 4-dark
+xcrun simctl io <udid> screenshot assets/store/screenshots/raw/iphone-1-home.png
+```
+
+The seed and route live in `src/data/screenshot/seed.ts` and
+`src/app/shots/[screen].tsx`; both are inert without `EXPO_PUBLIC_SCREENSHOT_MODE=1`.
+Adding a locale later means a per-locale captions file plus launching with the
+target locale — the deep-link states stay the same.
+
+**2. Frame them.** `pnpm generate:screenshots` composites every raw capture onto
+the cream caption frame at the required App Store sizes (iPhone `1284x2778`,
+iPad `2064x2752`). Edit captions/sizes in `scripts/generate-store-screenshots.mjs`.
+
+> Heads up: turn the Expo dev-launcher **Tools button** off (dev menu → Tools
+> button) before capturing, or its floating gear overlaps the in-app gear.
