@@ -15,4 +15,7 @@ export const adService: AdService = {
   async showRewardedHintAd() {
     return false;
   },
+  takeNativeAd() {
+    return null;
+  },
 };

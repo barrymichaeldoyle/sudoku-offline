@@ -11,6 +11,7 @@ import {
 
 import { NATIVE_AD_UNIT_IDS } from "@/domain/adUnits";
 import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
+import { adService } from "@/services/adService";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { Text, View } from "@/tw";
 
@@ -35,6 +36,14 @@ export function NativeAdCard({
     if (isPremium) {
       return;
     }
+    // Prefer the ad prefetched at boot so the card paints instantly; the service
+    // hands off ownership (we destroy it on unmount) and warms a replacement.
+    const prefetched = adService.takeNativeAd(unitId);
+    if (prefetched) {
+      setNativeAd(prefetched);
+      return;
+    }
+    // Nothing warmed yet (e.g. taken before boot prefetch landed) — request one.
     let cancelled = false;
     NativeAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true })
       .then((ad) => {

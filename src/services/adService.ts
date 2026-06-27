@@ -1,10 +1,13 @@
 import { Platform } from "react-native";
 import mobileAds, {
   AdEventType,
+  NativeAd,
   RewardedAd,
   RewardedAdEventType,
   TestIds,
 } from "react-native-google-mobile-ads";
+
+import { NATIVE_AD_UNIT_IDS } from "@/domain/adUnits";
 
 /**
  * Ad boundary, backed by Google AdMob (react-native-google-mobile-ads). Product
@@ -21,10 +24,19 @@ import mobileAds, {
  * adService.web.ts, which stubs all of this out. See docs/retention-monetization.md.
  */
 export type AdService = {
-  /** Initialize the SDK and warm a rewarded ad. Safe to call once at boot. */
+  /**
+   * Initialize the SDK and warm a rewarded ad plus one native ad per placement.
+   * Safe to call once at boot; returns quickly (loads run in the background).
+   */
   initialize(): Promise<void>;
   isRewardedHintAvailable(): Promise<boolean>;
   showRewardedHintAd(): Promise<boolean>;
+  /**
+   * Hand off a prefetched, ready-to-render native ad for `unitId`, transferring
+   * ownership to the caller (which must `destroy()` it). Returns null if none is
+   * warmed yet; either way a replacement is loaded for next time.
+   */
+  takeNativeAd(unitId: string): NativeAd | null;
 };
 
 const REWARDED_HINT_AD_UNIT_ID = Platform.select({
@@ -102,10 +114,78 @@ function teardown(): void {
   isLoaded = false;
 }
 
+/**
+ * Prefetched native ads, one slot per placement (unit id). AdMob native ads
+ * expire ~1h after load, so we treat a warmed ad as stale well before then and
+ * refresh it rather than ever hand out a dead creative.
+ */
+const NATIVE_AD_TTL_MS = 50 * 60 * 1000;
+
+type NativeSlot = { ad: NativeAd | null; loadedAt: number; loading: boolean };
+
+const nativeSlots = new Map<string, NativeSlot>();
+
+function nativeSlot(unitId: string): NativeSlot {
+  let slot = nativeSlots.get(unitId);
+  if (!slot) {
+    slot = { ad: null, loadedAt: 0, loading: false };
+    nativeSlots.set(unitId, slot);
+  }
+  return slot;
+}
+
+function isFresh(slot: NativeSlot): boolean {
+  return slot.ad !== null && Date.now() - slot.loadedAt < NATIVE_AD_TTL_MS;
+}
+
+/**
+ * Load a native ad for `unitId` into its slot, unless one is already fresh or a
+ * load is in flight. Best-effort: on no-fill/offline the slot is left empty and
+ * the next take() retries.
+ */
+function warmNativeAd(unitId: string): void {
+  const slot = nativeSlot(unitId);
+  if (slot.loading || isFresh(slot)) {
+    return;
+  }
+  slot.loading = true;
+  void (async () => {
+    await ensureSdk();
+    const ad = await NativeAd.createForAdRequest(unitId, {
+      requestNonPersonalizedAdsOnly: true,
+    });
+    slot.ad = ad;
+    slot.loadedAt = Date.now();
+  })()
+    .catch(() => {
+      // No fill / offline — leave the slot empty.
+    })
+    .finally(() => {
+      slot.loading = false;
+    });
+}
+
 export const adService: AdService = {
   async initialize() {
     await ensureSdk();
     preload();
+    for (const unitId of Object.values(NATIVE_AD_UNIT_IDS)) {
+      warmNativeAd(unitId);
+    }
+  },
+
+  takeNativeAd(unitId) {
+    const slot = nativeSlot(unitId);
+    const ad = isFresh(slot) ? slot.ad : null;
+    if (slot.ad && !ad) {
+      // Stale creative we're not handing out — release its native resources.
+      slot.ad.destroy();
+    }
+    // Hand off ownership (or clear the stale ad) and warm a replacement.
+    slot.ad = null;
+    slot.loadedAt = 0;
+    warmNativeAd(unitId);
+    return ad;
   },
 
   async isRewardedHintAvailable() {
