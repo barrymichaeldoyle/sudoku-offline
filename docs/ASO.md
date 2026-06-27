@@ -1,8 +1,13 @@
 # App Store Optimization Strategy
 
-Last updated: 2026-06-19
+Last reviewed: 2026-06-27
 
-App working name: **Sudoku Offline**
+Submitted product name: **Offline Sudoku**
+
+The name changed immediately before the 1.0.0 submission. Earlier naming
+examples in this document are retained as research history, but they are not
+current copy. `store/locales/en-US.json` is the source of truth for the live
+Apple listing, and [`ROADMAP.md`](./ROADMAP.md) owns future experiments.
 
 This document defines the ASO strategy for the Sudoku mobile app. It should be
 used by future agents when creating store listings, screenshots, app metadata,
@@ -71,7 +76,7 @@ Official references:
 
 ## Primary positioning
 
-**Sudoku Offline** is a calm, clean Sudoku app designed to work anywhere.
+**Offline Sudoku** is a calm, clean Sudoku app designed to work anywhere.
 
 Core differentiators:
 
@@ -126,10 +131,10 @@ Avoid:
 
 # Naming Strategy
 
-Current candidate:
+Current submitted name:
 
 ```text
-Sudoku Offline
+Offline Sudoku
 ```
 
 Pros:
@@ -146,10 +151,10 @@ Cons:
 - May be unavailable or difficult to defend
 - Users may assume no ads at all
 
-If using this name, keep the store promise very honest:
+The submitted name keeps the same keyword intent. Keep the store promise honest:
 
 ```text
-Sudoku Offline
+Offline Sudoku
 Classic puzzles, no Wi-Fi needed
 ```
 
@@ -163,7 +168,7 @@ StillGrid: Offline Sudoku
 ClearGrid: Offline Sudoku
 ```
 
-Preferred fallback if `Sudoku Offline` is unavailable:
+Historical fallback considered before `Offline Sudoku` was submitted:
 
 ```text
 QuietGrid: Offline Sudoku
@@ -220,7 +225,7 @@ Rules:
 - Do not include "app" or category names unless strategically useful.
 - Do not keyword-stuff visible copy.
 
-Example Apple keyword field if app name is `Sudoku Offline`:
+Current Apple keyword field for `Offline Sudoku`:
 
 ```text
 classic,daily,puzzle,number,logic,brain,notes,hints,wifi,relaxing,grid
@@ -253,7 +258,11 @@ Google explicitly discourages keyword stuffing and irrelevant word lists.
 
 ---
 
-# Default Store Listing Draft
+# Archived Pre-Submission Store Listing Draft
+
+This section records the earlier `Sudoku Offline` draft. Do not push it over the
+submitted metadata. Use `store/locales/en-US.json` for Apple and update the
+Google draft to the Offline Sudoku brand as part of roadmap task BF-203.
 
 ## Apple App Store
 
@@ -785,7 +794,7 @@ Bad moments:
 Prompt copy:
 
 ```text
-Enjoying Sudoku Offline?
+Enjoying Offline Sudoku?
 A quick rating helps more players find the app.
 ```
 
@@ -793,7 +802,7 @@ A quick rating helps more players find the app.
 
 # ASO Experiment Plan
 
-## Pre-launch
+## Initial launch experiments
 
 Prepare at least two screenshot themes:
 
@@ -802,7 +811,7 @@ Prepare at least two screenshot themes:
 Focus:
 
 ```text
-Sudoku Offline
+Offline Sudoku
 No Wi-Fi needed
 Play anywhere
 ```
@@ -932,7 +941,7 @@ If there is a web landing page, it should match the store positioning.
 Suggested landing page headline:
 
 ```text
-Sudoku Offline
+Offline Sudoku
 ```
 
 Subheadline:
@@ -1016,7 +1025,7 @@ Release notes should be concise and human.
 Good:
 
 ```text
-Thanks for playing Sudoku Offline.
+Thanks for playing Offline Sudoku.
 
 This update includes:
 - Smoother number input
@@ -1055,14 +1064,14 @@ they must follow these rules:
 
 ---
 
-# Current Recommended Listing
+# Current Submitted Listing
 
-If launching today, use:
+Version 1.0.0 was submitted with:
 
 ## App name
 
 ```text
-Sudoku Offline
+Offline Sudoku
 ```
 
 ## Apple subtitle
@@ -1080,7 +1089,7 @@ Classic Sudoku puzzles offline, with no ads while you play.
 ## First screenshot headline
 
 ```text
-Sudoku Offline
+Offline Sudoku
 ```
 
 ## First screenshot subheadline
@@ -1092,6 +1101,6 @@ Classic puzzles, no Wi-Fi needed
 ## Core description sentence
 
 ```text
-Sudoku Offline is a clean classic Sudoku app that works anywhere, with daily
+Offline Sudoku is a clean classic Sudoku app that works anywhere, with daily
 puzzles, pencil notes, hints, dark mode, and no ads while you play.
 ```

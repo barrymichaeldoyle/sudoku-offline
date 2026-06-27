@@ -33,7 +33,7 @@ docs.
 Increase daily puzzle retention by reminding opted-in users when today's Daily
 Puzzle is still unfinished.
 
-The first implementation should be **local notifications**, not remote push:
+The implemented v1 uses **local notifications**, not remote push:
 
 - The daily puzzle is deterministic and available offline.
 - A reminder can be scheduled on-device after the user opts in.
@@ -49,7 +49,7 @@ experiments that cannot be expressed as on-device schedules.
 
 ### User setting
 
-Add a Settings section for reminders:
+The Settings reminder section provides:
 
 - `Daily puzzle reminder` - main toggle, default `false`.
 - `Reminder time` - local wall-clock time, default `09:00`.
@@ -109,7 +109,7 @@ Relevant SDK 56 details to account for:
 - Expo Router can handle notification taps by reading a URL from
   `notification.request.content.data.url` in the root layout and routing to it.
 
-Suggested app config addition when implementing:
+Current app config:
 
 ```json
 [
@@ -144,7 +144,7 @@ type Settings = {
 The settings blob is already forward-compatible via `normalizeSettings`, so this
 is an additive setting change with no SQLite migration.
 
-Add a small notification service:
+The notification service exposes:
 
 ```ts
 export async function syncDailyReminderSchedule(settings: Settings): Promise<void>;
@@ -235,13 +235,16 @@ Keep these local until a real analytics sink exists.
 - Unit test schedule decision logic with dates before/after the reminder time and
   with complete/incomplete daily progress.
 - Mock `expo-notifications` in service tests.
-- Manual iOS and Android checks in development builds:
+- Manual iOS checks in a development build under the current `AGENTS.md` policy:
   - first opt-in permission flow,
   - denied permission path,
   - reminder time change cancels the old notification,
   - daily completion cancels or skips today's pending notification,
   - notification tap opens/resumes today's daily puzzle,
   - app remains useful offline.
+
+Before an Android release, add equivalent Android device/emulator coverage and
+explicitly update `AGENTS.md` to permit that verification path.
 
 ---
 

@@ -1,7 +1,9 @@
-# Sudoku Mobile App — MVP Handoff
+# Offline Sudoku — Archived MVP Specification
 
-> Source of truth for MVP scope, architecture, and acceptance criteria.
-> Offline-first classic 9x9 Sudoku built with Expo. No backend for MVP.
+> Historical snapshot of the original MVP scope, architecture, and acceptance
+> criteria. It is retained to explain design decisions, not to describe the
+> current implementation. Use [`handover.md`](./handover.md) for current state
+> and [`ROADMAP.md`](./ROADMAP.md) for future work.
 
 ## Locked Decisions (2026-06-18)
 These override the original handoff where they conflict:
@@ -37,7 +39,7 @@ These override the original handoff where they conflict:
 Build an offline-first Sudoku mobile app using Expo. Polished, classic 9x9 with great
 input UX, offline-first play, bundled puzzle library, daily puzzle, stats, settings, and
 respectful monetisation hooks (no forced ads — only user-initiated rewarded ads;
-one-time "Remove Ads" later).
+one-time "Remove Ads" entitlement).
 
 Core product promise: **A fast, clean Sudoku app that respects your concentration.**
 

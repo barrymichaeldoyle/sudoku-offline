@@ -1,7 +1,7 @@
-# App Store Launch Checklist
+# App Store Release Status
 
-Status of everything needed to ship **Sudoku Offline** to the Apple App Store.
-Last reviewed: 2026-06-20.
+Status of **Offline Sudoku** version 1.0.0 on the Apple App Store.
+Last reviewed: 2026-06-27.
 
 > Native `ios/` and `android/` folders are gitignored (Continuous Native
 > Generation). All native config lives in `app.json` / config plugins and is
@@ -10,9 +10,22 @@ Last reviewed: 2026-06-20.
 
 ---
 
-## ✅ Done in this pass
+## Current status
 
-- **App display name** — `expo.name` set to `"Sudoku Offline"` (was the slug
+- Version 1.0.0 has been submitted and is **Waiting for Review**.
+- App Store Connect app ID: `6782209083`.
+- Bundle ID: `com.barrymichaeldoyle.sudokuoffline`.
+- The submitted store name and installed display name are **Offline Sudoku**.
+- Release is manual: `store.config.json` sets `automaticRelease: false`. After
+  approval, release the version explicitly in App Store Connect.
+- `phasedRelease: true` is configured for eligible updates; it is not a
+  substitute for manually releasing this first version.
+- Do not replace the submitted binary for documentation-only or roadmap work.
+  If Apple reports an issue, address only that issue and resubmit.
+
+## Completed release setup
+
+- **App display name** — `expo.name` set to `"Offline Sudoku"` (was the slug
   `sudoku-offline`, which showed on the home screen). Drives `CFBundleDisplayName`.
 - **Export compliance** — added `ios.config.usesNonExemptEncryption: false` to
   `app.json` so uploads skip the encryption questionnaire. (App uses only
@@ -26,11 +39,11 @@ Last reviewed: 2026-06-20.
   `src/domain/entitlements.ts`, backed by a real `expo-iap` implementation in
   `src/services/purchaseService.ts` (StoreKit 2 on iOS). This lights up the
   `RemoveAdsButton` (settings + completion screen) and the settings "Ads &
-  Purchases" section incl. Restore Purchases. **Before this works in production**
-  the `remove_ads` non-consumable (store id `REMOVE_ADS_PRODUCT_ID =
-  com.barrymichaeldoyle.sudokuoffline.remove_ads`) must be created and approved
-  in App Store Connect, the Paid Apps agreement must be active, and the IAP must
-  be submitted attached to an app version for first review. Web is stubbed via
+  Purchases" section incl. Restore Purchases. The `remove_ads` non-consumable
+  (store id `REMOVE_ADS_PRODUCT_ID =
+  com.barrymichaeldoyle.sudokuoffline.remove_ads`) was created and attached to
+  the version submitted for first review. Production availability still depends
+  on App Review approval and an active Paid Apps agreement. Web is stubbed via
   `purchaseService.web.ts`.
   - **Launch price: USD $2.99** (one tier; Apple auto-generates local prices per
     storefront). Chosen as an impulse "support the dev" price — the ads are
@@ -57,40 +70,35 @@ Last reviewed: 2026-06-20.
 
 ---
 
-## 🚫 Blockers — must resolve before submission
+## While the version is in review
 
-None outstanding. All code/config and App Store Connect setup blockers are
-resolved. Remaining work is listing assets and QA (below).
+- Monitor App Store Connect messages and respond promptly.
+- Keep the support and privacy URLs live. Both were verified on 2026-06-27.
+- Avoid changing screenshots or version metadata unless review requires it.
+- Documentation, roadmap planning, Android preparation, and non-binary website
+  work can continue without disturbing the submitted build.
 
----
+## After approval
 
-## ⚠️ Required for a credible listing
+1. Manually release version 1.0.0 in App Store Connect.
+2. Confirm the public product page resolves at
+   `https://apps.apple.com/app/id6782209083`.
+3. Replace "Waiting for review" in `README.md` with "Available".
+4. Verify install, purchase, restore, rewarded hint, notifications, universal
+   links, and offline launch from the public build.
+5. Record baseline impressions, product-page views, conversion, downloads,
+   crashes, ratings, and proceeds before changing the listing.
 
-- **App icon** — confirm `assets/images/icon.png` + `assets/expo.icon` is the
-  final branded icon, not a placeholder.
-- **Screenshots** — produce App Store screenshots (6.5" iPhone `1284x2778`
-  and 13" iPad `2064x2752` are what this listing's slots accept). See
-  "Generating store screenshots" below.
-- **Verify live URLs** — privacy + support pages
-  (`https://barrymichaeldoyle.github.io/sudoku-offline/privacy.html` and
-  `/support.html`) must be reachable; confirm GitHub Pages is published.
+## Known Android release blockers
 
----
-
-## 📋 Pre-submission QA
-
-- **TestFlight on real hardware** — verify rewarded-hint ad flow, daily
-  notifications, SQLite persistence/migrations, and offline behavior.
-- **Confirm real ads serve in the production build** — the correct iOS
-  `GADApplicationIdentifier` (`...3482457944656598~1647375735`) was already
-  verified in the generated `Info.plist` via `expo prebuild -p ios`. Just confirm
-  live ads actually render on a TestFlight/production build.
-- **Android AdMob still on test IDs** — `androidAppId` and the rewarded unit use
-  `TestIds`. Not an App Store blocker; fix before any Play Store launch.
-- **Monetization story matches the listing** — `docs/retention-monetization.md`
-  features (streak restore, challenge archive) are "not yet built." The "Remove
-  Ads" surface is hidden for v1 (`IAP_ENABLED = false`); make sure the store
-  description and screenshots don't promise it.
+- Android still uses Google's AdMob test app ID and test rewarded/native units.
+- `eas.json` has no Android submission profile or Play service-account path.
+- The Play Billing `remove_ads` product and license-test setup are not documented
+  as complete.
+- The Play listing, Data Safety form, content rating, and testing track are not
+  set up.
+- `AGENTS.md` currently allows iOS-simulator verification only. Android release
+  work must explicitly add an Android verification path before shipping.
 
 ---
 

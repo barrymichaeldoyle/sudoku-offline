@@ -1,8 +1,12 @@
 # Design Guidelines
 
-Last updated: 2026-06-19
+Last reviewed: 2026-06-27
 
-App working name: **Sudoku Offline**
+Product name: **Offline Sudoku**
+
+The design principles and component rules remain active. The retrofit plan in
+section 21 is retained as implementation history; its phases were completed
+before the 1.0.0 App Store submission.
 
 This document defines the visual and interaction design direction for the app.
 Future agents should follow this when modifying screens, components, themes,
@@ -877,7 +881,7 @@ Priority:
 Suggested structure:
 
 ```text
-Sudoku Offline
+Offline Sudoku
 
 Continue
 Daily Puzzle
@@ -1543,7 +1547,7 @@ Guidelines:
 Preferred screenshot messages:
 
 ```text
-Sudoku Offline
+Offline Sudoku
 Classic puzzles, no Wi-Fi needed
 ```
 
@@ -1569,10 +1573,10 @@ Easy on the eyes
 
 ---
 
-# 21. Retrofit Plan for Current App
+# 21. Completed Retrofit Plan
 
-The current app exists, but the look and feel was an afterthought. Improve it in
-this order.
+The 1.0.0 visual retrofit followed these phases. They are complete; keep the
+sequence as historical context for future design changes.
 
 ## Phase 1: Create design tokens
 

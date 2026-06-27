@@ -1,7 +1,8 @@
 # Retention Monetization — Streak Restore & Challenge Archive (planned)
 
-> Reward-ad mechanics targeting completionist users. **Not yet built** — all of
-> this depends on the Phase 5 `adService` (rewarded ads) + `entitlementRepository`.
+> Reward-ad mechanics targeting completionist users. **Not yet built.** The
+> required rewarded-ad service and entitlement repository now exist; the feature
+> logic, migrations, and UI described below do not.
 > Documented now so the daily/challenge schema is designed to support it without
 > rework. Core principle: **no intrusive ads during play** — no interstitials,
 > and nothing during or between puzzles that blocks the board. Non-intrusive
@@ -11,8 +12,9 @@
 > locally once a reward fires. Premium ("Remove Ads") removes the native ads and
 > grants the rewarded perks free/instant.
 
-Pairs with [`mvp-handoff.md`](./mvp-handoff.md) (scope/schema) and
-[`handover.md`](./handover.md) (phase status). Targets **Phase 5+ / post-ads**.
+Pairs with [`mvp-handoff.md`](./mvp-handoff.md) (historical scope/schema) and
+[`handover.md`](./handover.md) (current status). This is post-1.0 candidate work,
+not committed roadmap scope.
 
 ---
 
@@ -129,13 +131,11 @@ prompts the rewarded-ad flow.
 
 ## 5. Migration impact
 
-Both schema additions are **future migrations (v3+)**, layered on top of the v2
-`(date_key, track)` change:
+Both schema additions require **a future migration (v4 or later)**, layered on
+top of the v2 `(date_key, track)` change:
 
 - `credit_source` column on `daily_progress` (streak restore).
 - `challenge_unlocks` table (challenge archive).
 
-Optional optimization: `credit_source` *could* be folded into the v2
-`daily_progress` rebuild now (default `'played'`) to save a future migration. If
-not, it is a clean additive v3 column later — no data backfill needed since the
-default covers all existing rows.
+Migration v2 has shipped and must not be edited. Add `credit_source` in a new
+migration with a `'played'` default; existing rows then need no custom backfill.

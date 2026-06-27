@@ -1,15 +1,16 @@
-# Sudoku Offline
+# Offline Sudoku
 
 Classic Sudoku that works offline, with no ads while you play.
 
 ## Get the app
 
-The app is not on the App Store or Google Play yet. Links will be added here when it ships.
+Version 1.0.0 has been submitted to Apple and is waiting for App Review. The
+Google Play release has not started yet.
 
-| Platform                                | Status      |
-| --------------------------------------- | ----------- |
-| [App Store](https://apps.apple.com/)    | Coming soon |
-| [Google Play](https://play.google.com/) | Coming soon |
+| Platform                                             | Status             |
+| ---------------------------------------------------- | ------------------ |
+| [App Store](https://apps.apple.com/app/id6782209083) | Waiting for review |
+| Google Play                                          | Not submitted      |
 
 ## Support
 

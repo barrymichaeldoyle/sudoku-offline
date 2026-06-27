@@ -68,14 +68,13 @@ The prompt also carries the **Remove ads · Unlimited hints** upsell button
 requested hint is revealed immediately (the player is now premium). **Not now**
 dismisses without revealing.
 
-## MVP note
+## Current integration
 
-There is no ad SDK or store SDK in MVP, so `adService.isRewardedHintAvailable()`
-returns `false` (treated as "offline") and `purchaseService.purchaseRemoveAds()`
-returns `false`. In practice every player currently gets the free-offline path —
-hints just reveal — and the rewarded prompt is never reached. This is
-intentional: the flow is wired correctly for when the rewarded-ad and
-in-app-purchase SDKs land in Phase 5; no gameplay rework is needed then.
+The native app uses `react-native-google-mobile-ads` for rewarded hints and
+`expo-iap` for the `remove_ads` purchase. iOS has production ad units. Android
+continues to use Google test units until the Play release is configured. If no
+rewarded ad is available, including while offline, the free-offline branch still
+reveals the hint immediately.
 
 ## Analytics
 
