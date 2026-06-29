@@ -2,6 +2,8 @@
 module.exports = {
   preset: "jest-expo",
   testMatch: ["<rootDir>/src/**/*.test.{ts,tsx}"],
+  // Registers module mocks (e.g. expo-notifications) before any imports run.
+  setupFiles: ["<rootDir>/jest.setup.js"],
   // Mirror the tsconfig path aliases (more specific alias first).
   moduleNameMapper: {
     "^@/assets/(.*)$": "<rootDir>/assets/$1",

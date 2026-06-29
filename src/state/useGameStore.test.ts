@@ -68,12 +68,21 @@ function valuesFromSolution(overrides: Record<number, number | null> = {}): (num
 
 describe("useGameStore reducers", () => {
   beforeEach(() => {
+    // Store actions schedule a 600ms debounced save (setTimeout). Fake timers
+    // keep those from leaking past the suite (which force-exits the worker).
+    // Date stays real so the Date.now()-based hint-cooldown assertions hold.
+    jest.useFakeTimers({ doNotFake: ["Date"] });
     mockHasRemoveAds.mockReturnValue(false);
     mockIsRewardedHintAvailable.mockResolvedValue(true); // online by default
     mockShowRewardedHintAd.mockResolvedValue(false);
     useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS } });
     load();
     useGameStore.getState().setInputMode("cell");
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   it("places a value into the selected cell (cell-first)", () => {
