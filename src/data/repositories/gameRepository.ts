@@ -70,14 +70,37 @@ export async function createGame(puzzle: Puzzle): Promise<GameState> {
   return game;
 }
 
-/** Insert or update a game row from current state, stamping updated_at. */
+/**
+ * Insert or update a game row from current state, stamping updated_at. Saves are
+ * debounced and fire-and-forget, so one dispatched just before a win can land
+ * after completeGame; the ON CONFLICT guard refuses to overwrite a row that has
+ * already reached a terminal state (completed/abandoned) with an in-progress
+ * snapshot, so a late stale save can't resurrect a finished game. A genuinely
+ * terminal save still wins.
+ */
 export async function saveGame(game: GameState): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
-    `INSERT OR REPLACE INTO games
+    `INSERT INTO games
        (id, puzzle_id, difficulty, givens, solution, values_string, notes_json,
         status, elapsed_seconds, mistakes, hints_used, started_at, completed_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       puzzle_id = excluded.puzzle_id,
+       difficulty = excluded.difficulty,
+       givens = excluded.givens,
+       solution = excluded.solution,
+       values_string = excluded.values_string,
+       notes_json = excluded.notes_json,
+       status = excluded.status,
+       elapsed_seconds = excluded.elapsed_seconds,
+       mistakes = excluded.mistakes,
+       hints_used = excluded.hints_used,
+       started_at = excluded.started_at,
+       completed_at = excluded.completed_at,
+       updated_at = excluded.updated_at
+     WHERE games.status NOT IN ('completed', 'abandoned')
+        OR excluded.status IN ('completed', 'abandoned')`,
     game.id,
     game.puzzleId,
     game.difficulty,
@@ -126,10 +149,23 @@ export async function completeGame(game: GameState): Promise<GameState> {
   const completed: GameState = { ...game, status: "completed", completedAt };
 
   await db.withExclusiveTransactionAsync(async (txn) => {
+    // Persist the final board and run stats alongside the status flip. The
+    // completing placement cancels the debounced saveGame (see the game store),
+    // so this UPDATE is the only thing that records the last move — writing just
+    // the status would leave the row's board frozen one move short of solved.
     await txn.runAsync(
-      "UPDATE games SET status = 'completed', completed_at = ?, updated_at = ? WHERE id = ?",
+      `UPDATE games
+          SET status = 'completed', completed_at = ?, updated_at = ?,
+              values_string = ?, notes_json = ?,
+              elapsed_seconds = ?, mistakes = ?, hints_used = ?
+        WHERE id = ?`,
       completedAt,
       completedAt,
+      valuesToString(game.values),
+      JSON.stringify(game.notes),
+      game.elapsedSeconds,
+      game.mistakes,
+      game.hintsUsed,
       game.id,
     );
     // If this game is the tracked daily, mark its progress complete and carry
