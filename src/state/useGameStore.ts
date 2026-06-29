@@ -674,7 +674,12 @@ function finalizeAfterPlacement(
       mistakes: completed.mistakes,
       hintsUsed: completed.hintsUsed,
     });
-    void completeGame(completed).catch(() => {});
+    // Persisting the win is the load-bearing write: if it fails the home screen
+    // shows the puzzle unfinished. Surface the error rather than swallowing it so
+    // a regression doesn't silently lose completions.
+    void completeGame(completed).catch((err) => {
+      console.error("Failed to persist completed game", err);
+    });
     return;
   }
   // The board just became completely filled but doesn't match the solution.

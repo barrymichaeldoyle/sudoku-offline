@@ -75,6 +75,52 @@ describe("gameRepository", () => {
     expect(gamesUpdate?.[0]).toContain("elapsed_seconds = ?");
   });
 
+  it("serializes a concurrent saveGame so it can't interleave with the completion transaction", async () => {
+    // completeGame uses withExclusiveTransactionAsync; a plain saveGame runAsync
+    // dispatched at the same time must not run *during* that transaction, or it
+    // can make the exclusive transaction throw and the win is lost. The write
+    // chain must hold the save until completion has fully resolved.
+    const events: string[] = [];
+    let releaseTxn: () => void = () => {};
+    let signalBegan: () => void = () => {};
+    const began = new Promise<void>((resolve) => {
+      signalBegan = resolve;
+    });
+
+    const saveRunAsync = jest.fn(async () => {
+      events.push("save");
+    });
+    const withExclusiveTransactionAsync = jest.fn(
+      async (cb: (txn: { runAsync: jest.Mock; getFirstAsync: jest.Mock }) => Promise<void>) => {
+        events.push("txn:begin");
+        signalBegan();
+        await new Promise<void>((resolve) => {
+          releaseTxn = resolve;
+        });
+        await cb({
+          runAsync: jest.fn().mockResolvedValue(undefined),
+          getFirstAsync: jest.fn().mockResolvedValue(null),
+        });
+        events.push("txn:commit");
+      },
+    );
+    mockGetDatabase.mockResolvedValue({ runAsync: saveRunAsync, withExclusiveTransactionAsync });
+
+    const completing = completeGame(freshGame());
+    // Dispatch the stale save while the completion transaction is "in flight".
+    const saving = saveGame(freshGame());
+
+    // Let the completion transaction reach its blocking point.
+    await began;
+    // The save must not have touched the db until the transaction finishes.
+    expect(saveRunAsync).not.toHaveBeenCalled();
+
+    releaseTxn();
+    await Promise.all([completing, saving]);
+
+    expect(events).toEqual(["txn:begin", "txn:commit", "save"]);
+  });
+
   it("guards saveGame so a late stale write can't downgrade a finished game", async () => {
     const runAsync = jest.fn().mockResolvedValue(undefined);
     mockGetDatabase.mockResolvedValue({ runAsync });
