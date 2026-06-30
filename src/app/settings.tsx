@@ -44,7 +44,12 @@ const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
   {
     key: "mistakeCheckingEnabled",
     label: "Mistake checking",
-    hint: "Flag wrong numbers and track mistakes in stats",
+    hint: "Flag wrong numbers in red as you place them",
+  },
+  {
+    key: "mistakeTrackingEnabled",
+    label: "Mistake counter",
+    hint: "Count your mistakes and show them in stats",
   },
   {
     key: "highlightPeers",

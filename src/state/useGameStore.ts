@@ -563,7 +563,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
       notes = game.notes.slice();
     }
     notes[index] = 0;
-    if (!correct && getSettings().mistakeCheckingEnabled) {
+    if (!correct && getSettings().mistakeTrackingEnabled) {
       mistakes += 1;
     }
     if (!correct && getSettings().mistakeCheckingEnabled) {

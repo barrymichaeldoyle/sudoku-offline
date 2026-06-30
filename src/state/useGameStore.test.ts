@@ -323,9 +323,9 @@ describe("useGameStore reducers", () => {
     });
   });
 
-  it("does not count mistakes when mistake checking is disabled", () => {
+  it("does not count mistakes when mistake tracking is disabled", () => {
     useSettingsStore.setState((state) => ({
-      settings: { ...state.settings, mistakeCheckingEnabled: false },
+      settings: { ...state.settings, mistakeTrackingEnabled: false },
     }));
     const s = useGameStore.getState();
     s.pressCell(0);

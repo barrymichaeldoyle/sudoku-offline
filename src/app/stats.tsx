@@ -92,7 +92,7 @@ export default function StatsScreen() {
                   />
                 );
                 const mistakeFree =
-                  settings.mistakeCheckingEnabled && stats.normal.totalCompleted > 0 ? (
+                  settings.mistakeTrackingEnabled && stats.normal.totalCompleted > 0 ? (
                     <StatCard
                       label="Mistake-free"
                       value={String(stats.normal.mistakeFreeCompleted)}

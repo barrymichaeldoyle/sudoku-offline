@@ -15,7 +15,10 @@ export type Settings = {
   /** Cell-first vs number-first board input; shared by the in-game toggle. */
   inputMode: InputMode;
   timerEnabled: boolean;
+  /** Flag wrong numbers as you place them (red highlight + invalid haptic). */
   mistakeCheckingEnabled: boolean;
+  /** Count mistakes and surface them in the game HUD, stats, and shares. */
+  mistakeTrackingEnabled: boolean;
   highlightSameNumbers: boolean;
   highlightPeers: boolean;
   hapticsEnabled: boolean;
@@ -42,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   inputMode: "cell",
   timerEnabled: true,
   mistakeCheckingEnabled: true,
+  mistakeTrackingEnabled: true,
   highlightSameNumbers: true,
   highlightPeers: true,
   hapticsEnabled: true,
@@ -67,6 +71,7 @@ export const MINIMAL_SETTINGS: Settings = {
   ...DEFAULT_SETTINGS,
   timerEnabled: false,
   mistakeCheckingEnabled: false,
+  mistakeTrackingEnabled: false,
   highlightSameNumbers: false,
   highlightPeers: false,
   showRemainingCounts: false,
@@ -89,6 +94,12 @@ export function normalizeSettings(stored: Partial<Settings> | null | undefined):
       // @ts-expect-error indexed assignment across the union is safe per-key
       result[key] = value;
     }
+  }
+  // `mistakeTrackingEnabled` was split out of the old combined
+  // `mistakeCheckingEnabled`. For settings saved before the split, inherit the
+  // player's previous combined choice so behaviour is preserved on upgrade.
+  if (stored.mistakeTrackingEnabled === undefined && stored.mistakeCheckingEnabled !== undefined) {
+    result.mistakeTrackingEnabled = stored.mistakeCheckingEnabled;
   }
   return result;
 }

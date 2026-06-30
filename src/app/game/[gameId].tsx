@@ -400,7 +400,7 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   const pause = useGameStore((s) => s.pause);
   const resume = useGameStore((s) => s.resume);
   const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
-  const mistakeCheckingEnabled = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
+  const mistakeTrackingEnabled = useSettingsStore((s) => s.settings.mistakeTrackingEnabled);
   const elapsed = useElapsedSeconds();
   const large = useWindowDimensions().width >= 700;
 
@@ -492,7 +492,7 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
             </View>
           </StatItem>
         ) : null}
-        {mistakeCheckingEnabled ? (
+        {mistakeTrackingEnabled ? (
           <StatItem label="Mistakes">
             <Text
               className={clsx(
@@ -770,7 +770,7 @@ function CompletionOverlay({
   const challengeOutcome = beatTarget
     ? describeChallengeOutcome(beatTarget, {
         timeSeconds: settings.timerEnabled ? game.elapsedSeconds : null,
-        mistakes: settings.mistakeCheckingEnabled ? game.mistakes : null,
+        mistakes: settings.mistakeTrackingEnabled ? game.mistakes : null,
       })
     : null;
 
@@ -787,7 +787,7 @@ function CompletionOverlay({
             mistakes: game.mistakes,
             hintsUsed: game.hintsUsed,
             showTimer: settings.timerEnabled,
-            showMistakes: settings.mistakeCheckingEnabled,
+            showMistakes: settings.mistakeTrackingEnabled,
             daily: daily
               ? { kind: daily.track, dateKey: daily.dateKey, streak: daily.streak?.current ?? 0 }
               : null,
@@ -989,13 +989,13 @@ function ChallengeBanner({ target }: { target: ChallengeTarget }) {
 
 function completionSummary(
   game: GameState,
-  settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean },
+  settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean },
 ): string {
   const parts = [DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty];
   if (settings.timerEnabled) {
     parts.push(formatDuration(game.elapsedSeconds));
   }
-  if (settings.mistakeCheckingEnabled) {
+  if (settings.mistakeTrackingEnabled) {
     parts.push(`Mistakes: ${game.mistakes}`);
   }
   parts.push(`Hints: ${game.hintsUsed}`);

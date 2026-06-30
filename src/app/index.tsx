@@ -342,7 +342,7 @@ function ContinueCard({
   onPress,
 }: {
   game: GameState;
-  settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean };
+  settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean };
   onPress: () => void;
 }) {
   const large = useWindowDimensions().width >= 700;
@@ -378,7 +378,7 @@ function DailyCard({
   subtitle: string;
   accent: string;
   progress: DailyCardState;
-  settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean };
+  settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean };
   onPress: () => void;
 }) {
   const large = useWindowDimensions().width >= 700;
@@ -510,13 +510,13 @@ function completionPercent(game: GameState): number {
  * e.g. the daily cards): "62% · 03:21 · 1 mistake". */
 function progressDetail(
   game: GameState,
-  settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean },
+  settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean },
 ): string {
   const parts = [`${completionPercent(game)}%`];
   if (settings.timerEnabled) {
     parts.push(formatDuration(game.elapsedSeconds));
   }
-  if (settings.mistakeCheckingEnabled && game.mistakes > 0) {
+  if (settings.mistakeTrackingEnabled && game.mistakes > 0) {
     parts.push(`${game.mistakes} mistake${game.mistakes > 1 ? "s" : ""}`);
   }
   return parts.join(" · ");
@@ -525,7 +525,7 @@ function progressDetail(
 /** Progress prefixed with the difficulty, for the generic Continue card. */
 function progressText(
   game: GameState,
-  settings: { timerEnabled: boolean; mistakeCheckingEnabled: boolean },
+  settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean },
 ): string {
   return `${DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} · ${progressDetail(game, settings)}`;
 }

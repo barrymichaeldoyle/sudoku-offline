@@ -18,4 +18,20 @@ describe("normalizeSettings", () => {
     expect(result).toEqual(DEFAULT_SETTINGS);
     expect("bogus" in result).toBe(false);
   });
+
+  it("inherits the pre-split combined value for mistake tracking", () => {
+    // Settings saved before mistakeTrackingEnabled existed: tracking should
+    // follow the old combined mistakeCheckingEnabled choice, not the default.
+    expect(normalizeSettings({ mistakeCheckingEnabled: false }).mistakeTrackingEnabled).toBe(false);
+    expect(normalizeSettings({ mistakeCheckingEnabled: true }).mistakeTrackingEnabled).toBe(true);
+  });
+
+  it("keeps an explicit mistake tracking value independent of checking", () => {
+    const result = normalizeSettings({
+      mistakeCheckingEnabled: true,
+      mistakeTrackingEnabled: false,
+    });
+    expect(result.mistakeCheckingEnabled).toBe(true);
+    expect(result.mistakeTrackingEnabled).toBe(false);
+  });
 });

@@ -21,7 +21,7 @@ export type ShareResultInput = {
   hintsUsed: number;
   /** When false, time is omitted from the share line (timer setting off). */
   showTimer?: boolean;
-  /** When false, mistakes are omitted from the share line (mistake checking off). */
+  /** When false, mistakes are omitted from the share line (mistake counter off). */
   showMistakes?: boolean;
   /** Set when the completed game was a daily; `kind` picks the heading/streak. */
   daily?: { kind: DailyTrack; dateKey: string; streak: number } | null;
