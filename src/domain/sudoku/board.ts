@@ -53,6 +53,21 @@ export function getPeerIndices(cellIndex: number): number[] {
   return PEER_CACHE[cellIndex];
 }
 
+/**
+ * Whether two distinct cells sit in the same 3x3 box AND share a row or column.
+ * This is the tight neighbourhood used by note auto-carry: the cells directly in
+ * line with each other inside a box, not the box's diagonal corners.
+ */
+export function areAlignedBoxPeers(a: number, b: number): boolean {
+  if (a === b) {
+    return false;
+  }
+  return (
+    getBoxIndex(a) === getBoxIndex(b) &&
+    (getRowIndex(a) === getRowIndex(b) || getColIndex(a) === getColIndex(b))
+  );
+}
+
 // Box-only peers: the eight other cells in the same 3x3 box. Cached like above.
 const BOX_PEER_CACHE: number[][] = (() => {
   const cache: number[][] = [];

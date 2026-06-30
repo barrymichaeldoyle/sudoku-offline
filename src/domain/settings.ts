@@ -25,6 +25,11 @@ export type Settings = {
   autoNoteCleanup: boolean;
   /** Scope of auto-clear notes; only applies when `autoNoteCleanup` is on. */
   autoNoteCleanupScope: NoteCleanupScope;
+  /**
+   * Cell-first only: after penciling a note, tapping a peer cell (same row,
+   * column, or box) auto-adds that same note, so candidates can be swept in.
+   */
+  autoCarryNotes: boolean;
   /** Show how many of each digit remain to place, under the number pad. */
   showRemainingCounts: boolean;
   /** Grey out and lock a number-pad digit once all nine are placed. */
@@ -51,6 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hapticsEnabled: true,
   autoNoteCleanup: true,
   autoNoteCleanupScope: "all",
+  autoCarryNotes: true,
   // Off by default (incl. the full-experience preset): the under-pad counts are
   // too noisy for the average player. Available as an opt-in toggle in Settings.
   showRemainingCounts: false,

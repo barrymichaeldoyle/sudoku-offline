@@ -5,6 +5,7 @@ import { create } from "zustand";
 
 import { completeGame, getGameById, saveGame } from "@/data/repositories/gameRepository";
 import {
+  areAlignedBoxPeers,
   isBoardFull,
   isGivenCell,
   isPuzzleComplete,
@@ -12,7 +13,7 @@ import {
   parseValuesString,
 } from "@/domain/sudoku/board";
 import { findHintCell, HINT_COOLDOWN_MS } from "@/domain/sudoku/hints";
-import { cleanupNotesAfterPlacement, toggleNote } from "@/domain/sudoku/notes";
+import { addNote, cleanupNotesAfterPlacement, hasNote, toggleNote } from "@/domain/sudoku/notes";
 import { CELL_COUNT } from "@/domain/sudoku/types";
 import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
@@ -32,6 +33,11 @@ type GameStore = {
   notesMode: boolean;
   /** Number-first only: the erase tool is the active selection (no number). */
   eraseArmed: boolean;
+  /**
+   * Cell-first auto-carry: the note digit most recently penciled on, re-applied
+   * to the next peer cell tapped. Null when there is nothing to carry.
+   */
+  carryNoteDigit: number | null;
   justCompleted: boolean;
   /** Board is completely filled but does not match the solution. */
   incorrectComplete: boolean;
@@ -140,6 +146,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectedNumber: null,
   notesMode: false,
   eraseArmed: false,
+  carryNoteDigit: null,
   justCompleted: false,
   incorrectComplete: false,
   undoStack: [],
@@ -172,6 +179,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedNumber: null,
       notesMode: false,
       eraseArmed: false,
+      carryNoteDigit: null,
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
@@ -191,6 +199,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedNumber: null,
       notesMode: false,
       eraseArmed: false,
+      carryNoteDigit: null,
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
@@ -208,6 +217,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedCell: null,
       selectedNumber: null,
       eraseArmed: false,
+      carryNoteDigit: null,
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
@@ -250,6 +260,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedNumber: null,
       notesMode: false,
       eraseArmed: false,
+      carryNoteDigit: null,
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
@@ -265,7 +276,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Input mode is a persisted setting shared with the Settings screen; the
     // selection state it governs is per-game, so clear it on every switch.
     useSettingsStore.getState().setSetting("inputMode", mode);
-    set({ selectedCell: null, selectedNumber: null, eraseArmed: false });
+    set({ selectedCell: null, selectedNumber: null, eraseArmed: false, carryNoteDigit: null });
   },
 
   toggleNotesMode() {
@@ -273,11 +284,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
     haptics.toggle();
-    set((state) => ({ notesMode: !state.notesMode }));
+    set((state) => ({ notesMode: !state.notesMode, carryNoteDigit: null }));
   },
 
   pressCell(index) {
-    const { game, selectedNumber, eraseArmed } = get();
+    const { game, selectedNumber, eraseArmed, selectedCell, notesMode, carryNoteDigit } = get();
     // A finished board is read-only; ignore taps so it can't be edited while
     // the player reviews it.
     if (game?.status === "completed") {
@@ -293,8 +304,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
         applyNumber(set, get, index, selectedNumber);
         return;
       }
+      set({ selectedCell: index });
+      return;
     }
-    set({ selectedCell: index });
+    // Cell-first auto-carry: if we just penciled a note and the very next tap
+    // lands in the same 3x3 box and shares a row or column, repeat that note
+    // once so a candidate can be marked without re-tapping the number. The carry
+    // is one-shot; anything else just selects the cell and ends the carry.
+    if (
+      notesMode &&
+      carryNoteDigit != null &&
+      selectedCell != null &&
+      getSettings().autoCarryNotes &&
+      areAlignedBoxPeers(selectedCell, index)
+    ) {
+      carryNoteToCell(set, get, index, carryNoteDigit);
+      return;
+    }
+    set({ selectedCell: index, carryNoteDigit: null });
   },
 
   pressNumber(num) {
@@ -510,7 +537,40 @@ function eraseCellAt(set: SetFn, get: GetFn, index: number): void {
   const next: GameState = { ...game, values, notes };
   const action: GameAction = { type: "erase", cellIndex: index, previousValue, previousNotes };
   haptics.place();
-  set({ game: next, undoStack: [...undoStack, action] });
+  set({ game: next, undoStack: [...undoStack, action], carryNoteDigit: null });
+  scheduleSave(next);
+}
+
+/**
+ * Cell-first auto-carry: add `num` as a note to a peer cell tapped right after
+ * penciling that digit, then move the selection there. The carry is one-shot —
+ * it disarms after a single repeat so it never runs away across taps. Add-only:
+ * givens, filled cells, and cells already holding the note are just selected
+ * (the digit is never removed by navigating).
+ */
+function carryNoteToCell(set: SetFn, get: GetFn, index: number, num: number): void {
+  const { game, undoStack } = get();
+  if (
+    !game ||
+    isGivenCell(game.givens, index) ||
+    game.values[index] != null ||
+    hasNote(game.notes[index], num)
+  ) {
+    set({ selectedCell: index, carryNoteDigit: null });
+    return;
+  }
+  const previousNotes = game.notes[index];
+  const notes = game.notes.slice();
+  notes[index] = addNote(previousNotes, num);
+  const next: GameState = { ...game, notes };
+  const action: GameAction = {
+    type: "set_notes",
+    cellIndex: index,
+    previousNotes,
+    nextNotes: notes[index],
+  };
+  haptics.place();
+  set({ game: next, undoStack: [...undoStack, action], selectedCell: index, carryNoteDigit: null });
   scheduleSave(next);
 }
 
@@ -532,7 +592,15 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
       nextNotes: notes[index],
     };
     haptics.place();
-    set({ game: next, undoStack: [...undoStack, action] });
+    // Arm auto-carry with this digit when penciling it on (cell-first only);
+    // toggling the carried digit back off disarms it.
+    const carryNoteDigit =
+      getSettings().inputMode === "cell" && hasNote(notes[index], num)
+        ? num
+        : get().carryNoteDigit === num
+          ? null
+          : get().carryNoteDigit;
+    set({ game: next, undoStack: [...undoStack, action], carryNoteDigit });
     scheduleSave(next);
     return;
   }
@@ -586,7 +654,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
     clearedNotes,
   };
   const next: GameState = { ...game, values, notes, mistakes };
-  set({ game: next, undoStack: [...undoStack, action] });
+  set({ game: next, undoStack: [...undoStack, action], carryNoteDigit: null });
   finalizeAfterPlacement(set, get, next, values, isBoardFull(game.values));
 }
 

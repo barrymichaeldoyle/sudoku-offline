@@ -121,6 +121,101 @@ describe("useGameStore reducers", () => {
     expect(game.notes[0]).toBe(1 << 6); // note 7 -> bit 6
   });
 
+  describe("auto-carry notes (cell-first)", () => {
+    const NOTE_5 = 1 << 4; // note 5 -> bit 4
+
+    it("repeats the note onto the next peer cell tapped", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.pressCell(1); // same row/box as cell 0 -> peer
+      const game = useGameStore.getState().game!;
+      expect(game.notes[1]).toBe(NOTE_5);
+      expect(useGameStore.getState().selectedCell).toBe(1);
+    });
+
+    it("carries only once, not to the following peer", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.pressCell(1); // peer of 0 -> carried
+      s.pressCell(2); // peer of 1, but carry is already spent
+      const game = useGameStore.getState().game!;
+      expect(game.notes[1]).toBe(NOTE_5);
+      expect(game.notes[2]).toBe(0);
+      expect(useGameStore.getState().carryNoteDigit).toBeNull();
+    });
+
+    it("does not carry to a non-peer cell and ends the carry", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.pressCell(80); // different row, column, and box -> not aligned
+      const game = useGameStore.getState().game!;
+      expect(game.notes[80]).toBe(0);
+      expect(useGameStore.getState().selectedCell).toBe(80);
+      // Carry ended: tapping an aligned box cell now should not add a note.
+      s.pressCell(79); // same box/row as 80, but carry is cleared
+      expect(useGameStore.getState().game!.notes[79]).toBe(0);
+    });
+
+    it("carries down a column within the same box", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.pressCell(9); // same box, same column as cell 0
+      expect(useGameStore.getState().game!.notes[9]).toBe(NOTE_5);
+    });
+
+    it("does not carry to a same-row cell in a different box", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.pressCell(3); // same row, but box 1 -> not aligned within a box
+      expect(useGameStore.getState().game!.notes[3]).toBe(0);
+    });
+
+    it("does not carry to a diagonal cell in the same box", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.pressCell(10); // same box, but different row and column
+      expect(useGameStore.getState().game!.notes[10]).toBe(0);
+    });
+
+    it("does nothing when the setting is off", () => {
+      useSettingsStore.setState((state) => ({
+        settings: { ...state.settings, autoCarryNotes: false },
+      }));
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.pressCell(1);
+      expect(useGameStore.getState().game!.notes[1]).toBe(0);
+    });
+
+    it("does not carry in number-first mode", () => {
+      useGameStore.getState().setInputMode("number");
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressNumber(5); // select the digit
+      s.pressCell(0); // pencil 5 into cell 0
+      s.pressCell(1); // peer, but number-first re-applies the selected digit anyway
+      const game = useGameStore.getState().game!;
+      // Both cells get note 5 because the digit stays selected, not via carry.
+      expect(game.notes[0]).toBe(NOTE_5);
+      expect(game.notes[1]).toBe(NOTE_5);
+      expect(useGameStore.getState().carryNoteDigit).toBeNull();
+    });
+  });
+
   it("erases a cell and undo restores it", () => {
     const s = useGameStore.getState();
     s.pressCell(0);

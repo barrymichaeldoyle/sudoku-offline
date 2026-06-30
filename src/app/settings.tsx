@@ -67,6 +67,11 @@ const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
     hint: "Remove notes a placed number rules out",
   },
   {
+    key: "autoCarryNotes",
+    label: "Carry notes",
+    hint: "Cell-first: repeat a note onto an aligned cell in the same box",
+  },
+  {
     key: "showRemainingCounts",
     label: "Remaining counts",
     hint: "Show how many of each number are left under the number pad",
