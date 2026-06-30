@@ -35,53 +35,80 @@ type ToggleKey = {
   [K in keyof Settings]: Settings[K] extends boolean ? K : never;
 }[keyof Settings];
 
-const TOGGLES: { key: ToggleKey; label: string; hint: string }[] = [
+type ToggleDef = { key: ToggleKey; label: string; hint: string };
+
+// Toggles that sit alongside the input-mode picker in the "Gameplay" section.
+const GAMEPLAY_TOGGLES: ToggleDef[] = [
   {
     key: "timerEnabled",
     label: "Timer",
     hint: "Track elapsed time, pause/resume, and time stats",
   },
-  {
-    key: "mistakeCheckingEnabled",
-    label: "Mistake checking",
-    hint: "Flag wrong numbers in red as you place them",
-  },
-  {
-    key: "mistakeTrackingEnabled",
-    label: "Mistake counter",
-    hint: "Count your mistakes and show them in stats",
-  },
-  {
-    key: "highlightPeers",
-    label: "Highlight peers",
-    hint: "Shade the selected row, column, and box",
-  },
-  {
-    key: "highlightSameNumbers",
-    label: "Highlight same numbers",
-    hint: "Shade cells matching the selected value",
-  },
-  {
-    key: "autoNoteCleanup",
-    label: "Auto-clear notes",
-    hint: "Remove notes a placed number rules out",
-  },
-  {
-    key: "autoCarryNotes",
-    label: "Carry notes",
-    hint: "Cell-first: repeat a note onto an aligned cell in the same box",
-  },
-  {
-    key: "showRemainingCounts",
-    label: "Remaining counts",
-    hint: "Show how many of each number are left under the number pad",
-  },
-  {
-    key: "disableCompletedNumbers",
-    label: "Disable completed numbers",
-    hint: "Grey out and lock a number once all nine are placed",
-  },
   { key: "hapticsEnabled", label: "Haptics", hint: "Vibration feedback on actions" },
+];
+
+// Remaining toggles, grouped into labeled subsections so the list stays scannable.
+const TOGGLE_GROUPS: { title: string; toggles: ToggleDef[] }[] = [
+  {
+    title: "Mistakes",
+    toggles: [
+      {
+        key: "mistakeCheckingEnabled",
+        label: "Mistake checking",
+        hint: "Flag wrong numbers in red as you place them",
+      },
+      {
+        key: "mistakeTrackingEnabled",
+        label: "Mistake counter",
+        hint: "Count your mistakes and show them in stats",
+      },
+    ],
+  },
+  {
+    title: "Highlights",
+    toggles: [
+      {
+        key: "highlightPeers",
+        label: "Highlight peers",
+        hint: "Shade the selected row, column, and box",
+      },
+      {
+        key: "highlightSameNumbers",
+        label: "Highlight same numbers",
+        hint: "Shade cells matching the selected value",
+      },
+    ],
+  },
+  {
+    title: "Notes",
+    toggles: [
+      {
+        key: "autoNoteCleanup",
+        label: "Auto-clear notes",
+        hint: "Remove notes a placed number rules out",
+      },
+      {
+        key: "autoCarryNotes",
+        label: "Carry notes",
+        hint: "Cell-first: repeat a note onto an aligned cell in the same box",
+      },
+    ],
+  },
+  {
+    title: "Number pad",
+    toggles: [
+      {
+        key: "showRemainingCounts",
+        label: "Remaining counts",
+        hint: "Show how many of each number are left under the number pad",
+      },
+      {
+        key: "disableCompletedNumbers",
+        label: "Disable completed numbers",
+        hint: "Grey out and lock a number once all nine are placed",
+      },
+    ],
+  },
 ];
 
 const CLEANUP_SCOPE_OPTIONS: { value: NoteCleanupScope; label: string; hint: string }[] = [
@@ -149,6 +176,54 @@ export default function SettingsScreen() {
         : "We couldn’t find a previous purchase to restore.",
     );
   };
+
+  const renderToggle = (t: ToggleDef) => (
+    <View key={t.key} className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3">
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="flex-1 gap-0.5">
+          <Text className="text-ink text-base font-medium">{t.label}</Text>
+          <Text className="text-ink-soft text-sm">{t.hint}</Text>
+        </View>
+        <Switch
+          value={settings[t.key]}
+          onValueChange={(v) => setSetting(t.key, v)}
+          accessibilityLabel={t.label}
+        />
+      </View>
+      {t.key === "autoNoteCleanup" && settings.autoNoteCleanup ? (
+        <View className="flex-row gap-2">
+          {CLEANUP_SCOPE_OPTIONS.map((opt) => {
+            const active = settings.autoNoteCleanupScope === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => setSetting("autoNoteCleanupScope", opt.value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Auto-clear scope: ${opt.label}`}
+                accessibilityHint={opt.hint}
+                className={
+                  active
+                    ? "bg-primary flex-1 rounded-xl px-3 py-2.5"
+                    : "border-line bg-canvas flex-1 rounded-xl border px-3 py-2.5"
+                }
+              >
+                <Text
+                  className={
+                    active
+                      ? "text-on-primary text-center text-sm font-semibold"
+                      : "text-ink text-center text-sm font-medium"
+                  }
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
 
   return (
     <Screen className="bg-canvas flex-1">
@@ -230,57 +305,17 @@ export default function SettingsScreen() {
                 })}
               </View>
             </View>
-            {TOGGLES.map((t) => (
-              <View
-                key={t.key}
-                className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3"
-              >
-                <View className="flex-row items-center justify-between gap-3">
-                  <View className="flex-1 gap-0.5">
-                    <Text className="text-ink text-base font-medium">{t.label}</Text>
-                    <Text className="text-ink-soft text-sm">{t.hint}</Text>
-                  </View>
-                  <Switch
-                    value={settings[t.key]}
-                    onValueChange={(v) => setSetting(t.key, v)}
-                    accessibilityLabel={t.label}
-                  />
-                </View>
-                {t.key === "autoNoteCleanup" && settings.autoNoteCleanup ? (
-                  <View className="flex-row gap-2">
-                    {CLEANUP_SCOPE_OPTIONS.map((opt) => {
-                      const active = settings.autoNoteCleanupScope === opt.value;
-                      return (
-                        <Pressable
-                          key={opt.value}
-                          onPress={() => setSetting("autoNoteCleanupScope", opt.value)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: active }}
-                          accessibilityLabel={`Auto-clear scope: ${opt.label}`}
-                          accessibilityHint={opt.hint}
-                          className={
-                            active
-                              ? "bg-primary flex-1 rounded-xl px-3 py-2.5"
-                              : "border-line bg-canvas flex-1 rounded-xl border px-3 py-2.5"
-                          }
-                        >
-                          <Text
-                            className={
-                              active
-                                ? "text-on-primary text-center text-sm font-semibold"
-                                : "text-ink text-center text-sm font-medium"
-                            }
-                          >
-                            {opt.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </View>
-            ))}
+            {GAMEPLAY_TOGGLES.map(renderToggle)}
           </View>
+
+          {TOGGLE_GROUPS.map((group) => (
+            <View key={group.title} className="gap-3">
+              <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+                {group.title}
+              </Text>
+              {group.toggles.map(renderToggle)}
+            </View>
+          ))}
 
           {Platform.OS === "web" ? null : (
             <View className="gap-3">
