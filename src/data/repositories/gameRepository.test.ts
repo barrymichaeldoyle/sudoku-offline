@@ -1,6 +1,19 @@
-jest.mock("../db/client", () => ({
-  getDatabase: jest.fn(),
-}));
+jest.mock("../db/client", () => {
+  // Faithful copy of the real write lock so the serialization test exercises the
+  // actual chaining behavior (the implementation now lives in db/client).
+  let writeChain: Promise<unknown> = Promise.resolve();
+  return {
+    getDatabase: jest.fn(),
+    withWriteLock: <T>(op: () => Promise<T>): Promise<T> => {
+      const run = writeChain.then(op, op);
+      writeChain = run.then(
+        () => undefined,
+        () => undefined,
+      );
+      return run;
+    },
+  };
+});
 
 jest.mock("./dailyRepository", () => ({
   completeDailyForGame: jest.fn().mockResolvedValue(null),
@@ -9,7 +22,7 @@ jest.mock("./dailyRepository", () => ({
 import { CELL_COUNT, type GameState } from "@/domain/sudoku/types";
 
 import { getDatabase } from "../db/client";
-import { completeGame, getActiveGame, saveGame } from "./gameRepository";
+import { completeGame, getActiveGame, reconcileStuckCompletions, saveGame } from "./gameRepository";
 
 const mockGetDatabase = getDatabase as jest.Mock;
 
@@ -119,6 +132,57 @@ describe("gameRepository", () => {
     await Promise.all([completing, saving]);
 
     expect(events).toEqual(["txn:begin", "txn:commit", "save"]);
+  });
+
+  it("reconciles a stuck completion: solved board still marked active is completed", async () => {
+    const solution = "1".repeat(CELL_COUNT);
+    const stuckRow = {
+      id: "game-1",
+      puzzle_id: "puzzle-1",
+      difficulty: "easy",
+      givens: ".".repeat(CELL_COUNT),
+      solution,
+      values_string: solution, // board already solved
+      notes_json: "[]",
+      status: "active", // ...but never flipped to completed
+      elapsed_seconds: 200,
+      mistakes: 0,
+      hints_used: 0,
+      started_at: "t0",
+      completed_at: null,
+      updated_at: "t1",
+    };
+    const getAllAsync = jest.fn().mockResolvedValue([stuckRow]);
+    const runAsync = jest.fn().mockResolvedValue(undefined);
+    const withExclusiveTransactionAsync = jest.fn(
+      async (cb: (txn: { runAsync: jest.Mock; getFirstAsync: jest.Mock }) => Promise<void>) => {
+        await cb({ runAsync, getFirstAsync: jest.fn().mockResolvedValue(null) });
+      },
+    );
+    mockGetDatabase.mockResolvedValue({ getAllAsync, withExclusiveTransactionAsync });
+
+    const healed = await reconcileStuckCompletions();
+
+    expect(healed).toBe(1);
+    // Only solved-but-active rows are candidates.
+    expect(getAllAsync.mock.calls[0][0]).toContain("values_string = solution");
+    expect(getAllAsync.mock.calls[0][0]).toContain("status IN ('active', 'paused')");
+    // The replayed completion flips the row and records the completed game.
+    expect(runAsync.mock.calls.some((c) => String(c[0]).includes("UPDATE games"))).toBe(true);
+    expect(
+      runAsync.mock.calls.some((c) =>
+        String(c[0]).includes("INSERT OR REPLACE INTO completed_games"),
+      ),
+    ).toBe(true);
+  });
+
+  it("reconciles nothing when no game is stuck", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    const withExclusiveTransactionAsync = jest.fn();
+    mockGetDatabase.mockResolvedValue({ getAllAsync, withExclusiveTransactionAsync });
+
+    await expect(reconcileStuckCompletions()).resolves.toBe(0);
+    expect(withExclusiveTransactionAsync).not.toHaveBeenCalled();
   });
 
   it("guards saveGame so a late stale write can't downgrade a finished game", async () => {

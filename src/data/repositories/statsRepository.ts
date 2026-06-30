@@ -1,7 +1,7 @@
 import { DAILY_TRACKS, type DailyTrack } from "@/domain/daily";
 import { NEW_GAME_DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
 
-import { getDatabase } from "../db/client";
+import { getDatabase, withWriteLock } from "../db/client";
 
 export type DifficultyStat = {
   completed: number;
@@ -152,10 +152,12 @@ export async function getDailyTrackStats(): Promise<Record<DailyTrack, DailyTrac
  * streak). Active/paused games are left alone. Dev/settings affordance.
  */
 export async function resetStats(): Promise<void> {
-  const db = await getDatabase();
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    await txn.runAsync("DELETE FROM completed_games");
-    await txn.runAsync("DELETE FROM daily_progress");
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      await txn.runAsync("DELETE FROM completed_games");
+      await txn.runAsync("DELETE FROM daily_progress");
+    });
   });
 }
 
@@ -192,77 +194,79 @@ const MS_PER_DAY = 86_400_000;
  * repeated taps are deterministic. See components/DevTools.tsx.
  */
 export async function seedSampleStats(): Promise<void> {
-  const db = await getDatabase();
   const now = new Date();
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    await txn.runAsync("DELETE FROM completed_games");
-    await txn.runAsync("DELETE FROM daily_progress");
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      await txn.runAsync("DELETE FROM completed_games");
+      await txn.runAsync("DELETE FROM daily_progress");
 
-    let n = 0;
-    const completedGameInserts: Promise<unknown>[] = [];
-    for (const difficulty of NEW_GAME_DIFFICULTIES) {
-      const seed = SEED_PER_DIFFICULTY[difficulty];
-      if (!seed) {
-        continue;
-      }
-      const { count, base } = seed;
-      for (let i = 0; i < count; i++) {
-        const elapsed = Math.max(60, base + i * 37 - (i % 3) * 50);
-        const mistakes = i % 4 === 0 ? 0 : i % 3;
-        completedGameInserts.push(
-          txn.runAsync(
-            `INSERT INTO completed_games
+      let n = 0;
+      const completedGameInserts: Promise<unknown>[] = [];
+      for (const difficulty of NEW_GAME_DIFFICULTIES) {
+        const seed = SEED_PER_DIFFICULTY[difficulty];
+        if (!seed) {
+          continue;
+        }
+        const { count, base } = seed;
+        for (let i = 0; i < count; i++) {
+          const elapsed = Math.max(60, base + i * 37 - (i % 3) * 50);
+          const mistakes = i % 4 === 0 ? 0 : i % 3;
+          completedGameInserts.push(
+            txn.runAsync(
+              `INSERT INTO completed_games
                (id, game_id, puzzle_id, difficulty, date_key, elapsed_seconds, mistakes, hints_used, completed_at)
              VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
-            `dev-${difficulty}-${i}`,
-            `dev-game-${n}`,
-            `dev-puzzle-${n}`,
-            difficulty,
-            elapsed,
-            mistakes,
-            i % 5,
-            now.toISOString(),
-          ),
-        );
-        n++;
+              `dev-${difficulty}-${i}`,
+              `dev-game-${n}`,
+              `dev-puzzle-${n}`,
+              difficulty,
+              elapsed,
+              mistakes,
+              i % 5,
+              now.toISOString(),
+            ),
+          );
+          n++;
+        }
       }
-    }
-    await Promise.all(completedGameInserts);
+      await Promise.all(completedGameInserts);
 
-    const dailyProgressInserts = Array.from({ length: SEED_STREAK_DAYS }, (_, i) => {
-      const day = new Date(now.getTime() - i * MS_PER_DAY);
-      const dateKey = localDateKey(day);
-      return txn.runAsync(
-        `INSERT OR REPLACE INTO daily_progress
+      const dailyProgressInserts = Array.from({ length: SEED_STREAK_DAYS }, (_, i) => {
+        const day = new Date(now.getTime() - i * MS_PER_DAY);
+        const dateKey = localDateKey(day);
+        return txn.runAsync(
+          `INSERT OR REPLACE INTO daily_progress
            (date_key, track, puzzle_id, game_id, completed_at, elapsed_seconds, mistakes, hints_used)
          VALUES (?, 'daily', ?, ?, ?, ?, ?, ?)`,
-        dateKey,
-        `dev-daily-${dateKey}`,
-        `dev-daily-game-${dateKey}`,
-        day.toISOString(),
-        300 + i * 20,
-        i % 2,
-        0,
-      );
-    });
-    // A few recent Daily Challenge (extreme) completions so the Challenge card
-    // has data. No streak pressure on this track, so the dates can be sparse.
-    const challengeInserts = Array.from({ length: SEED_CHALLENGE_DAYS }, (_, i) => {
-      const day = new Date(now.getTime() - i * 2 * MS_PER_DAY);
-      const dateKey = localDateKey(day);
-      return txn.runAsync(
-        `INSERT OR REPLACE INTO daily_progress
+          dateKey,
+          `dev-daily-${dateKey}`,
+          `dev-daily-game-${dateKey}`,
+          day.toISOString(),
+          300 + i * 20,
+          i % 2,
+          0,
+        );
+      });
+      // A few recent Daily Challenge (extreme) completions so the Challenge card
+      // has data. No streak pressure on this track, so the dates can be sparse.
+      const challengeInserts = Array.from({ length: SEED_CHALLENGE_DAYS }, (_, i) => {
+        const day = new Date(now.getTime() - i * 2 * MS_PER_DAY);
+        const dateKey = localDateKey(day);
+        return txn.runAsync(
+          `INSERT OR REPLACE INTO daily_progress
            (date_key, track, puzzle_id, game_id, completed_at, elapsed_seconds, mistakes, hints_used)
          VALUES (?, 'challenge', ?, ?, ?, ?, ?, ?)`,
-        dateKey,
-        `dev-challenge-${dateKey}`,
-        `dev-challenge-game-${dateKey}`,
-        day.toISOString(),
-        1500 + i * 90,
-        i % 3,
-        i % 2,
-      );
+          dateKey,
+          `dev-challenge-${dateKey}`,
+          `dev-challenge-game-${dateKey}`,
+          day.toISOString(),
+          1500 + i * 90,
+          i % 3,
+          i % 2,
+        );
+      });
+      await Promise.all([...dailyProgressInserts, ...challengeInserts]);
     });
-    await Promise.all([...dailyProgressInserts, ...challengeInserts]);
   });
 }

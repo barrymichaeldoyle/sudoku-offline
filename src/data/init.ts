@@ -6,6 +6,7 @@ import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 
 import { getDatabase } from "./db/client";
+import { reconcileStuckCompletions } from "./repositories/gameRepository";
 import { importBundledPacksIfNeeded } from "./repositories/puzzleRepository";
 
 let initPromise: Promise<void> | null = null;
@@ -20,6 +21,13 @@ export function initializeApp(): Promise<void> {
     initPromise = (async () => {
       await getDatabase();
       await importBundledPacksIfNeeded();
+      // Heal any completion a lost write left stuck as in-progress (board already
+      // solved but status active) before the UI paints, so home never shows a
+      // finished puzzle at ~98% and a daily's streak is restored. Best-effort:
+      // never block (or fail) boot on it.
+      await reconcileStuckCompletions().catch((err: unknown) => {
+        console.error("Failed to reconcile stuck completions", err);
+      });
       await useSettingsStore.getState().hydrate();
       applyThemePreference(useSettingsStore.getState().settings.theme);
       await useEntitlementStore.getState().hydrate();

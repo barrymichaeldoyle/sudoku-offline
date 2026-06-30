@@ -1,7 +1,7 @@
 import type { DailyTrack } from "@/domain/daily";
 import type { SQLiteDatabase } from "expo-sqlite";
 
-import { getDatabase } from "../db/client";
+import { getDatabase, withWriteLock } from "../db/client";
 
 /** The subset of the SQLite API we need inside an existing transaction. */
 type SQLiteRunner = Pick<SQLiteDatabase, "getFirstAsync" | "runAsync">;
@@ -65,19 +65,21 @@ export async function startDailyProgress(
   puzzleId: string,
   gameId: string,
 ): Promise<void> {
-  const db = await getDatabase();
-  await db.runAsync(
-    `INSERT INTO daily_progress (date_key, track, puzzle_id, game_id)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(date_key, track) DO UPDATE SET
-       puzzle_id = excluded.puzzle_id,
-       game_id = excluded.game_id
-     WHERE daily_progress.completed_at IS NULL`,
-    dateKey,
-    track,
-    puzzleId,
-    gameId,
-  );
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.runAsync(
+      `INSERT INTO daily_progress (date_key, track, puzzle_id, game_id)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(date_key, track) DO UPDATE SET
+         puzzle_id = excluded.puzzle_id,
+         game_id = excluded.game_id
+       WHERE daily_progress.completed_at IS NULL`,
+      dateKey,
+      track,
+      puzzleId,
+      gameId,
+    );
+  });
 }
 
 /**

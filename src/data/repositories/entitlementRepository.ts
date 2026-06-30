@@ -1,6 +1,6 @@
 import type { EntitlementMap } from "@/domain/entitlements";
 
-import { getDatabase } from "../db/client";
+import { getDatabase, withWriteLock } from "../db/client";
 
 /** All cached entitlements as a key→boolean map (the offline source of truth). */
 export async function getCachedEntitlements(): Promise<EntitlementMap> {
@@ -21,12 +21,14 @@ export async function setEntitlement(
   value: boolean,
   opts: { verifiedAt?: string | null; expiresAt?: string | null } = {},
 ): Promise<void> {
-  const db = await getDatabase();
-  await db.runAsync(
-    "INSERT OR REPLACE INTO entitlements (key, value, verified_at, expires_at) VALUES (?, ?, ?, ?)",
-    key,
-    value ? "true" : "false",
-    opts.verifiedAt ?? new Date().toISOString(),
-    opts.expiresAt ?? null,
-  );
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO entitlements (key, value, verified_at, expires_at) VALUES (?, ?, ?, ?)",
+      key,
+      value ? "true" : "false",
+      opts.verifiedAt ?? new Date().toISOString(),
+      opts.expiresAt ?? null,
+    );
+  });
 }

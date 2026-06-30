@@ -1,6 +1,6 @@
 import * as Crypto from "expo-crypto";
 
-import { getDatabase } from "../db/client";
+import { getDatabase, withWriteLock } from "../db/client";
 
 /** Hard cap so the offline queue can't grow without bound (no backend drains it). */
 const MAX_PENDING = 1000;
@@ -14,20 +14,25 @@ export type PendingEvent = {
 
 /** Append an event to the local queue, trimming the oldest beyond the cap. */
 export async function enqueueEvent(eventName: string, payloadJson: string): Promise<void> {
-  const db = await getDatabase();
-  await db.runAsync(
-    "INSERT INTO pending_events (id, event_name, payload_json, created_at) VALUES (?, ?, ?, ?)",
-    Crypto.randomUUID(),
-    eventName,
-    payloadJson,
-    new Date().toISOString(),
-  );
-  await db.runAsync(
-    `DELETE FROM pending_events WHERE id IN (
-       SELECT id FROM pending_events ORDER BY created_at DESC LIMIT -1 OFFSET ?
-     )`,
-    MAX_PENDING,
-  );
+  // Through the shared write lock: analytics events are written fire-and-forget
+  // right before game completion, so an unguarded write here would race the
+  // completion transaction and could roll it back.
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.runAsync(
+      "INSERT INTO pending_events (id, event_name, payload_json, created_at) VALUES (?, ?, ?, ?)",
+      Crypto.randomUUID(),
+      eventName,
+      payloadJson,
+      new Date().toISOString(),
+    );
+    await db.runAsync(
+      `DELETE FROM pending_events WHERE id IN (
+         SELECT id FROM pending_events ORDER BY created_at DESC LIMIT -1 OFFSET ?
+       )`,
+      MAX_PENDING,
+    );
+  });
 }
 
 /** Unsent events, oldest first — for a future flush to a real sink. */
@@ -54,11 +59,13 @@ export async function markEventsSent(ids: readonly string[], sentAt: string): Pr
   if (ids.length === 0) {
     return;
   }
-  const db = await getDatabase();
   const placeholders = ids.map(() => "?").join(", ");
-  await db.runAsync(
-    `UPDATE pending_events SET sent_at = ? WHERE id IN (${placeholders})`,
-    sentAt,
-    ...ids,
-  );
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.runAsync(
+      `UPDATE pending_events SET sent_at = ? WHERE id IN (${placeholders})`,
+      sentAt,
+      ...ids,
+    );
+  });
 }

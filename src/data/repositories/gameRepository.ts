@@ -3,7 +3,7 @@ import * as Crypto from "expo-crypto";
 import { parseValuesString, valuesToString } from "@/domain/sudoku/board";
 import { CELL_COUNT, type GameState, type GameStatus, type Puzzle } from "@/domain/sudoku/types";
 
-import { getDatabase } from "../db/client";
+import { getDatabase, withWriteLock } from "../db/client";
 import { completeDailyForGame } from "./dailyRepository";
 
 type GameRow = {
@@ -22,28 +22,6 @@ type GameRow = {
   completed_at: string | null;
   updated_at: string;
 };
-
-/**
- * Serializes writes that must not interleave on the single shared connection.
- * expo-sqlite runs statements on one queue, but a plain `runAsync` can still
- * slip *inside* an in-flight `withExclusiveTransactionAsync` (the exclusive lock
- * only blocks other transaction calls, not bare statements). A debounced
- * `saveGame` dispatched just before a win would otherwise overlap `completeGame`
- * and make its transaction throw, rolling back the status flip and leaving the
- * row active one move short of solved. Chaining every write here keeps them
- * strictly sequential, so completion always lands.
- */
-let writeChain: Promise<unknown> = Promise.resolve();
-function serializeWrite<T>(op: () => Promise<T>): Promise<T> {
-  const run = writeChain.then(op, op);
-  // Keep the chain alive even if a write rejects, but don't let its rejection
-  // propagate to the next queued write.
-  writeChain = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  return run;
-}
 
 function rowToGame(row: GameRow): GameState {
   return {
@@ -101,7 +79,7 @@ export async function createGame(puzzle: Puzzle): Promise<GameState> {
  * terminal save still wins.
  */
 export async function saveGame(game: GameState): Promise<void> {
-  await serializeWrite(async () => {
+  await withWriteLock(async () => {
     const db = await getDatabase();
     await db.runAsync(
       `INSERT INTO games
@@ -171,7 +149,7 @@ export async function completeGame(game: GameState): Promise<GameState> {
   const completedAt = new Date().toISOString();
   const completed: GameState = { ...game, status: "completed", completedAt };
 
-  await serializeWrite(async () => {
+  await withWriteLock(async () => {
     const db = await getDatabase();
     await db.withExclusiveTransactionAsync(async (txn) => {
       // Persist the final board and run stats alongside the status flip. The
@@ -222,11 +200,39 @@ export async function completeGame(game: GameState): Promise<GameState> {
 }
 
 /**
+ * Self-heal completions that a lost write left stuck in-progress: a games row
+ * whose board already equals its solution but is still 'active'/'paused' (the
+ * player finished it, but the completion transaction never committed — see
+ * `withWriteLock` in db/client). Replaying completeGame restores the completed
+ * status, the completed_games row, and — for a daily — the daily_progress stamp
+ * that drives the streak. The status flip makes this self-limiting: a reconciled
+ * game is no longer a candidate next boot, so it can't double-record. Returns
+ * how many games were healed. Runs once at boot (see data/init).
+ */
+export async function reconcileStuckCompletions(): Promise<number> {
+  const db = await getDatabase();
+  // A solved board serializes to exactly the solution string (digits, no zeros),
+  // so this equality is the same condition as isPuzzleComplete.
+  const rows = await db.getAllAsync<GameRow>(
+    `SELECT * FROM games
+       WHERE status IN ('active', 'paused')
+         AND values_string = solution`,
+  );
+  for (const row of rows) {
+    // completeGame serializes through the write lock anyway, so sequential here
+    // keeps the per-game daily-stamp logic simple.
+    // eslint-disable-next-line no-await-in-loop
+    await completeGame(rowToGame(row));
+  }
+  return rows.length;
+}
+
+/**
  * Mark a resumable game abandoned so it no longer surfaces as the active game.
  * Nothing is written to completed_games, so stats are unaffected.
  */
 export async function abandonGame(id: string): Promise<void> {
-  await serializeWrite(async () => {
+  await withWriteLock(async () => {
     const db = await getDatabase();
     await db.runAsync(
       "UPDATE games SET status = 'abandoned', updated_at = ? WHERE id = ? AND status IN ('active', 'paused')",

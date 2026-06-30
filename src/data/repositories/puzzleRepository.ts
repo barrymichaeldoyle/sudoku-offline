@@ -2,7 +2,7 @@ import type { Difficulty, Puzzle, PuzzleSource } from "@/domain/sudoku/types";
 
 import { type DailyTrack, trackIdPrefix } from "@/domain/daily";
 
-import { getDatabase } from "../db/client";
+import { getDatabase, withWriteLock } from "../db/client";
 import { BUNDLED_PACKS } from "../puzzleData";
 
 type PuzzleRow = {
@@ -46,33 +46,35 @@ export async function importBundledPacksIfNeeded(): Promise<void> {
 
     const now = new Date().toISOString();
     // eslint-disable-next-line no-await-in-loop -- each pack import owns an exclusive transaction.
-    await db.withExclusiveTransactionAsync(async (txn) => {
-      const statement = await txn.prepareAsync(
-        `INSERT OR REPLACE INTO puzzles
-           (id, difficulty, givens, solution, source, date_key, created_at)
-         VALUES (?, ?, ?, ?, 'bundled', NULL, ?)`,
-      );
-      try {
-        for (const puzzle of pack.puzzles) {
-          // eslint-disable-next-line no-await-in-loop -- reuse the prepared statement sequentially.
-          await statement.executeAsync([
-            puzzle.id,
-            puzzle.difficulty,
-            puzzle.givens,
-            puzzle.solution,
-            now,
-          ]);
+    await withWriteLock(() =>
+      db.withExclusiveTransactionAsync(async (txn) => {
+        const statement = await txn.prepareAsync(
+          `INSERT OR REPLACE INTO puzzles
+             (id, difficulty, givens, solution, source, date_key, created_at)
+           VALUES (?, ?, ?, ?, 'bundled', NULL, ?)`,
+        );
+        try {
+          for (const puzzle of pack.puzzles) {
+            // eslint-disable-next-line no-await-in-loop -- reuse the prepared statement sequentially.
+            await statement.executeAsync([
+              puzzle.id,
+              puzzle.difficulty,
+              puzzle.givens,
+              puzzle.solution,
+              now,
+            ]);
+          }
+        } finally {
+          await statement.finalizeAsync();
         }
-      } finally {
-        await statement.finalizeAsync();
-      }
-      await txn.runAsync(
-        "INSERT OR REPLACE INTO puzzle_packs (id, version, imported_at) VALUES (?, ?, ?)",
-        pack.id,
-        pack.version,
-        now,
-      );
-    });
+        await txn.runAsync(
+          "INSERT OR REPLACE INTO puzzle_packs (id, version, imported_at) VALUES (?, ?, ?)",
+          pack.id,
+          pack.version,
+          now,
+        );
+      }),
+    );
   }
 }
 
