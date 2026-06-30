@@ -13,7 +13,13 @@ import {
   parseValuesString,
 } from "@/domain/sudoku/board";
 import { findHintCell, HINT_COOLDOWN_MS } from "@/domain/sudoku/hints";
-import { addNote, cleanupNotesAfterPlacement, hasNote, toggleNote } from "@/domain/sudoku/notes";
+import {
+  addNote,
+  cleanupNotesAfterPlacement,
+  hasNote,
+  removeNote,
+  toggleNote,
+} from "@/domain/sudoku/notes";
 import { CELL_COUNT } from "@/domain/sudoku/types";
 import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
@@ -42,6 +48,8 @@ type GameStore = {
   /** Board is completely filled but does not match the solution. */
   incorrectComplete: boolean;
   undoStack: GameAction[];
+  /** Actions popped by undo, available to replay via redo until the next edit. */
+  redoStack: GameAction[];
 
   /** True while a hint confirmation prompt is shown. */
   hintPromptVisible: boolean;
@@ -83,6 +91,7 @@ type GameStore = {
   /** Close the "board full but incorrect" modal (keep playing). */
   dismissIncorrectComplete: () => void;
   undo: () => void;
+  redo: () => void;
 
   pause: () => void;
   resume: () => void;
@@ -150,6 +159,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   justCompleted: false,
   incorrectComplete: false,
   undoStack: [],
+  redoStack: [],
   hintPromptVisible: false,
   hintPromptMode: null,
   hintCooldownUntil: null,
@@ -183,6 +193,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
+      redoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
@@ -203,6 +214,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
+      redoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
@@ -221,6 +233,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
+      redoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
@@ -264,6 +277,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       justCompleted: false,
       incorrectComplete: false,
       undoStack: [],
+      redoStack: [],
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
@@ -415,7 +429,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   undo() {
-    const { game, undoStack } = get();
+    const { game, undoStack, redoStack } = get();
     if (!game || game.status === "completed" || undoStack.length === 0) {
       return;
     }
@@ -443,11 +457,53 @@ export const useGameStore = create<GameStore>((set, get) => ({
       game: next,
       selectedCell: action.cellIndex,
       undoStack: undoStack.slice(0, -1),
+      redoStack: [...redoStack, action],
+      carryNoteDigit: null,
       // Undoing a revealed hint lifts its cooldown so the button is usable again
       // (the hintsUsed tally stays — the hint was still spent).
       ...(action.type === "place_value" && action.fromHint ? { hintCooldownUntil: null } : {}),
     });
     scheduleSave(next);
+  },
+
+  redo() {
+    const { game, undoStack, redoStack } = get();
+    if (!game || game.status === "completed" || redoStack.length === 0) {
+      return;
+    }
+    const action = redoStack[redoStack.length - 1];
+    const values = game.values.slice();
+    const notes = game.notes.slice();
+
+    if (action.type === "place_value") {
+      values[action.cellIndex] = action.nextValue;
+      notes[action.cellIndex] = action.nextNotes;
+      // Re-apply the auto-cleanup the original placement did to peer notes.
+      for (const cleared of action.clearedNotes ?? []) {
+        notes[cleared.cellIndex] =
+          action.nextValue == null
+            ? cleared.previousNotes
+            : removeNote(cleared.previousNotes, action.nextValue);
+      }
+    } else if (action.type === "set_notes") {
+      notes[action.cellIndex] = action.nextNotes;
+    } else {
+      values[action.cellIndex] = null;
+      notes[action.cellIndex] = 0;
+    }
+
+    const next: GameState = { ...game, values, notes };
+    haptics.place();
+    set({
+      game: next,
+      selectedCell: action.cellIndex,
+      undoStack: [...undoStack, action],
+      redoStack: redoStack.slice(0, -1),
+      carryNoteDigit: null,
+    });
+    // A redo can re-fill the final cell, so run the same completion check as a
+    // fresh placement (no-op for notes/erase or an unfinished board).
+    finalizeAfterPlacement(set, get, next, values, isBoardFull(game.values));
   },
 
   pause() {
@@ -537,7 +593,7 @@ function eraseCellAt(set: SetFn, get: GetFn, index: number): void {
   const next: GameState = { ...game, values, notes };
   const action: GameAction = { type: "erase", cellIndex: index, previousValue, previousNotes };
   haptics.place();
-  set({ game: next, undoStack: [...undoStack, action], carryNoteDigit: null });
+  set({ game: next, undoStack: [...undoStack, action], redoStack: [], carryNoteDigit: null });
   scheduleSave(next);
 }
 
@@ -570,7 +626,13 @@ function carryNoteToCell(set: SetFn, get: GetFn, index: number, num: number): vo
     nextNotes: notes[index],
   };
   haptics.place();
-  set({ game: next, undoStack: [...undoStack, action], selectedCell: index, carryNoteDigit: null });
+  set({
+    game: next,
+    undoStack: [...undoStack, action],
+    redoStack: [],
+    selectedCell: index,
+    carryNoteDigit: null,
+  });
   scheduleSave(next);
 }
 
@@ -600,7 +662,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
         : get().carryNoteDigit === num
           ? null
           : get().carryNoteDigit;
-    set({ game: next, undoStack: [...undoStack, action], carryNoteDigit });
+    set({ game: next, undoStack: [...undoStack, action], redoStack: [], carryNoteDigit });
     scheduleSave(next);
     return;
   }
@@ -654,7 +716,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
     clearedNotes,
   };
   const next: GameState = { ...game, values, notes, mistakes };
-  set({ game: next, undoStack: [...undoStack, action], carryNoteDigit: null });
+  set({ game: next, undoStack: [...undoStack, action], redoStack: [], carryNoteDigit: null });
   finalizeAfterPlacement(set, get, next, values, isBoardFull(game.values));
 }
 
@@ -711,6 +773,7 @@ function revealHint(set: SetFn, get: GetFn): void {
     game: next,
     selectedCell: index,
     undoStack: [...undoStack, action],
+    redoStack: [],
     hintPromptVisible: false,
     hintPromptMode: null,
     hintCooldownUntil: Date.now() + HINT_COOLDOWN_MS,

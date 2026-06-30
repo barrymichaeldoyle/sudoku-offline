@@ -257,6 +257,75 @@ describe("useGameStore reducers", () => {
     expect(game.notes[1]).toBe(NOTE_5);
   });
 
+  describe("redo", () => {
+    const NOTE_5 = 1 << 4; // note 5 -> bit 4
+
+    it("re-applies an undone placement", () => {
+      const s = useGameStore.getState();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.undo();
+      expect(useGameStore.getState().game!.values[0]).toBeNull();
+      s.redo();
+      const state = useGameStore.getState();
+      expect(state.game!.values[0]).toBe(5);
+      expect(state.redoStack).toHaveLength(0);
+      expect(state.undoStack).toHaveLength(1);
+    });
+
+    it("re-applies an undone note", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.undo();
+      expect(useGameStore.getState().game!.notes[0]).toBe(0);
+      s.redo();
+      expect(useGameStore.getState().game!.notes[0]).toBe(NOTE_5);
+    });
+
+    it("re-applies an undone erase", () => {
+      const s = useGameStore.getState();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.erase();
+      s.undo(); // value back
+      expect(useGameStore.getState().game!.values[0]).toBe(5);
+      s.redo(); // erase again
+      expect(useGameStore.getState().game!.values[0]).toBeNull();
+    });
+
+    it("re-clears peer notes when redoing a placement", () => {
+      const s = useGameStore.getState();
+      s.toggleNotesMode();
+      s.pressCell(1); // peer of 0
+      s.pressNumber(5);
+      s.toggleNotesMode();
+      s.pressCell(0);
+      s.pressNumber(5); // auto-clears note 5 from cell 1
+      s.undo(); // restores peer note
+      expect(useGameStore.getState().game!.notes[1]).toBe(NOTE_5);
+      s.redo();
+      const game = useGameStore.getState().game!;
+      expect(game.values[0]).toBe(5);
+      expect(game.notes[1]).toBe(0);
+    });
+
+    it("drops the redo stack when a new edit is made", () => {
+      const s = useGameStore.getState();
+      s.pressCell(0);
+      s.pressNumber(5);
+      s.undo();
+      expect(useGameStore.getState().redoStack).toHaveLength(1);
+      // A fresh placement invalidates the redo history.
+      s.pressCell(1);
+      s.pressNumber(7);
+      expect(useGameStore.getState().redoStack).toHaveLength(0);
+      s.redo(); // no-op
+      expect(useGameStore.getState().game!.values[0]).toBeNull();
+    });
+  });
+
   it("restart clears the board back to givens and resets progress", () => {
     const s = useGameStore.getState();
     s.pressCell(0);
