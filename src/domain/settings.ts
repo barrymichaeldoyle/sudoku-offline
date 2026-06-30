@@ -14,6 +14,8 @@ export type Settings = {
   theme: ThemePreference;
   /** Cell-first vs number-first board input; shared by the in-game toggle. */
   inputMode: InputMode;
+  /** Show a board-completion progress bar in the in-game header. */
+  progressBarEnabled: boolean;
   timerEnabled: boolean;
   /** Flag wrong numbers as you place them (red highlight + invalid haptic). */
   mistakeCheckingEnabled: boolean;
@@ -48,6 +50,7 @@ export const DEFAULT_REMINDER_TIME_MINUTES = 9 * 60;
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   inputMode: "cell",
+  progressBarEnabled: true,
   timerEnabled: true,
   mistakeCheckingEnabled: true,
   mistakeTrackingEnabled: true,

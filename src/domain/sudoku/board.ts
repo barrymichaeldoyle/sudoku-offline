@@ -158,3 +158,24 @@ export function isPuzzleComplete(values: CellValue[], solution: string): boolean
   }
   return true;
 }
+
+/**
+ * Percent (0-100) of the puzzle's blank cells that the player has filled,
+ * regardless of correctness. Given cells are excluded so a heavily-clued puzzle
+ * doesn't start at a misleadingly high percent. Returns 100 if there are no
+ * blanks to fill.
+ */
+export function completionPercent(values: CellValue[], givens: string): number {
+  let blanks = 0;
+  let filled = 0;
+  for (let i = 0; i < CELL_COUNT; i++) {
+    if (isGivenCell(givens, i)) {
+      continue;
+    }
+    blanks += 1;
+    if (values[i] != null) {
+      filled += 1;
+    }
+  }
+  return blanks === 0 ? 100 : Math.round((filled / blanks) * 100);
+}

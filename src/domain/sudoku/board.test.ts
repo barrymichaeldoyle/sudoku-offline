@@ -1,4 +1,5 @@
 import {
+  completionPercent,
   getBoxIndex,
   getColIndex,
   getPeerIndices,
@@ -143,5 +144,29 @@ describe("isBoardFull", () => {
     const values = parseValuesString(SOLUTION);
     values[42] = null;
     expect(isBoardFull(values)).toBe(false);
+  });
+});
+
+describe("completionPercent", () => {
+  it("is 0 when only the givens are present", () => {
+    expect(completionPercent(parseValuesString(GIVENS), GIVENS)).toBe(0);
+  });
+
+  it("is 100 when every blank is filled, even if wrong", () => {
+    const values = parseValuesString(SOLUTION);
+    values[2] = 9; // cell 2 is a blank in GIVENS; wrong value but still filled
+    expect(completionPercent(values, GIVENS)).toBe(100);
+  });
+
+  it("is between 0 and 100 when partially filled", () => {
+    const values = parseValuesString(GIVENS);
+    values[2] = 4; // fill a single blank cell
+    const percent = completionPercent(values, GIVENS);
+    expect(percent).toBeGreaterThan(0);
+    expect(percent).toBeLessThan(100);
+  });
+
+  it("is 100 when there are no blanks to fill", () => {
+    expect(completionPercent(parseValuesString(SOLUTION), SOLUTION)).toBe(100);
   });
 });

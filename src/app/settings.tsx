@@ -40,6 +40,11 @@ type ToggleDef = { key: ToggleKey; label: string; hint: string };
 // Toggles that sit alongside the input-mode picker in the "Gameplay" section.
 const GAMEPLAY_TOGGLES: ToggleDef[] = [
   {
+    key: "progressBarEnabled",
+    label: "Progress bar",
+    hint: "Show how much of the board you've filled",
+  },
+  {
     key: "timerEnabled",
     label: "Timer",
     hint: "Track elapsed time, pause/resume, and time stats",

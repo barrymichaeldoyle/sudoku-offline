@@ -11,14 +11,13 @@ import { SimpleIcon } from "@/components/SimpleIcon";
 import { getDailyProgress } from "@/data/repositories/dailyRepository";
 import { abandonGame, getActiveGame, getGameById } from "@/data/repositories/gameRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
-import { isGivenCell } from "@/domain/sudoku/board";
+import { completionPercent } from "@/domain/sudoku/board";
 import {
   DAILY_TRACK_DOT,
   DIFFICULTY_DOT,
   DIFFICULTY_LABELS,
 } from "@/domain/sudoku/difficultyPresentation";
 import {
-  CELL_COUNT,
   NEW_GAME_DIFFICULTIES,
   type Difficulty,
   type GameState,
@@ -453,7 +452,7 @@ function DailyCard({
         <View className="bg-surface-muted h-1 overflow-hidden rounded-full">
           <View
             className={clsx("h-full rounded-full", accent)}
-            style={{ width: `${completionPercent(progress.game as GameState)}%` }}
+            style={{ width: `${completionPercent(progress.game!.values, progress.game!.givens)}%` }}
           />
         </View>
       ) : null}
@@ -489,30 +488,13 @@ function MiniButton({
   );
 }
 
-/** Percent of the *blank* (non-given) cells the player has filled, so a fresh
- * puzzle reads 0% regardless of how many clues it started with. */
-function completionPercent(game: GameState): number {
-  let blanks = 0;
-  let filled = 0;
-  for (let i = 0; i < CELL_COUNT; i++) {
-    if (isGivenCell(game.givens, i)) {
-      continue;
-    }
-    blanks += 1;
-    if (game.values[i] != null) {
-      filled += 1;
-    }
-  }
-  return blanks === 0 ? 100 : Math.round((filled / blanks) * 100);
-}
-
 /** Progress without the difficulty (used where difficulty is already implied,
  * e.g. the daily cards): "62% · 03:21 · 1 mistake". */
 function progressDetail(
   game: GameState,
   settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean },
 ): string {
-  const parts = [`${completionPercent(game)}%`];
+  const parts = [`${completionPercent(game.values, game.givens)}%`];
   if (settings.timerEnabled) {
     parts.push(formatDuration(game.elapsedSeconds));
   }

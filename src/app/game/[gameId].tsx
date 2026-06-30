@@ -24,7 +24,7 @@ import {
 } from "@/data/repositories/settingsRepository";
 import { describeChallengeOutcome, type ChallengeTarget } from "@/domain/shareLink";
 import { formatShareText } from "@/domain/shareText";
-import { isGivenCell } from "@/domain/sudoku/board";
+import { completionPercent, isGivenCell } from "@/domain/sudoku/board";
 import { NEW_GAME_DIFFICULTIES, type GameState } from "@/domain/sudoku/types";
 import { track } from "@/services/analyticsService";
 import { launchPuzzle } from "@/services/gameLauncher";
@@ -66,6 +66,7 @@ export default function GameScreen() {
   const flushAndPause = useGameStore((s) => s.flushAndPause);
   const syncTimerFromSettings = useGameStore((s) => s.syncTimerFromSettings);
   const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
+  const progressBarEnabled = useSettingsStore((s) => s.settings.progressBarEnabled);
   const [boardSize, setBoardSize] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -143,13 +144,16 @@ export default function GameScreen() {
           className="flex-1 items-center justify-end"
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
-            // Reserve room for the input-mode toggle row above the grid.
-            const nextSize = Math.floor(Math.min(width, height - 44));
+            // Reserve room for the input-mode toggle row above the grid, plus the
+            // progress bar when it's shown, so the grid never gets clipped.
+            const reserved = 44 + (progressBarEnabled ? 40 : 0);
+            const nextSize = Math.floor(Math.min(width, height - reserved));
             setBoardSize((current) => (current === nextSize ? current : nextSize));
           }}
         >
           {boardSize > 0 ? (
             <View style={{ width: boardSize }} className="gap-2">
+              <GameProgressBar />
               <View className="flex-row items-center justify-between">
                 <ResetButton disabled={!hasProgress} onPress={() => setShowResetConfirm(true)} />
                 <InputModeToggle />
@@ -506,6 +510,40 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
             </Text>
           </StatItem>
         ) : null}
+      </View>
+    </View>
+  );
+}
+
+/** Slim board-completion bar with a percent readout, sitting just above the
+ * board's action row to give a sense of momentum as the grid fills in. */
+function GameProgressBar() {
+  const game = useGameStore((s) => s.game);
+  const enabled = useSettingsStore((s) => s.settings.progressBarEnabled);
+  if (!game || !enabled) {
+    return null;
+  }
+  const percent = completionPercent(game.values, game.givens);
+  return (
+    <View className="gap-1.5 px-2">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-ink-soft text-xs font-semibold tracking-widest uppercase">
+          Progress
+        </Text>
+        <Text
+          className="text-ink-soft text-xs font-semibold"
+          style={{ fontVariant: ["tabular-nums"] }}
+        >
+          {percent}%
+        </Text>
+      </View>
+      <View
+        className="bg-surface-muted h-2 overflow-hidden rounded-full"
+        accessibilityRole="progressbar"
+        accessibilityValue={{ min: 0, max: 100, now: percent }}
+        accessibilityLabel="Board completion"
+      >
+        <View className="bg-primary h-full rounded-full" style={{ width: `${percent}%` }} />
       </View>
     </View>
   );
