@@ -53,9 +53,14 @@ export async function getDailyCompletionInfo(gameId: string): Promise<DailyCompl
     return { dateKey: daily.dateKey, track: daily.track, streak: null };
   }
   const dailyKeys = await getCompletedDailyDateKeys("daily");
+  // The completion screen renders before the async completion write is
+  // guaranteed to have landed, so count this game's own day even if its
+  // `completed_at` stamp isn't visible yet. computeStreak dedupes, so this is
+  // a no-op on revisits. Without it, a first-ever daily win shows no streak
+  // instead of "1 day" - the hook that brings players back tomorrow.
   return {
     dateKey: daily.dateKey,
     track: daily.track,
-    streak: computeStreak(dailyKeys, getLocalDateKey()),
+    streak: computeStreak([...dailyKeys, daily.dateKey], getLocalDateKey()),
   };
 }
