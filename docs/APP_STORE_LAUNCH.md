@@ -110,37 +110,31 @@ The framed marketing images in `assets/store/screenshots/{iphone,ipad}/` are
 built in two stages: capture raw in-app screens, then composite them onto framed
 captions.
 
-**1. Set up once.** Boot an iPhone 17 Pro (raw `1206x2622`) and an iPad Pro 13"
-(raw `2064x2752`) simulator, with the app installed on both — the iPhone
-simulator build installs onto the iPad as-is:
-
-```
-xcrun simctl install <ipad udid> <path to Sudoku.app from the iPhone build>
-```
-
-Then start Metro with screenshot mode on, so the hidden `/shots` deep-link
-route is live (the flag is inlined at bundle time, so a plain dev server
-won't do):
-
-```
-EXPO_PUBLIC_SCREENSHOT_MODE=1 npx expo start
-```
-
-**2. Capture + frame.** One command does the rest:
+One command does everything:
 
 ```
 pnpm capture:screenshots
 ```
 
-It drives both booted simulators through the four seeded states
+It boots the iPhone 17 Pro (raw `1206x2622`) and iPad Pro 13" (raw `2064x2752`)
+simulators if needed, installs the newest local simulator build onto both (the
+iPhone build runs on the iPad as-is), starts Metro with
+`EXPO_PUBLIC_SCREENSHOT_MODE=1` if nothing is on `:8081` (and stops it after),
+drives both devices through the four seeded states
 (`sudokuoffline://shots/{home,game,stats}` in light plus game in dark), writes
 the raws to `assets/store/screenshots/raw/`, then runs
 `pnpm generate:screenshots` to composite them onto the cream caption frame at
 the required App Store sizes (iPhone `1284x2778`, iPad `2064x2752`). Along the
 way it pins a clean 09:41 status bar, pre-approves the URL scheme so
 SpringBoard's "Open in Sudoku?" prompt never appears, and disables the Expo
-dev-menu floating gear and onboarding sheet. Edit captions/sizes in
-`scripts/generate-store-screenshots.mjs`.
+dev-menu floating gear, onboarding sheet, and menu-at-launch. Edit
+captions/sizes in `scripts/generate-store-screenshots.mjs`.
+
+Two caveats: a simulator build must exist somewhere (run `npx expo run:ios`
+once on a fresh machine), and if you already have Metro running on `:8081` it
+is reused as-is — it must have been started with
+`EXPO_PUBLIC_SCREENSHOT_MODE=1` (the flag is inlined at bundle time), or the
+`/shots` routes will be inert and the captures wrong.
 
 The shots route seeds a fixed, photogenic state (stats, a 7-day streak, both
 dailies solved, a known in-progress game, no ad cards); the seed and route live
