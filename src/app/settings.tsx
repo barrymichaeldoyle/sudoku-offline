@@ -331,7 +331,8 @@ export default function SettingsScreen() {
                 <View className="flex-1 gap-0.5">
                   <Text className="text-ink text-base font-medium">Daily puzzle reminder</Text>
                   <Text className="text-ink-soft text-sm">
-                    A gentle nudge to finish today's Daily Puzzle and keep your streak going
+                    A nudge to finish today's Daily Puzzle, plus a last call in the evening when
+                    your streak is at risk
                   </Text>
                 </View>
                 <Switch

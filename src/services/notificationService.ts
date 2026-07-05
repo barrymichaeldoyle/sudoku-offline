@@ -3,14 +3,16 @@ import type { Settings } from "@/domain/settings";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-import { getDailyProgress } from "@/data/repositories/dailyRepository";
-import { nextReminderDate } from "@/domain/reminder";
+import { getCompletedDailyDateKeys, getDailyProgress } from "@/data/repositories/dailyRepository";
+import { nextReminderDate, nextStreakSaveDate } from "@/domain/reminder";
+import { computeStreak } from "@/domain/streak";
 import { track } from "@/services/analyticsService";
 import { getLocalDateKey } from "@/services/dailyService";
 
-/** Fixed identifier so a reschedule replaces (not duplicates) our reminder, and
- * we can cancel ours without touching anything else the OS has scheduled. */
+/** Fixed identifiers so a reschedule replaces (not duplicates) our reminders,
+ * and we can cancel ours without touching anything else the OS has scheduled. */
 const DAILY_REMINDER_ID = "daily-puzzle-reminder";
+const STREAK_SAVE_REMINDER_ID = "streak-save-reminder";
 const ANDROID_CHANNEL_ID = "daily-reminders";
 
 /** Deep-link target for a reminder tap — Home resolves it to today's daily. */
@@ -76,12 +78,15 @@ async function hasPermission(): Promise<boolean> {
   return isGranted(await Notifications.getPermissionsAsync());
 }
 
-/** Cancel just our scheduled reminder (no-op if none is pending). */
+/** Cancel just our scheduled reminders (no-op if none are pending). */
 export async function cancelDailyReminder(): Promise<void> {
   if (isWeb) {
     return;
   }
-  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {});
+  await Promise.all([
+    Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {}),
+    Notifications.cancelScheduledNotificationAsync(STREAK_SAVE_REMINDER_ID).catch(() => {}),
+  ]);
 }
 
 async function isTodayDailyComplete(): Promise<boolean> {
@@ -107,14 +112,21 @@ export async function canOfferReminderPrompt(): Promise<boolean> {
 }
 
 /**
- * Reconcile the single scheduled daily reminder with current state. Safe — and
- * meant — to be called often: on boot, when the setting/time changes, when
- * today's daily is started or completed, and when the app returns to the
- * foreground. It cancels any pending reminder, then schedules the next
- * opportunity only when the feature is on, permission is granted, and there is
- * still a reason to remind (today's daily isn't finished yet).
+ * Reconcile the scheduled reminders (the daily nudge plus the evening
+ * streak-save "last call") with current state. Safe — and meant — to be called
+ * often: on boot, when the setting/time changes, when today's daily is started
+ * or completed, and when the app returns to the foreground. It cancels any
+ * pending reminders, then schedules the next opportunities only when the
+ * feature is on, permission is granted, and there is still a reason to remind.
+ *
+ * `justCompletedDailyDateKey` lets the completion screen flag a win whose
+ * database write may not have landed yet, so the reconcile never re-nags about
+ * (or miscounts the streak of) a daily the player literally just finished.
  */
-export async function syncDailyReminderSchedule(settings: Settings): Promise<void> {
+export async function syncDailyReminderSchedule(
+  settings: Settings,
+  justCompletedDailyDateKey?: string,
+): Promise<void> {
   if (isWeb) {
     return;
   }
@@ -123,8 +135,10 @@ export async function syncDailyReminderSchedule(settings: Settings): Promise<voi
     if (!settings.dailyReminderEnabled || !(await hasPermission())) {
       return;
     }
-    const todayComplete = await isTodayDailyComplete();
-    const date = nextReminderDate(new Date(), settings.dailyReminderTimeMinutes, todayComplete);
+    const todayKey = getLocalDateKey();
+    const todayComplete = justCompletedDailyDateKey === todayKey || (await isTodayDailyComplete());
+    const now = new Date();
+    const date = nextReminderDate(now, settings.dailyReminderTimeMinutes, todayComplete);
     await ensureAndroidChannel();
     await Notifications.scheduleNotificationAsync({
       identifier: DAILY_REMINDER_ID,
@@ -140,10 +154,64 @@ export async function syncDailyReminderSchedule(settings: Settings): Promise<voi
       },
     });
     void track("daily_reminder_scheduled", { at: date.toISOString() });
+    await scheduleStreakSaveReminder(
+      settings,
+      now,
+      todayKey,
+      todayComplete,
+      justCompletedDailyDateKey,
+    );
   } catch {
     // Reminders are a retention nicety — a scheduling failure must never surface
     // to the player or break the offline game.
   }
+}
+
+/**
+ * The evening "last call": one extra notification at 20:30 local, scheduled
+ * only while there is actually a streak on the line — an alive streak and an
+ * unfinished daily on the evening it would fire. Players whose own reminder
+ * time is already an evening one never get it (see `nextStreakSaveDate`).
+ */
+async function scheduleStreakSaveReminder(
+  settings: Settings,
+  now: Date,
+  todayKey: string,
+  todayComplete: boolean,
+  justCompletedDailyDateKey?: string,
+): Promise<void> {
+  const date = nextStreakSaveDate(now, settings.dailyReminderTimeMinutes, todayComplete);
+  if (!date) {
+    return;
+  }
+  const dailyKeys = await getCompletedDailyDateKeys("daily");
+  if (justCompletedDailyDateKey) {
+    dailyKeys.push(justCompletedDailyDateKey); // computeStreak dedupes
+  }
+  const streak = computeStreak(dailyKeys, todayKey);
+  if (streak.current === 0) {
+    return;
+  }
+  await Notifications.scheduleNotificationAsync({
+    identifier: STREAK_SAVE_REMINDER_ID,
+    content: {
+      title:
+        streak.current === 1
+          ? "Your streak ends at midnight"
+          : `Your ${streak.current}-day streak ends at midnight`,
+      body: "Finish today's Sudoku to keep it going.",
+      data: { url: DAILY_REMINDER_URL, source: "streak_save_reminder" },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date,
+      channelId: ANDROID_CHANNEL_ID,
+    },
+  });
+  void track("streak_save_reminder_scheduled", {
+    at: date.toISOString(),
+    streak: streak.current,
+  });
 }
 
 /** The most recent notification response (a tap), if the app was opened by one. */

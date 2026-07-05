@@ -36,3 +36,40 @@ export function nextReminderDate(now: Date, timeMinutes: number, todayComplete: 
   }
   return target;
 }
+
+/** The evening "last call" streak-save nudge fires at 20:30 local. */
+export const STREAK_SAVE_TIME_MINUTES = 20 * 60 + 30;
+
+/** Skip the streak save when the user's own reminder time is this close to it
+ * (or past it): their reminder is already the evening ping, and two
+ * notifications in one evening is how people end up revoking permission. */
+const STREAK_SAVE_OVERLAP_MINUTES = 120;
+
+/**
+ * The next moment the evening streak-save nudge should fire, or null when it
+ * shouldn't be scheduled at all. Callers gate separately on there actually
+ * being a streak to save.
+ *
+ * - If today's daily is done, the streak is next at risk tomorrow evening.
+ * - Otherwise fire this evening, unless 20:30 has already passed: the streak
+ *   dies at midnight, so there is nothing left to save tomorrow.
+ * - Never scheduled when the user's chosen reminder time is itself an evening
+ *   one (within two hours of 20:30, or later).
+ */
+export function nextStreakSaveDate(
+  now: Date,
+  reminderTimeMinutes: number,
+  todayComplete: boolean,
+): Date | null {
+  if (reminderTimeMinutes >= STREAK_SAVE_TIME_MINUTES - STREAK_SAVE_OVERLAP_MINUTES) {
+    return null;
+  }
+  const [hour, minute] = reminderHourMinute(STREAK_SAVE_TIME_MINUTES);
+  const target = new Date(now);
+  target.setHours(hour, minute, 0, 0);
+  if (todayComplete) {
+    target.setDate(target.getDate() + 1);
+    return target;
+  }
+  return target.getTime() > now.getTime() ? target : null;
+}

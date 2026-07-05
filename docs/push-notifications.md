@@ -78,11 +78,31 @@ Turning the toggle off should cancel the app's scheduled reminder notifications.
 - Notification tap should deep link to the daily puzzle entry point. If a daily
   game for today already exists, resume it; otherwise create today's daily game.
 
+### Streak-save "last call" (v1.1)
+
+A second scheduled notification (`streak-save-reminder`) that fires at **20:30
+local**, but only when a streak is genuinely on the line. Same
+`dailyReminderEnabled` toggle and permission; no extra setting. Rules
+(`nextStreakSaveDate` in `domain/reminder.ts`):
+
+- Requires an alive streak (`computeStreak(...).current > 0`) and an unfinished
+  daily on the evening it fires. No streak, no ping.
+- If today's daily is already done, it targets tomorrow evening (the streak is
+  next at risk then); the reconcile-on-foreground loop reschedules or cancels it
+  as state changes.
+- After 20:30 with today unfinished, nothing is scheduled: the streak dies at
+  midnight, so there is nothing left to save tomorrow.
+- Skipped entirely when the user's own reminder time is within two hours of
+  20:30 (the 8 PM preset): their reminder already is the evening ping, and two
+  notifications in one evening drives permission revokes.
+- Copy: title `Your N-day streak ends at midnight` (or `Your streak ends at
+  midnight` for N=1), body `Finish today's Sudoku to keep it going.` Tap deep
+  links the same as the daily reminder (`source: streak_save_reminder`).
+
 ### Frequency guardrails
 
-- One scheduled reminder per day is enough.
-- No streak-loss countdowns, repeated nags, or completion-time notifications for
-  the initial version.
+- At most one daily nudge plus, when a streak is at risk, one evening last call.
+- No repeated nags or completion-time notifications.
 - If the user disables reminders, do not ask again automatically. Re-enable only
   from Settings.
 
@@ -224,6 +244,7 @@ Add local queued events:
 - `daily_reminder_time_changed`
 - `daily_reminder_scheduled`
 - `daily_reminder_tapped`
+- `streak_save_reminder_scheduled` (with the streak length at scheduling time)
 
 Keep these local until a real analytics sink exists.
 

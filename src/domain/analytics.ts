@@ -29,6 +29,7 @@ export type AnalyticsEventName =
   | "daily_reminder_disabled"
   | "daily_reminder_time_changed"
   | "daily_reminder_scheduled"
-  | "daily_reminder_tapped";
+  | "daily_reminder_tapped"
+  | "streak_save_reminder_scheduled";
 
 export type AnalyticsPayload = Record<string, string | number | boolean | null>;

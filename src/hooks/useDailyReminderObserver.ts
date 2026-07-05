@@ -25,9 +25,14 @@ export function useDailyReminderObserver(): void {
 
   useEffect(() => {
     const routeFrom = (response: NotificationResponse | null) => {
-      const url = response?.notification.request.content.data?.url;
+      const data = response?.notification.request.content.data;
+      const url = data?.url;
       if (typeof url === "string") {
-        void track("daily_reminder_tapped");
+        // `source` separates the morning nudge from the streak-save last call
+        // so each one's pull-through can be measured on its own.
+        void track("daily_reminder_tapped", {
+          source: typeof data?.source === "string" ? data.source : "daily_reminder",
+        });
         router.push(url as Href);
       }
     };

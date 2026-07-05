@@ -769,8 +769,9 @@ function CompletionOverlay({
       void track("daily_completed", { track: info.track });
       if (info.track === "daily") {
         // Don't nag about a daily the player just finished — push the reminder
-        // out to tomorrow.
-        void syncDailyReminderSchedule(useSettingsStore.getState().settings);
+        // out to tomorrow. Pass the date key because the completion write may
+        // not have landed in SQLite yet.
+        void syncDailyReminderSchedule(useSettingsStore.getState().settings, info.dateKey);
       }
       // Finishing a daily/challenge is a high-trust moment: offer the reminder
       // once, here, instead of cold-prompting elsewhere.
