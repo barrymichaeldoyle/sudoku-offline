@@ -21,6 +21,7 @@
     "generate:puzzles": "node ./scripts/generate-puzzles.mjs",
     "generate:icons": "node ./scripts/generate-icons.mjs",
     "generate:screenshots": "node ./scripts/generate-store-screenshots.mjs",
+    "capture:screenshots": "./scripts/capture-store-screenshots.sh",
     "metadata:pull": "eas metadata:pull",
     "metadata:push": "eas metadata:push",
     "ci:check": "pnpm typecheck && oxlint --deny-warnings && pnpm format:check && pnpm knip && pnpm test && pnpm audit --audit-level moderate",
