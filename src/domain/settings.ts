@@ -59,7 +59,9 @@ export const DEFAULT_SETTINGS: Settings = {
   hapticsEnabled: true,
   autoNoteCleanup: true,
   autoNoteCleanupScope: "all",
-  autoCarryNotes: true,
+  // Off by default (incl. the full-experience preset): notes appearing in cells
+  // the player didn't pencil reads as a bug to anyone who hasn't opted in.
+  autoCarryNotes: false,
   // Off by default (incl. the full-experience preset): the under-pad counts are
   // too noisy for the average player. Available as an opt-in toggle in Settings.
   showRemainingCounts: false,

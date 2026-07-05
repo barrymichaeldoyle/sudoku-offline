@@ -124,6 +124,13 @@ describe("useGameStore reducers", () => {
   describe("auto-carry notes (cell-first)", () => {
     const NOTE_5 = 1 << 4; // note 5 -> bit 4
 
+    beforeEach(() => {
+      // Off by default; these tests exercise the opted-in behaviour.
+      useSettingsStore.setState((state) => ({
+        settings: { ...state.settings, autoCarryNotes: true },
+      }));
+    });
+
     it("repeats the note onto the next peer cell tapped", () => {
       const s = useGameStore.getState();
       s.toggleNotesMode();
