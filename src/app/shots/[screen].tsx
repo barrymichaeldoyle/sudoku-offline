@@ -35,6 +35,8 @@ export default function Shots() {
     void (async () => {
       // Deterministic default settings (timer + highlights on), onboarding done.
       useSettingsStore.getState().completeOnboarding(false);
+      // Keep the number pad clean in marketing shots regardless of the default.
+      useSettingsStore.getState().setSetting("showRemainingCounts", false);
       if (theme === "dark" || theme === "light" || theme === "system") {
         useSettingsStore.getState().setSetting("theme", theme);
       }
