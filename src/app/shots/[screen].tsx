@@ -8,6 +8,8 @@ import {
   SCREENSHOT_SELECTED_CELL,
   seedScreenshotData,
 } from "@/data/screenshot/seed";
+import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
+import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { View } from "@/tw";
@@ -37,6 +39,11 @@ export default function Shots() {
       useSettingsStore.getState().completeOnboarding(false);
       // Keep the number pad clean in marketing shots regardless of the default.
       useSettingsStore.getState().setSetting("showRemainingCounts", false);
+      // No ad cards in marketing shots: flag Remove Ads in memory only, so
+      // NativeAdCard self-gates without touching the entitlement cache.
+      useEntitlementStore.setState((s) => ({
+        entitlements: { ...s.entitlements, [ENTITLEMENT_REMOVE_ADS]: true },
+      }));
       if (theme === "dark" || theme === "light" || theme === "system") {
         useSettingsStore.getState().setSetting("theme", theme);
       }
