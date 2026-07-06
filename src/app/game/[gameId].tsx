@@ -1,4 +1,3 @@
-import type { DailyTrack } from "@/domain/daily";
 import type { PropsWithChildren } from "react";
 
 import { clsx } from "clsx";
@@ -16,12 +15,17 @@ import { NumberPad } from "@/components/NumberPad";
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { SimpleIcon, type SimpleIconName } from "@/components/SimpleIcon";
-import { getDailyForGame } from "@/data/repositories/dailyRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import {
   loadReminderPromptSeen,
   setReminderPromptSeen,
 } from "@/data/repositories/settingsRepository";
+import {
+  dailyTrackCompletionHeading,
+  dailyTrackStatValue,
+  dailyTrackSummaryLabel,
+  type DailyTrack,
+} from "@/domain/daily";
 import { describeChallengeOutcome, type ChallengeTarget } from "@/domain/shareLink";
 import { formatShareText } from "@/domain/shareText";
 import { completionPercent, isGivenCell } from "@/domain/sudoku/board";
@@ -33,7 +37,11 @@ import {
   requestDailyReminderPermission,
   syncDailyReminderSchedule,
 } from "@/services/notificationService";
-import { getDailyCompletionInfo, type DailyCompletionInfo } from "@/services/statsService";
+import {
+  getDailyCompletionInfo,
+  getDailyDisplayForGame,
+  type DailyCompletionInfo,
+} from "@/services/statsService";
 import { formatDuration, useElapsedSeconds } from "@/state/useElapsedSeconds";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useGameStore } from "@/state/useGameStore";
@@ -418,7 +426,7 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
       return;
     }
     let cancelled = false;
-    getDailyForGame(gameId).then((d) => {
+    getDailyDisplayForGame(gameId).then((d) => {
       if (!cancelled) {
         setDailyTrack(d?.track ?? null);
       }
@@ -435,11 +443,9 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
   // Daily games show "Daily" as the label with "Puzzle"/"Challenge" as the value
   // (single words, so they never wrap); regular games show their difficulty.
   const difficultyLabel =
-    dailyTrack === "daily"
-      ? "Puzzle"
-      : dailyTrack === "challenge"
-        ? "Challenge"
-        : (DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty);
+    dailyTrack != null
+      ? dailyTrackStatValue(dailyTrack)
+      : (DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty);
 
   return (
     <View className="gap-4">
@@ -762,8 +768,8 @@ function CompletionOverlay({
       }
       setDaily(info);
       // The one-time celebration side effects (analytics, reminder rescheduling,
-      // the reminder opt-in) belong to the actual win, not a later revisit.
-      if (!justCompleted) {
+      // the reminder opt-in) belong to the user's own daily — not a shared link.
+      if (!justCompleted || !info.isOwnedDaily) {
         return;
       }
       void track("daily_completed", { track: info.track });
@@ -860,12 +866,7 @@ function CompletionOverlay({
     }
   };
 
-  const heading =
-    daily?.track === "challenge"
-      ? "Challenge Complete"
-      : daily
-        ? "Daily Complete"
-        : "Puzzle Complete";
+  const heading = daily ? dailyTrackCompletionHeading(daily.track) : "Puzzle Complete";
   // "New Game" replays the same difficulty — only meaningful for the ordinary
   // difficulty-pool games (daily/challenge have no such pool to draw from).
   const canReplay = !daily && NEW_GAME_DIFFICULTIES.includes(game.difficulty);
@@ -906,7 +907,9 @@ function CompletionOverlay({
         <ScrollView contentContainerClassName="gap-2 p-6" showsVerticalScrollIndicator={false}>
           <Text className="text-center text-4xl">🏆</Text>
           <Text className="text-ink text-center text-2xl font-bold">{heading}</Text>
-          <Text className="text-ink-soft text-center">{completionSummary(game, settings)}</Text>
+          <Text className="text-ink-soft text-center">
+            {completionSummary(game, settings, daily?.track ?? null)}
+          </Text>
           {daily?.streak && daily.streak.current > 0 ? (
             <Text className="text-warning text-center text-base font-semibold">
               🔥 {daily.streak.current} day streak
@@ -1029,8 +1032,13 @@ function ChallengeBanner({ target }: { target: ChallengeTarget }) {
 function completionSummary(
   game: GameState,
   settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean },
+  dailyTrack: DailyTrack | null,
 ): string {
-  const parts = [DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty];
+  const parts = [
+    dailyTrack != null
+      ? dailyTrackSummaryLabel(dailyTrack)
+      : (DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty),
+  ];
   if (settings.timerEnabled) {
     parts.push(formatDuration(game.elapsedSeconds));
   }

@@ -1,3 +1,4 @@
+import type { DailyTrack } from "@/domain/daily";
 import type { ParsedChallenge } from "@/domain/shareLink";
 import type { Puzzle } from "@/domain/sudoku/types";
 
@@ -82,9 +83,14 @@ function ChallengeLauncher({ params }: { params: PlayParams }) {
         router.replace("/");
         return;
       }
-      // One-off launch: no daily track, so a shared puzzle never alters the
-      // recipient's own streak/progress.
-      const game = await launchPuzzle(() => Promise.resolve(puzzle));
+      // One-off launch: no daily track progress, so a shared puzzle never alters
+      // the recipient's own streak. Tag the game so labels and share text still
+      // read as Daily Puzzle / Daily Challenge.
+      const sharedDaily: { track: DailyTrack; dateKey: string } | undefined =
+        parsed.kind === "daily" || parsed.kind === "challenge"
+          ? { track: parsed.kind === "challenge" ? "challenge" : "daily", dateKey: parsed.ref }
+          : undefined;
+      const game = await launchPuzzle(() => Promise.resolve(puzzle), { sharedDaily });
       void track("challenge_link_opened", { kind: parsed.kind });
       if (!game) {
         router.replace("/");

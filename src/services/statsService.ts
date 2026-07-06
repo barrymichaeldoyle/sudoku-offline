@@ -1,6 +1,7 @@
 import type { DailyTrack } from "@/domain/daily";
 
 import { getCompletedDailyDateKeys, getDailyForGame } from "@/data/repositories/dailyRepository";
+import { getSharedDailyForGame } from "@/data/repositories/gameRepository";
 import {
   getCompletedGameStats,
   getDailyTrackStats,
@@ -37,6 +38,8 @@ export type DailyCompletionInfo = {
   track: DailyTrack;
   /** Up-to-date streak for the normal daily track; null for the challenge track. */
   streak: Streak | null;
+  /** False for puzzles opened from a shared link (no streak/reminder side effects). */
+  isOwnedDaily: boolean;
 };
 
 /**
@@ -46,21 +49,44 @@ export type DailyCompletionInfo = {
  */
 export async function getDailyCompletionInfo(gameId: string): Promise<DailyCompletionInfo | null> {
   const daily = await getDailyForGame(gameId);
-  if (!daily) {
-    return null;
+  if (daily) {
+    if (daily.track !== "daily") {
+      return { dateKey: daily.dateKey, track: daily.track, streak: null, isOwnedDaily: true };
+    }
+    const dailyKeys = await getCompletedDailyDateKeys("daily");
+    // The completion screen renders before the async completion write is
+    // guaranteed to have landed, so count this game's own day even if its
+    // `completed_at` stamp isn't visible yet. computeStreak dedupes, so this is
+    // a no-op on revisits. Without it, a first-ever daily win shows no streak
+    // instead of "1 day" - the hook that brings players back tomorrow.
+    return {
+      dateKey: daily.dateKey,
+      track: daily.track,
+      streak: computeStreak([...dailyKeys, daily.dateKey], getLocalDateKey()),
+      isOwnedDaily: true,
+    };
   }
-  if (daily.track !== "daily") {
-    return { dateKey: daily.dateKey, track: daily.track, streak: null };
+
+  const shared = await getSharedDailyForGame(gameId);
+  if (shared) {
+    return {
+      dateKey: shared.dateKey,
+      track: shared.track,
+      streak: null,
+      isOwnedDaily: false,
+    };
   }
-  const dailyKeys = await getCompletedDailyDateKeys("daily");
-  // The completion screen renders before the async completion write is
-  // guaranteed to have landed, so count this game's own day even if its
-  // `completed_at` stamp isn't visible yet. computeStreak dedupes, so this is
-  // a no-op on revisits. Without it, a first-ever daily win shows no streak
-  // instead of "1 day" - the hook that brings players back tomorrow.
-  return {
-    dateKey: daily.dateKey,
-    track: daily.track,
-    streak: computeStreak([...dailyKeys, daily.dateKey], getLocalDateKey()),
-  };
+
+  return null;
+}
+
+/** Daily track metadata for in-game labels (owned progress or shared-link one-off). */
+export async function getDailyDisplayForGame(
+  gameId: string,
+): Promise<{ dateKey: string; track: DailyTrack } | null> {
+  const owned = await getDailyForGame(gameId);
+  if (owned) {
+    return owned;
+  }
+  return getSharedDailyForGame(gameId);
 }

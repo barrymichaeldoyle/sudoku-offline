@@ -2,16 +2,21 @@ jest.mock("@/data/repositories/dailyRepository", () => ({
   getCompletedDailyDateKeys: jest.fn(),
   getDailyForGame: jest.fn(),
 }));
+jest.mock("@/data/repositories/gameRepository", () => ({
+  getSharedDailyForGame: jest.fn(),
+}));
 jest.mock("@/services/dailyService", () => ({
   getLocalDateKey: jest.fn(() => "2026-07-05"),
 }));
 
 import { getCompletedDailyDateKeys, getDailyForGame } from "@/data/repositories/dailyRepository";
+import { getSharedDailyForGame } from "@/data/repositories/gameRepository";
 
 import { getDailyCompletionInfo } from "./statsService";
 
 const mockGetDailyForGame = getDailyForGame as jest.Mock;
 const mockGetCompletedDailyDateKeys = getCompletedDailyDateKeys as jest.Mock;
+const mockGetSharedDailyForGame = getSharedDailyForGame as jest.Mock;
 
 function dailyRecord(overrides: Record<string, unknown> = {}) {
   return {
@@ -34,13 +39,31 @@ describe("getDailyCompletionInfo", () => {
 
   it("returns null for a non-daily game", async () => {
     mockGetDailyForGame.mockResolvedValue(null);
+    mockGetSharedDailyForGame.mockResolvedValue(null);
     expect(await getDailyCompletionInfo("g1")).toBeNull();
   });
 
   it("returns a null streak for the challenge track", async () => {
     mockGetDailyForGame.mockResolvedValue(dailyRecord({ track: "challenge" }));
     const info = await getDailyCompletionInfo("g1");
-    expect(info).toEqual({ dateKey: "2026-07-05", track: "challenge", streak: null });
+    expect(info).toEqual({
+      dateKey: "2026-07-05",
+      track: "challenge",
+      streak: null,
+      isOwnedDaily: true,
+    });
+  });
+
+  it("returns shared-link metadata without streak side effects", async () => {
+    mockGetDailyForGame.mockResolvedValue(null);
+    mockGetSharedDailyForGame.mockResolvedValue({ track: "challenge", dateKey: "2026-06-19" });
+    const info = await getDailyCompletionInfo("g1");
+    expect(info).toEqual({
+      dateKey: "2026-06-19",
+      track: "challenge",
+      streak: null,
+      isOwnedDaily: false,
+    });
   });
 
   it("shows a 1-day streak on a first-ever completion even before the write lands", async () => {
