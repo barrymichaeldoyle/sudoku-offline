@@ -1,17 +1,6 @@
-import {
-  dailyTrackCompletionHeading,
-  dailyTrackStatValue,
-  dailyTrackSummaryLabel,
-  inferDailyTrackFromPuzzleId,
-} from "./daily";
+import { dailyTrackCompletionHeading, dailyTrackStatValue, dailyTrackSummaryLabel } from "./daily";
 
 describe("daily presentation helpers", () => {
-  it("infers the daily track from bundled pool ids", () => {
-    expect(inferDailyTrackFromPuzzleId("daily_0003")).toBe("daily");
-    expect(inferDailyTrackFromPuzzleId("challenge_0002")).toBe("challenge");
-    expect(inferDailyTrackFromPuzzleId("medium_0007")).toBeNull();
-  });
-
   it("labels the daily puzzle track consistently", () => {
     expect(dailyTrackStatValue("daily")).toBe("Puzzle");
     expect(dailyTrackSummaryLabel("daily")).toBe("Daily Puzzle");

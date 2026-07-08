@@ -113,7 +113,7 @@ export default function Home() {
       }
       setBusy(true);
       try {
-        const game = await launchPuzzle(loadPuzzle, dailyTrack);
+        const game = await launchPuzzle(loadPuzzle, { dailyTrack });
         if (game) {
           openGame(game);
         }

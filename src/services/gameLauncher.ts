@@ -22,12 +22,8 @@ export type LaunchPuzzleOptions = {
  */
 export async function launchPuzzle(
   loadPuzzle: () => Promise<Puzzle | null>,
-  options?: DailyTrack | LaunchPuzzleOptions,
+  { dailyTrack, sharedDaily }: LaunchPuzzleOptions = {},
 ): Promise<GameState | null> {
-  const resolved: LaunchPuzzleOptions =
-    options === "daily" || options === "challenge" ? { dailyTrack: options } : (options ?? {});
-  const { dailyTrack, sharedDaily } = resolved;
-
   const puzzle = await loadPuzzle();
   if (!puzzle) {
     return null;
