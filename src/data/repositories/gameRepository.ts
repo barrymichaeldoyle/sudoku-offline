@@ -1,3 +1,5 @@
+import type { DailyTrack } from "@/domain/daily";
+
 import * as Crypto from "expo-crypto";
 
 import { parseValuesString, valuesToString } from "@/domain/sudoku/board";
@@ -21,6 +23,13 @@ type GameRow = {
   started_at: string;
   completed_at: string | null;
   updated_at: string;
+  shared_daily_track: string | null;
+  shared_daily_date_key: string | null;
+};
+
+export type SharedDailyMeta = {
+  track: DailyTrack;
+  dateKey: string;
 };
 
 function rowToGame(row: GameRow): GameState {
@@ -64,10 +73,29 @@ export function newGameState(puzzle: Puzzle): GameState {
 }
 
 /** Create a game from a puzzle and persist it. */
-export async function createGame(puzzle: Puzzle): Promise<GameState> {
+export async function createGame(
+  puzzle: Puzzle,
+  sharedDaily?: SharedDailyMeta | null,
+): Promise<GameState> {
   const game = newGameState(puzzle);
-  await saveGame(game);
+  await saveGame(game, sharedDaily ?? null);
   return game;
+}
+
+/** Shared-link daily metadata stored on a one-off game (no daily_progress row). */
+export async function getSharedDailyForGame(gameId: string): Promise<SharedDailyMeta | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{
+    shared_daily_track: string | null;
+    shared_daily_date_key: string | null;
+  }>("SELECT shared_daily_track, shared_daily_date_key FROM games WHERE id = ?", gameId);
+  if (!row?.shared_daily_track || !row.shared_daily_date_key) {
+    return null;
+  }
+  return {
+    track: row.shared_daily_track as DailyTrack,
+    dateKey: row.shared_daily_date_key,
+  };
 }
 
 /**
@@ -78,14 +106,18 @@ export async function createGame(puzzle: Puzzle): Promise<GameState> {
  * snapshot, so a late stale save can't resurrect a finished game. A genuinely
  * terminal save still wins.
  */
-export async function saveGame(game: GameState): Promise<void> {
+export async function saveGame(
+  game: GameState,
+  sharedDaily?: SharedDailyMeta | null,
+): Promise<void> {
   await withWriteLock(async () => {
     const db = await getDatabase();
     await db.runAsync(
       `INSERT INTO games
          (id, puzzle_id, difficulty, givens, solution, values_string, notes_json,
-          status, elapsed_seconds, mistakes, hints_used, started_at, completed_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          status, elapsed_seconds, mistakes, hints_used, started_at, completed_at, updated_at,
+          shared_daily_track, shared_daily_date_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          puzzle_id = excluded.puzzle_id,
          difficulty = excluded.difficulty,
@@ -99,7 +131,9 @@ export async function saveGame(game: GameState): Promise<void> {
          hints_used = excluded.hints_used,
          started_at = excluded.started_at,
          completed_at = excluded.completed_at,
-         updated_at = excluded.updated_at
+         updated_at = excluded.updated_at,
+         shared_daily_track = COALESCE(games.shared_daily_track, excluded.shared_daily_track),
+         shared_daily_date_key = COALESCE(games.shared_daily_date_key, excluded.shared_daily_date_key)
        WHERE games.status NOT IN ('completed', 'abandoned')
           OR excluded.status IN ('completed', 'abandoned')`,
       game.id,
@@ -116,6 +150,8 @@ export async function saveGame(game: GameState): Promise<void> {
       game.startedAt,
       game.completedAt,
       new Date().toISOString(),
+      sharedDaily?.track ?? null,
+      sharedDaily?.dateKey ?? null,
     );
   });
 }

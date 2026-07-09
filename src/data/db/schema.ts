@@ -130,6 +130,15 @@ ALTER TABLE daily_progress_v2 RENAME TO daily_progress;
 CREATE INDEX IF NOT EXISTS idx_daily_progress_game_id ON daily_progress (game_id);
 `,
   },
+  {
+    // Shared daily/challenge links open as one-offs (no daily_progress row) but
+    // still need track + date metadata for labels and share links.
+    version: 4,
+    up: `
+ALTER TABLE games ADD COLUMN shared_daily_track TEXT;
+ALTER TABLE games ADD COLUMN shared_daily_date_key TEXT;
+`,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
