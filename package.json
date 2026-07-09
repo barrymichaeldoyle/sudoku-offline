@@ -71,6 +71,13 @@
     "knip": "^6.17.1",
     "oxfmt": "^0.55.0",
     "oxlint": "^1.70.0",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "typescript"
+      ]
+    }
   }
 }
