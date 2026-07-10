@@ -13,7 +13,8 @@
       "associatedDomains": ["applinks:sudokuoffline.expo.app"],
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "appleTeamId": "LBZ6C9H52C"
     },
     "android": {
       "package": "com.barrymichaeldoyle.sudokuoffline",
