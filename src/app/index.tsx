@@ -247,9 +247,9 @@ export default function Home() {
 
           <View className="flex-row gap-3">
             <DailyCard
+              track="daily"
               title="Daily Puzzle"
               subtitle="Today's puzzle"
-              accent={DAILY_TRACK_DOT.daily}
               progress={dailyCards.daily}
               streak={streak}
               settings={settings}
@@ -260,9 +260,9 @@ export default function Home() {
               }
             />
             <DailyCard
+              track="challenge"
               title="Daily Challenge"
               subtitle="A tougher grid"
-              accent={DAILY_TRACK_DOT.challenge}
               progress={dailyCards.challenge}
               settings={settings}
               onPress={() =>
@@ -435,18 +435,33 @@ function StreakChip({ count }: { count: number }) {
   );
 }
 
+/**
+ * The Challenge card's counterpart to the streak chip: a permanent violet
+ * difficulty badge. It fills the same slot in every state, so the two daily
+ * cards read as deliberately different things (habit vs. hard mode) rather
+ * than the challenge looking like it lost its streak.
+ */
+function ExtremeChip() {
+  const large = useWindowDimensions().width >= 700;
+  return (
+    <View className="bg-difficulty-extreme/15 flex-row items-center rounded-full px-2 py-0.5">
+      <Text className={clsx("text-ink font-bold", large ? "text-sm" : "text-xs")}>Extreme</Text>
+    </View>
+  );
+}
+
 function DailyCard({
+  track,
   title,
   subtitle,
-  accent,
   progress,
   streak = 0,
   settings,
   onPress,
 }: {
+  track: DailyTrack;
   title: string;
   subtitle: string;
-  accent: string;
   progress: DailyCardState;
   /** Current daily streak; rendered as a flame chip when > 0. Daily track only. */
   streak?: number;
@@ -454,9 +469,15 @@ function DailyCard({
   onPress: () => void;
 }) {
   const large = useWindowDimensions().width >= 700;
+  const accent = DAILY_TRACK_DOT[track];
   const completed = progress.completed;
   const inProgress = progress.game != null;
   const streakLabel = streak > 0 ? `, ${streak} day streak` : "";
+  // Each card's identity badge: the daily wears its live streak, the challenge
+  // its difficulty. Rendered in the same header slot in every state.
+  const chip =
+    track === "challenge" ? <ExtremeChip /> : streak > 0 ? <StreakChip count={streak} /> : null;
+  const a11yTitle = track === "challenge" ? `${title}, extreme difficulty` : title;
 
   // A finished daily gets its own celebratory, success-tinted treatment so it
   // reads as an accomplishment rather than an unfinished task. It stays tappable
@@ -477,8 +498,8 @@ function DailyCard({
         accessibilityState={{ disabled: !canViewResult }}
         accessibilityLabel={
           canViewResult
-            ? `${title}, completed today${streakLabel}, view result`
-            : `${title}, completed today${streakLabel}`
+            ? `${a11yTitle}, completed today${streakLabel}, view result`
+            : `${a11yTitle}, completed today${streakLabel}`
         }
         className={clsx(
           "border-success/30 bg-success/10 flex-1 justify-between gap-3 rounded-2xl border",
@@ -491,7 +512,7 @@ function DailyCard({
             <Text className="text-success text-base font-bold">✓</Text>
             <Text className="text-success text-xs font-bold tracking-widest uppercase">Solved</Text>
           </View>
-          {streak > 0 ? <StreakChip count={streak} /> : null}
+          {chip}
         </View>
         <View className="gap-0.5">
           <Text className={clsx("text-ink font-semibold", large ? "text-xl" : "text-base")}>
@@ -517,15 +538,17 @@ function DailyCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}${streakLabel}`}
+      accessibilityLabel={`${a11yTitle}${streakLabel}`}
       className={clsx(
-        "border-line bg-surface flex-1 gap-2 rounded-2xl border active:opacity-80",
+        "bg-surface flex-1 gap-2 rounded-2xl border active:opacity-80",
+        // A violet-tinted frame sets the extreme track apart from the habit one.
+        track === "challenge" ? "border-difficulty-extreme/30" : "border-line",
         large ? "p-5" : "p-4",
       )}
     >
       <View className="h-5 flex-row items-center justify-between gap-1.5">
         <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
-        {streak > 0 ? <StreakChip count={streak} /> : null}
+        {chip}
       </View>
       <View className="gap-0.5">
         <Text className={clsx("text-ink font-semibold", large ? "text-xl" : "text-base")}>
