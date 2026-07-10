@@ -15,6 +15,7 @@ import { NumberPad } from "@/components/NumberPad";
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { SimpleIcon, type SimpleIconName } from "@/components/SimpleIcon";
+import { getResumableGamesByDifficulty } from "@/data/repositories/gameRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import {
   loadReminderPromptSeen,
@@ -751,9 +752,34 @@ function CompletionOverlay({
   const [daily, setDaily] = useState<DailyCompletionInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
+  // The most recently played of the other difficulties' in-progress games, so
+  // the results card can hand the player straight to their next unfinished
+  // puzzle instead of dead-ending at Home.
+  const [nextUp, setNextUp] = useState<GameState | null>(null);
   // Lets the player peek at the solved grid behind the results card; a floating
   // button brings the results back.
   const [viewingBoard, setViewingBoard] = useState(false);
+
+  const gameId = game?.id;
+  useEffect(() => {
+    if (!gameId) {
+      return;
+    }
+    let cancelled = false;
+    getResumableGamesByDifficulty().then((slots) => {
+      if (cancelled) {
+        return;
+      }
+      // The completion write may not have landed yet, so the finished game can
+      // still be reported as resumable — never offer to "continue" it.
+      const candidates = Object.values(slots).filter((g) => g.id !== gameId);
+      candidates.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      setNextUp(candidates[0] ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId]);
 
   useEffect(() => {
     if (!game) {
@@ -948,6 +974,17 @@ function CompletionOverlay({
               label="New Game"
               onPress={onNewGame}
               accessibilityLabel="Start a new game"
+            />
+          ) : null}
+          {nextUp ? (
+            <OverlayButton
+              icon="play"
+              label={`Continue ${DIFFICULTY_LABELS[nextUp.difficulty]} · ${completionPercent(nextUp.values, nextUp.givens)}%`}
+              onPress={() => {
+                setGame(nextUp);
+                router.replace({ pathname: "/game/[gameId]", params: { gameId: nextUp.id } });
+              }}
+              accessibilityLabel={`Continue your ${DIFFICULTY_LABELS[nextUp.difficulty]} game, ${completionPercent(nextUp.values, nextUp.givens)} percent complete`}
             />
           ) : null}
           <OverlayButton
