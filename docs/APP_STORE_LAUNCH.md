@@ -37,6 +37,10 @@ Last reviewed: 2026-06-27.
 - **Privacy policy** — `website/privacy.html` Advertising section rewritten to
   accurately disclose Google AdMob (rewarded + native ads) instead of the old
   hypothetical "if ad partners are integrated" wording.
+- **app-ads.txt** — hosted at `https://barrymichaeldoyle.com/app-ads.txt`
+  (personal site `barrymichaeldoyle-web`). App Store **Marketing URL** must be
+  `https://barrymichaeldoyle.com/sudoku` (AdMob still crawls domain-root
+  `app-ads.txt`). Store locale `marketingUrl` is set in `store/locales/en-US.json`.
 - **"Remove Ads" IAP is live** — `IAP_ENABLED = true` in
   `src/domain/entitlements.ts`, backed by a real `expo-iap` implementation in
   `src/services/purchaseService.ts` (StoreKit 2 on iOS). This lights up the
