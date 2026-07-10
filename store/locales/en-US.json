@@ -16,7 +16,7 @@
     "relaxing",
     "grid"
   ],
-  "releaseNotes": "Fixes an issue where opening a shared daily or challenge link could start a blank puzzle on top of your current game. Shared links now open the puzzle you already played and take you straight back to the home screen.",
+  "releaseNotes": "Keep more puzzles going at once, and see your streak where it matters.\n\n- Every difficulty now holds its own game in progress. Switch between an Easy and an Expert solve without losing either, and resume each one right from the home screen.\n- Finished a puzzle? The results screen now offers your next unfinished game so you can jump straight in.\n- Your daily streak now shows on the Daily Puzzle card, so you always know it's safe.\n- The Daily Challenge card now carries an Extreme badge, making the two dailies easier to tell apart.\n- Stats now includes a chart of your completed puzzles by difficulty.",
   "privacyPolicyUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/privacy.html",
   "supportUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/support.html",
   "marketingUrl": "https://barrymichaeldoyle.com/sudoku"
