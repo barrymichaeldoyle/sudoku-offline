@@ -1,6 +1,6 @@
 import type { DailyTrack } from "@/domain/daily";
 import type { ParsedChallenge } from "@/domain/shareLink";
-import type { Puzzle } from "@/domain/sudoku/types";
+import type { GameState, Puzzle } from "@/domain/sudoku/types";
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
@@ -8,6 +8,8 @@ import { ActivityIndicator, Linking, Platform } from "react-native";
 
 import { AppMark } from "@/components/AppMark";
 import { Screen } from "@/components/Screen";
+import { getDailyProgress } from "@/data/repositories/dailyRepository";
+import { getGameById } from "@/data/repositories/gameRepository";
 import { getPuzzleById, getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import { APP_SCHEME, parseChallengeRoute, STORE_URLS } from "@/domain/shareLink";
 import { formatDuration } from "@/domain/time";
@@ -43,13 +45,47 @@ async function resolveChallengePuzzle(parsed: ParsedChallenge): Promise<Puzzle |
 }
 
 /**
+ * Resolve the concrete game to open for a shared link. For a shared
+ * daily/challenge the recipient may already have their *own* game for that exact
+ * date+track (started or completed from Home) — reopen that one so they land on
+ * the puzzle they actually played, complete with their result and the "beat
+ * this" verdict, instead of a blank one-off copy. This only *reads* the daily
+ * progress; a shared link still never records or alters the recipient's streak,
+ * so unplayed dailies fall through to a fresh one-off game as before.
+ */
+async function resolveChallengeGame(parsed: ParsedChallenge): Promise<GameState | null> {
+  if (parsed.kind === "daily" || parsed.kind === "challenge") {
+    const track = parsed.kind === "challenge" ? "challenge" : "daily";
+    const progress = await getDailyProgress(parsed.ref, track);
+    if (progress?.gameId) {
+      const existing = await getGameById(progress.gameId);
+      if (existing) {
+        return existing;
+      }
+    }
+  }
+  const puzzle = await resolveChallengePuzzle(parsed);
+  if (!puzzle) {
+    return null;
+  }
+  // One-off launch: tag it so labels/share text still read as Daily Puzzle /
+  // Daily Challenge, but it stays off the recipient's own daily_progress/streak.
+  const sharedDaily: { track: DailyTrack; dateKey: string } | undefined =
+    parsed.kind === "daily" || parsed.kind === "challenge"
+      ? { track: parsed.kind === "challenge" ? "challenge" : "daily", dateKey: parsed.ref }
+      : undefined;
+  return launchPuzzle(() => Promise.resolve(puzzle), { sharedDaily });
+}
+
+/**
  * Universal Link / App Link target for shared puzzle challenges
  * (`/play/<kind>/<ref>`). On native it loads the exact puzzle and drops the
  * player straight into it (carrying the sharer's time/mistakes as a target to
  * beat); on web it renders a DB-free landing page that routes to the App Store.
  *
- * Shared dailies/challenges open as a one-off puzzle — they never touch the
- * recipient's own streak or daily progress, which stay tied to *their* calendar.
+ * A shared daily/challenge reopens the recipient's own game for that day if they
+ * already have one; otherwise it opens as a one-off puzzle. Either way it never
+ * *writes* to their streak or daily progress, which stay tied to their calendar.
  */
 export default function PlayDeepLink() {
   const params = useLocalSearchParams<PlayParams>();
@@ -78,19 +114,7 @@ function ChallengeLauncher({ params }: { params: PlayParams }) {
     }
 
     void (async () => {
-      const puzzle = await resolveChallengePuzzle(parsed);
-      if (!puzzle) {
-        router.replace("/");
-        return;
-      }
-      // One-off launch: no daily track progress, so a shared puzzle never alters
-      // the recipient's own streak. Tag the game so labels and share text still
-      // read as Daily Puzzle / Daily Challenge.
-      const sharedDaily: { track: DailyTrack; dateKey: string } | undefined =
-        parsed.kind === "daily" || parsed.kind === "challenge"
-          ? { track: parsed.kind === "challenge" ? "challenge" : "daily", dateKey: parsed.ref }
-          : undefined;
-      const game = await launchPuzzle(() => Promise.resolve(puzzle), { sharedDaily });
+      const game = await resolveChallengeGame(parsed);
       void track("challenge_link_opened", { kind: parsed.kind });
       if (!game) {
         router.replace("/");
@@ -104,7 +128,20 @@ function ChallengeLauncher({ params }: { params: PlayParams }) {
       if (parsed.target.mistakes != null) {
         target.bm = String(parsed.target.mistakes);
       }
-      router.replace({ pathname: "/game/[gameId]", params: { gameId: game.id, ...target } });
+      const gameHref = {
+        pathname: "/game/[gameId]" as const,
+        params: { gameId: game.id, ...target },
+      };
+      // A warm deep link (tapped while another game is open) pushes /play on top
+      // of that game, so a plain replace would leave the old game in the stack
+      // and Back would need two presses to reach Home. Collapse to the stack root
+      // (Home) first, then push the game so Back lands on Home in one press.
+      if (router.canDismiss()) {
+        router.dismissAll();
+        router.push(gameHref);
+      } else {
+        router.replace(gameHref);
+      }
     })();
   }, [params, router, setGame]);
 
