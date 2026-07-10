@@ -16,7 +16,7 @@
     "relaxing",
     "grid"
   ],
-  "releaseNotes": "Welcome to Offline Sudoku.\n\n- Classic 9x9 Sudoku with Easy, Medium, Hard, and Expert\n- Works fully offline\n- Daily puzzles, stats, and streaks\n- Pencil notes, hints, dark mode, and no ads while you solve",
+  "releaseNotes": "Fixes an issue where opening a shared daily or challenge link could start a blank puzzle on top of your current game. Shared links now open the puzzle you already played and take you straight back to the home screen.",
   "privacyPolicyUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/privacy.html",
   "supportUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/support.html",
   "marketingUrl": "https://barrymichaeldoyle.com/sudoku"
