@@ -8,7 +8,7 @@
 // board surface, indigo grid, one gold selected cell. The mark is defined once
 // and parameterized per output so every asset stays visually identical.
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,12 +18,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const IMAGES_DIR = resolve(__dirname, "../assets/images");
 const ASSETS_DIR = resolve(__dirname, "../assets");
 const STORE_DIR = resolve(__dirname, "../assets/store");
+const WEBSITE_DIR = resolve(__dirname, "../website");
 
 const CREAM = "#F7F3EA"; // background tile / app surface
 const WHITE = "#FFFFFF"; // board surface
 const INDIGO = "#2F3A5F"; // grid lines + frame (primary)
 const GOLD = "#DDBB72"; // highlighted cell (cellSelected)
 const BLACK = "#000000"; // android monochrome silhouette
+const MUTED = "#5C657A"; // secondary text on cream
 
 // Which cell is highlighted, as [row, col] in the 3x3 grid. Top-right.
 const HIGHLIGHT = [0, 2];
@@ -90,6 +92,56 @@ function buildSvg({ size, bg, board, line, cell, frame, heightRatio }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${parts.join("")}</svg>`;
 }
 
+/**
+ * Social share card (1200×630). Content is centered so WhatsApp/iMessage
+ * square crops still show the icon + title instead of empty padding.
+ */
+function buildOgSvg() {
+  const w = 1200;
+  const h = 630;
+  const iconSize = 280;
+  const iconX = (w - iconSize) / 2;
+  const iconY = 96;
+  const boardSize = iconSize * 0.72;
+  const bx = iconX + (iconSize - boardSize) / 2;
+  const by = iconY + (iconSize - boardSize) / 2;
+  const cell = boardSize / 3;
+  const radius = boardSize * 0.1;
+  const lineW = boardSize * 0.022;
+  const frameW = boardSize * 0.03;
+  const iconRadius = iconSize * 0.2237; // iOS-ish squircle approximation
+  const [hr, hc] = HIGHLIGHT;
+  const f = (n) => n.toFixed(2);
+  const clipId = "ogClip";
+
+  const boardRect = `<rect x="${f(bx)}" y="${f(by)}" width="${f(boardSize)}" height="${f(boardSize)}" rx="${f(radius)}"`;
+  const lines = [];
+  for (let i = 1; i < 3; i++) {
+    const x = bx + i * cell;
+    const y = by + i * cell;
+    lines.push(
+      `<line x1="${f(x)}" y1="${f(by)}" x2="${f(x)}" y2="${f(by + boardSize)}" stroke="${INDIGO}" stroke-width="${f(lineW)}"/>`,
+    );
+    lines.push(
+      `<line x1="${f(bx)}" y1="${f(y)}" x2="${f(bx + boardSize)}" y2="${f(y)}" stroke="${INDIGO}" stroke-width="${f(lineW)}"/>`,
+    );
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <rect width="${w}" height="${h}" fill="${CREAM}"/>
+  <rect x="${f(iconX)}" y="${f(iconY)}" width="${iconSize}" height="${iconSize}" rx="${f(iconRadius)}" fill="${CREAM}" stroke="${INDIGO}" stroke-width="3"/>
+  <defs><clipPath id="${clipId}">${boardRect} /></clipPath></defs>
+  ${boardRect} fill="${WHITE}"/>
+  <g clip-path="url(#${clipId})">
+    <rect x="${f(bx + hc * cell)}" y="${f(by + hr * cell)}" width="${f(cell)}" height="${f(cell)}" fill="${GOLD}"/>
+    ${lines.join("")}
+  </g>
+  ${boardRect} fill="none" stroke="${INDIGO}" stroke-width="${f(frameW)}"/>
+  <text x="600" y="460" text-anchor="middle" font-family="ui-rounded, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="64" font-weight="700" fill="${INDIGO}">Offline Sudoku</text>
+  <text x="600" y="520" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="32" font-weight="500" fill="${MUTED}">Classic puzzles. Works offline.</text>
+</svg>`;
+}
+
 function renderPng(svg, width) {
   return new Resvg(svg, { fitTo: { mode: "width", value: width } }).render().asPng();
 }
@@ -97,6 +149,7 @@ function renderPng(svg, width) {
 async function main() {
   await mkdir(IMAGES_DIR, { recursive: true });
   await mkdir(STORE_DIR, { recursive: true });
+  await mkdir(WEBSITE_DIR, { recursive: true });
 
   // Master vector source: cream tile, white board, indigo grid, gold cell.
   const masterSvg = buildSvg({
@@ -175,11 +228,19 @@ async function main() {
 
   await Promise.all(outputs.map(({ file, width, svg }) => writeFile(file, renderPng(svg, width))));
 
+  const ogSvg = buildOgSvg();
+  const ogPath = resolve(WEBSITE_DIR, "og.png");
+  await writeFile(ogPath, renderPng(ogSvg, 1200));
+
+  await copyFile(resolve(IMAGES_DIR, "favicon.png"), resolve(WEBSITE_DIR, "favicon.png"));
+
   for (const { file, width } of outputs) {
     console.log(`${file.replace(`${ASSETS_DIR}/`, "")}  (${width}px)`);
   }
+  console.log(`website/og.png  (1200×630)`);
+  console.log(`website/favicon.png  (196px)`);
 
-  console.log("Done -> assets/logo.svg + assets/images/*.png");
+  console.log("Done -> assets/logo.svg + assets/images/*.png + website/og.png");
 }
 
 main().catch((err) => {

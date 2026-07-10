@@ -3,12 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Offline Sudoku</title>
+    <title>Download Offline Sudoku</title>
     <meta
       name="description"
-      content="Classic Sudoku that works offline, with no ads while you play. Available on the App Store."
+      content="Get Offline Sudoku on the App Store — classic puzzles that work offline, with no ads while you play."
     />
-    <link rel="canonical" href="https://barrymichaeldoyle.github.io/sudoku-offline/" />
+    <link
+      rel="canonical"
+      href="https://barrymichaeldoyle.github.io/sudoku-offline/download.html"
+    />
     <link rel="icon" href="favicon.png" type="image/png" />
 
     <meta property="og:type" content="website" />
@@ -16,9 +19,12 @@
     <meta property="og:title" content="Offline Sudoku" />
     <meta
       property="og:description"
-      content="Classic Sudoku that works offline, with no ads while you play."
+      content="Classic Sudoku that works offline, with no ads while you play. Available on the App Store."
     />
-    <meta property="og:url" content="https://barrymichaeldoyle.github.io/sudoku-offline/" />
+    <meta
+      property="og:url"
+      content="https://barrymichaeldoyle.github.io/sudoku-offline/download.html"
+    />
     <meta
       property="og:image"
       content="https://barrymichaeldoyle.github.io/sudoku-offline/og.png"
@@ -32,7 +38,7 @@
     <meta name="twitter:title" content="Offline Sudoku" />
     <meta
       name="twitter:description"
-      content="Classic Sudoku that works offline, with no ads while you play."
+      content="Classic Sudoku that works offline, with no ads while you play. Available on the App Store."
     />
     <meta
       name="twitter:image"
@@ -40,24 +46,29 @@
     />
 
     <link rel="stylesheet" href="styles.css" />
+    <script>
+      // JS-only redirect so link-preview crawlers still see our OG tags
+      // instead of following a meta refresh to apps.apple.com.
+      window.setTimeout(function () {
+        window.location.replace("https://apps.apple.com/app/offline-sudoku/id6782209083");
+      }, 400);
+    </script>
   </head>
   <body>
     <main class="page">
       <img class="app-icon" src="favicon.png" width="72" height="72" alt="" />
       <h1>Offline Sudoku</h1>
-      <p class="lede">Classic Sudoku that works offline, with no ads while you play.</p>
-
+      <p class="lede">Opening the App Store…</p>
       <p class="actions">
         <a
           class="button"
           href="https://apps.apple.com/app/offline-sudoku/id6782209083"
-          >Download on the App Store</a
+          >Open App Store</a
         >
       </p>
-
       <nav class="links">
+        <a href="index.html">About</a>
         <a href="support.html">Support</a>
-        <a href="privacy.html">Privacy Policy</a>
       </nav>
     </main>
   </body>

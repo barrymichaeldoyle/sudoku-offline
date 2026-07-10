@@ -29,4 +29,4 @@ See the **[Privacy Policy](https://barrymichaeldoyle.github.io/sudoku-offline/pr
 
 This repo is **source available**, not a collaborative open-source project. The code is public so you can see how the app works, but I’m not looking for pull requests, feature requests, or contributions.
 
-The **[project website](https://barrymichaeldoyle.github.io/sudoku-offline/)** is the public home for app info, support, and privacy.
+The **[project website](https://barrymichaeldoyle.github.io/sudoku-offline/)** is the public home for app info, support, and privacy. Share **[the download link](https://barrymichaeldoyle.github.io/sudoku-offline/download.html)** for a proper social preview (App Store links use Apple’s cropped icon).
