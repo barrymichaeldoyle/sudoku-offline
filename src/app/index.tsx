@@ -8,9 +8,10 @@ import { Alert, useWindowDimensions } from "react-native";
 import { AppMark } from "@/components/AppMark";
 import { Screen } from "@/components/Screen";
 import { SimpleIcon } from "@/components/SimpleIcon";
-import { getDailyProgress } from "@/data/repositories/dailyRepository";
+import { getCompletedDailyDateKeys, getDailyProgress } from "@/data/repositories/dailyRepository";
 import { abandonGame, getActiveGame, getGameById } from "@/data/repositories/gameRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
+import { computeStreak } from "@/domain/streak";
 import { completionPercent } from "@/domain/sudoku/board";
 import {
   DAILY_TRACK_DOT,
@@ -65,20 +66,23 @@ export default function Home() {
     daily: { game: null, completed: false },
     challenge: { game: null, completed: false },
   });
+  const [streak, setStreak] = useState(0);
   const [busy, setBusy] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       const loadHome = async () => {
-        const [game, daily, challenge] = await Promise.all([
+        const [game, daily, challenge, dailyKeys] = await Promise.all([
           getActiveGame(),
           loadDailyCard("daily"),
           loadDailyCard("challenge"),
+          getCompletedDailyDateKeys("daily"),
         ]);
         if (!cancelled) {
           setActiveGame(game);
           setDailyCards({ daily, challenge });
+          setStreak(computeStreak(dailyKeys, getLocalDateKey()).current);
         }
       };
       void loadHome();
@@ -238,6 +242,7 @@ export default function Home() {
               subtitle="Today's puzzle"
               accent={DAILY_TRACK_DOT.daily}
               progress={dailyCards.daily}
+              streak={streak}
               settings={settings}
               onPress={() =>
                 dailyCards.daily.completed && dailyCards.daily.game
@@ -365,11 +370,24 @@ function ContinueCard({
   );
 }
 
+/** Small "🔥 n" pill shown on the Daily Puzzle card while a streak is alive. */
+function StreakChip({ count }: { count: number }) {
+  const large = useWindowDimensions().width >= 700;
+  return (
+    <View className="bg-warning/20 flex-row items-center rounded-full px-2 py-0.5">
+      <Text className={clsx("text-ink font-bold tabular-nums", large ? "text-sm" : "text-xs")}>
+        🔥 {count}
+      </Text>
+    </View>
+  );
+}
+
 function DailyCard({
   title,
   subtitle,
   accent,
   progress,
+  streak = 0,
   settings,
   onPress,
 }: {
@@ -377,12 +395,15 @@ function DailyCard({
   subtitle: string;
   accent: string;
   progress: DailyCardState;
+  /** Current daily streak; rendered as a flame chip when > 0. Daily track only. */
+  streak?: number;
   settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean };
   onPress: () => void;
 }) {
   const large = useWindowDimensions().width >= 700;
   const completed = progress.completed;
   const inProgress = progress.game != null;
+  const streakLabel = streak > 0 ? `, ${streak} day streak` : "";
 
   // A finished daily gets its own celebratory, success-tinted treatment so it
   // reads as an accomplishment rather than an unfinished task. It stays tappable
@@ -402,7 +423,9 @@ function DailyCard({
         accessibilityRole="button"
         accessibilityState={{ disabled: !canViewResult }}
         accessibilityLabel={
-          canViewResult ? `${title}, completed today, view result` : `${title}, completed today`
+          canViewResult
+            ? `${title}, completed today${streakLabel}, view result`
+            : `${title}, completed today${streakLabel}`
         }
         className={clsx(
           "border-success/30 bg-success/10 flex-1 justify-between gap-3 rounded-2xl border",
@@ -410,9 +433,12 @@ function DailyCard({
           canViewResult ? "active:opacity-80" : "opacity-95",
         )}
       >
-        <View className="flex-row items-center gap-1.5">
-          <Text className="text-success text-base font-bold">✓</Text>
-          <Text className="text-success text-xs font-bold tracking-widest uppercase">Solved</Text>
+        <View className="h-5 flex-row items-center justify-between gap-1.5">
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-success text-base font-bold">✓</Text>
+            <Text className="text-success text-xs font-bold tracking-widest uppercase">Solved</Text>
+          </View>
+          {streak > 0 ? <StreakChip count={streak} /> : null}
         </View>
         <View className="gap-0.5">
           <Text className={clsx("text-ink font-semibold", large ? "text-xl" : "text-base")}>
@@ -426,21 +452,28 @@ function DailyCard({
     );
   }
 
+  // Not started with a streak on the line: swap the generic subtitle for a
+  // nudge, since skipping today resets the run to zero.
   const meta = inProgress
     ? `Resume · ${progressDetail(progress.game as GameState, settings)}`
-    : subtitle;
+    : streak > 0
+      ? "Keep your streak going"
+      : subtitle;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={`${title}${streakLabel}`}
       className={clsx(
         "border-line bg-surface flex-1 gap-2 rounded-2xl border active:opacity-80",
         large ? "p-5" : "p-4",
       )}
     >
-      <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
+      <View className="h-5 flex-row items-center justify-between gap-1.5">
+        <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
+        {streak > 0 ? <StreakChip count={streak} /> : null}
+      </View>
       <View className="gap-0.5">
         <Text className={clsx("text-ink font-semibold", large ? "text-xl" : "text-base")}>
           {title}
