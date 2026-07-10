@@ -162,18 +162,32 @@ export async function getGameById(id: string): Promise<GameState | null> {
   return row ? rowToGame(row) : null;
 }
 
-/** The most recently updated resumable game (active or paused), if any. */
-export async function getActiveGame(): Promise<GameState | null> {
+/**
+ * The most recently updated resumable game (active or paused) for each
+ * difficulty, so Home can offer a per-difficulty continue. Daily-track games
+ * are excluded (they resume via the daily cards), as are shared-link one-offs
+ * (they carry someone else's target and reopen via their link). Where history
+ * left several resumable games of one difficulty, only the newest surfaces.
+ */
+export async function getResumableGamesByDifficulty(): Promise<
+  Partial<Record<GameState["difficulty"], GameState>>
+> {
   const db = await getDatabase();
-  const row = await db.getFirstAsync<GameRow>(
+  const rows = await db.getAllAsync<GameRow>(
     `SELECT * FROM games
        WHERE status IN ('active', 'paused')
+         AND shared_daily_track IS NULL
          AND id NOT IN (
            SELECT game_id FROM daily_progress WHERE game_id IS NOT NULL
          )
-       ORDER BY updated_at DESC LIMIT 1`,
+       ORDER BY updated_at DESC`,
   );
-  return row ? rowToGame(row) : null;
+  const byDifficulty: Partial<Record<GameState["difficulty"], GameState>> = {};
+  for (const row of rows) {
+    const game = rowToGame(row);
+    byDifficulty[game.difficulty] ??= game;
+  }
+  return byDifficulty;
 }
 
 /**

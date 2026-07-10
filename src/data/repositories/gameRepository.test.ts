@@ -22,7 +22,12 @@ jest.mock("./dailyRepository", () => ({
 import { CELL_COUNT, type GameState } from "@/domain/sudoku/types";
 
 import { getDatabase } from "../db/client";
-import { completeGame, getActiveGame, reconcileStuckCompletions, saveGame } from "./gameRepository";
+import {
+  completeGame,
+  getResumableGamesByDifficulty,
+  reconcileStuckCompletions,
+  saveGame,
+} from "./gameRepository";
 
 const mockGetDatabase = getDatabase as jest.Mock;
 
@@ -51,16 +56,47 @@ describe("gameRepository", () => {
     mockGetDatabase.mockReset();
   });
 
-  it("excludes daily and challenge games from the generic active game", async () => {
-    const getFirstAsync = jest.fn().mockResolvedValue(null);
-    mockGetDatabase.mockResolvedValue({ getFirstAsync });
+  it("excludes daily, challenge, and shared-link games from the resumable slots", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    mockGetDatabase.mockResolvedValue({ getAllAsync });
 
-    await expect(getActiveGame()).resolves.toBeNull();
+    await expect(getResumableGamesByDifficulty()).resolves.toEqual({});
 
-    expect(getFirstAsync).toHaveBeenCalledWith(expect.stringContaining("id NOT IN"));
-    expect(getFirstAsync).toHaveBeenCalledWith(
-      expect.stringContaining("SELECT game_id FROM daily_progress"),
-    );
+    const sql = getAllAsync.mock.calls[0][0] as string;
+    expect(sql).toContain("id NOT IN");
+    expect(sql).toContain("SELECT game_id FROM daily_progress");
+    expect(sql).toContain("shared_daily_track IS NULL");
+  });
+
+  it("keeps only the most recently updated resumable game per difficulty", async () => {
+    const row = (id: string, difficulty: string) => ({
+      id,
+      puzzle_id: `p-${id}`,
+      difficulty,
+      givens: ".".repeat(CELL_COUNT),
+      solution: "1".repeat(CELL_COUNT),
+      values_string: "0".repeat(CELL_COUNT),
+      notes_json: "[]",
+      status: "active",
+      elapsed_seconds: 0,
+      mistakes: 0,
+      hints_used: 0,
+      started_at: "t0",
+      completed_at: null,
+      updated_at: "t1",
+    });
+    // Query orders newest-first, so the first row of each difficulty wins.
+    const getAllAsync = jest
+      .fn()
+      .mockResolvedValue([row("new-easy", "easy"), row("old-easy", "easy"), row("hard-1", "hard")]);
+    mockGetDatabase.mockResolvedValue({ getAllAsync });
+
+    const slots = await getResumableGamesByDifficulty();
+
+    expect(slots.easy?.id).toBe("new-easy");
+    expect(slots.hard?.id).toBe("hard-1");
+    expect(slots.medium).toBeUndefined();
+    expect(getAllAsync.mock.calls[0][0]).toContain("ORDER BY updated_at DESC");
   });
 
   it("persists the final board and stats when completing, not just the status", async () => {

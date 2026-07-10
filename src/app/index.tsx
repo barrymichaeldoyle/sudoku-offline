@@ -9,7 +9,11 @@ import { AppMark } from "@/components/AppMark";
 import { Screen } from "@/components/Screen";
 import { SimpleIcon } from "@/components/SimpleIcon";
 import { getCompletedDailyDateKeys, getDailyProgress } from "@/data/repositories/dailyRepository";
-import { abandonGame, getActiveGame, getGameById } from "@/data/repositories/gameRepository";
+import {
+  abandonGame,
+  getGameById,
+  getResumableGamesByDifficulty,
+} from "@/data/repositories/gameRepository";
 import { getRandomPuzzleByDifficulty } from "@/data/repositories/puzzleRepository";
 import { computeStreak } from "@/domain/streak";
 import { completionPercent } from "@/domain/sudoku/board";
@@ -61,7 +65,7 @@ export default function Home() {
   const settings = useSettingsStore((s) => s.settings);
   const hydrated = useSettingsStore((s) => s.hydrated);
   const onboardingComplete = useSettingsStore((s) => s.onboardingComplete);
-  const [activeGame, setActiveGame] = useState<GameState | null>(null);
+  const [resumables, setResumables] = useState<Partial<Record<Difficulty, GameState>>>({});
   const [dailyCards, setDailyCards] = useState<Record<DailyTrack, DailyCardState>>({
     daily: { game: null, completed: false },
     challenge: { game: null, completed: false },
@@ -73,14 +77,14 @@ export default function Home() {
     useCallback(() => {
       let cancelled = false;
       const loadHome = async () => {
-        const [game, daily, challenge, dailyKeys] = await Promise.all([
-          getActiveGame(),
+        const [byDifficulty, daily, challenge, dailyKeys] = await Promise.all([
+          getResumableGamesByDifficulty(),
           loadDailyCard("daily"),
           loadDailyCard("challenge"),
           getCompletedDailyDateKeys("daily"),
         ]);
         if (!cancelled) {
-          setActiveGame(game);
+          setResumables(byDifficulty);
           setDailyCards({ daily, challenge });
           setStreak(computeStreak(dailyKeys, getLocalDateKey()).current);
         }
@@ -128,21 +132,21 @@ export default function Home() {
     [busy, openGame],
   );
 
-  // Start a fresh (non-daily) game. If a game is already in progress, confirm
-  // first and abandon it (which never touches stats).
-  const requestNewGame = useCallback(
-    (loadPuzzle: () => Promise<Puzzle | null>) => {
-      const inProgress =
-        activeGame && activeGame.status !== "completed" && activeGame.status !== "abandoned";
+  // Start a fresh (non-daily) game of the given difficulty. If that difficulty
+  // already has a game in progress, confirm first and abandon it (which never
+  // touches stats). Other difficulties' games are untouched.
+  const startNewGame = useCallback(
+    (difficulty: Difficulty) => {
+      const existing = resumables[difficulty];
       const start = async () => {
         if (busy) return;
         setBusy(true);
         try {
-          if (inProgress) {
-            await abandonGame(activeGame.id);
-            void track("puzzle_abandoned", { difficulty: activeGame.difficulty });
+          if (existing) {
+            await abandonGame(existing.id);
+            void track("puzzle_abandoned", { difficulty: existing.difficulty });
           }
-          const game = await launchPuzzle(loadPuzzle);
+          const game = await launchPuzzle(() => getRandomPuzzleByDifficulty(difficulty));
           if (game) {
             openGame(game);
           }
@@ -150,10 +154,10 @@ export default function Home() {
           setBusy(false);
         }
       };
-      if (inProgress) {
+      if (existing) {
         Alert.alert(
           "Start a new game?",
-          "Your current game will be abandoned. This won't affect your stats.",
+          `Your current ${DIFFICULTY_LABELS[difficulty]} game will be abandoned. This won't affect your stats.`,
           [
             { text: "Cancel", style: "cancel" },
             { text: "Start new", style: "destructive", onPress: () => void start() },
@@ -163,7 +167,20 @@ export default function Home() {
       }
       void start();
     },
-    [activeGame, busy, openGame],
+    [resumables, busy, openGame],
+  );
+
+  // Row tap: resume that difficulty's game in progress, or start a fresh one.
+  const pressDifficulty = useCallback(
+    (difficulty: Difficulty) => {
+      const existing = resumables[difficulty];
+      if (existing) {
+        openGame(existing);
+      } else {
+        startNewGame(difficulty);
+      }
+    },
+    [resumables, openGame, startNewGame],
   );
 
   // Reminder tap deep link: resume (or start) today's daily, then drop the
@@ -228,14 +245,6 @@ export default function Home() {
             </View>
           </View>
 
-          {activeGame ? (
-            <ContinueCard
-              game={activeGame}
-              settings={settings}
-              onPress={() => openGame(activeGame)}
-            />
-          ) : null}
-
           <View className="flex-row gap-3">
             <DailyCard
               title="Daily Puzzle"
@@ -269,56 +278,36 @@ export default function Home() {
           </View>
 
           <View className="gap-3">
-            <SectionLabel>New Game</SectionLabel>
+            <SectionLabel>Puzzles</SectionLabel>
             {large ? (
               // Tablet: a 2x2 card grid that fills the wider canvas, instead of
               // a thin single-column list floating in the middle.
               <View className="flex-row flex-wrap gap-3">
                 {NEW_GAME_DIFFICULTIES.map((difficulty) => (
-                  <Pressable
+                  <DifficultyRow
                     key={difficulty}
-                    onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
-                    accessibilityRole="button"
-                    accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
-                    style={{ width: "48.5%" }}
-                    className="border-line bg-surface grow flex-row items-center gap-3 rounded-2xl border px-5 py-5 active:opacity-70"
-                  >
-                    <View className={clsx("h-3 w-3 rounded-full", DIFFICULTY_DOT[difficulty])} />
-                    <View className="flex-1">
-                      <Text className="text-ink text-lg font-semibold">
-                        {DIFFICULTY_LABELS[difficulty]}
-                      </Text>
-                      <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
-                    </View>
-                    <Text className="text-ink-soft text-xl">›</Text>
-                  </Pressable>
+                    difficulty={difficulty}
+                    game={resumables[difficulty] ?? null}
+                    settings={settings}
+                    large
+                    onPress={() => pressDifficulty(difficulty)}
+                    onNewGame={() => startNewGame(difficulty)}
+                  />
                 ))}
               </View>
             ) : (
               <View className="border-line bg-surface overflow-hidden rounded-2xl border">
                 {NEW_GAME_DIFFICULTIES.map((difficulty, i) => (
-                  <Pressable
+                  <DifficultyRow
                     key={difficulty}
-                    onPress={() => requestNewGame(() => getRandomPuzzleByDifficulty(difficulty))}
-                    accessibilityRole="button"
-                    accessibilityLabel={DIFFICULTY_LABELS[difficulty]}
-                    className={clsx(
-                      "flex-row items-center gap-3 px-5 active:opacity-70",
-                      compact ? "py-3" : "py-4",
-                      i > 0 && "border-line border-t",
-                    )}
-                  >
-                    <View
-                      className={clsx("h-2.5 w-2.5 rounded-full", DIFFICULTY_DOT[difficulty])}
-                    />
-                    <View className="flex-1">
-                      <Text className="text-ink text-base font-semibold">
-                        {DIFFICULTY_LABELS[difficulty]}
-                      </Text>
-                      <Text className="text-ink-soft text-sm">{DIFFICULTY_HINTS[difficulty]}</Text>
-                    </View>
-                    <Text className="text-ink-soft text-xl">›</Text>
-                  </Pressable>
+                    difficulty={difficulty}
+                    game={resumables[difficulty] ?? null}
+                    settings={settings}
+                    compact={compact}
+                    divider={i > 0}
+                    onPress={() => pressDifficulty(difficulty)}
+                    onNewGame={() => startNewGame(difficulty)}
+                  />
                 ))}
               </View>
             )}
@@ -340,32 +329,96 @@ async function loadDailyCard(track: DailyTrack): Promise<DailyCardState> {
   return { game, completed: progress?.completedAt != null };
 }
 
-function ContinueCard({
+/**
+ * One entry in the Puzzles list: starts a fresh game of its difficulty, or —
+ * when that difficulty has a game in progress — resumes it, showing the run's
+ * progress and offering a small "New" action to deliberately start over. One
+ * slot per difficulty, so switching between an Easy and an Expert solve never
+ * loses either.
+ */
+function DifficultyRow({
+  difficulty,
   game,
   settings,
+  large = false,
+  compact = false,
+  divider = false,
   onPress,
+  onNewGame,
 }: {
-  game: GameState;
+  difficulty: Difficulty;
+  game: GameState | null;
   settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean };
+  large?: boolean;
+  compact?: boolean;
+  divider?: boolean;
   onPress: () => void;
+  onNewGame: () => void;
 }) {
-  const large = useWindowDimensions().width >= 700;
+  const label = DIFFICULTY_LABELS[difficulty];
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Continue your current game"
-      className={clsx("bg-primary gap-1 rounded-2xl active:opacity-80", large ? "p-6" : "p-5")}
+      accessibilityLabel={
+        game
+          ? `${label}, resume game, ${completionPercent(game.values, game.givens)} percent complete`
+          : label
+      }
+      // The row is one accessibility element, which hides the nested New
+      // pressable from screen readers; expose it as a custom action instead.
+      accessibilityActions={
+        game ? [{ name: "newGame", label: `Start a new ${label} game` }] : undefined
+      }
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "newGame") {
+          onNewGame();
+        }
+      }}
+      style={large ? { width: "48.5%" } : undefined}
+      className={clsx(
+        "flex-row items-center gap-3 active:opacity-70",
+        large
+          ? "border-line bg-surface grow rounded-2xl border px-5 py-5"
+          : ["px-5", compact ? "py-3" : "py-4", divider && "border-line border-t"],
+      )}
     >
-      <Text className="text-on-primary/80 text-xs font-semibold tracking-widest uppercase">
-        Resume game
-      </Text>
-      <Text className={clsx("text-on-primary font-bold", large ? "text-4xl" : "text-2xl")}>
-        Continue
-      </Text>
-      <Text className={clsx("text-on-primary/80", large ? "text-base" : "text-sm")}>
-        {progressText(game, settings)}
-      </Text>
+      <View
+        className={clsx(
+          "rounded-full",
+          large ? "h-3 w-3" : "h-2.5 w-2.5",
+          DIFFICULTY_DOT[difficulty],
+        )}
+      />
+      <View className="flex-1 gap-1">
+        <Text className={clsx("text-ink font-semibold", large ? "text-lg" : "text-base")}>
+          {label}
+        </Text>
+        <Text className="text-ink-soft text-sm">
+          {game ? `Resume · ${progressDetail(game, settings)}` : DIFFICULTY_HINTS[difficulty]}
+        </Text>
+        {game ? (
+          <View className="bg-surface-muted mt-0.5 h-1 overflow-hidden rounded-full">
+            <View
+              className={clsx("h-full rounded-full", DIFFICULTY_DOT[difficulty])}
+              style={{ width: `${completionPercent(game.values, game.givens)}%` }}
+            />
+          </View>
+        ) : null}
+      </View>
+      {game ? (
+        <Pressable
+          onPress={onNewGame}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Start a new ${label} game`}
+          className="border-line bg-surface-muted rounded-full border px-3 py-1.5 active:opacity-70"
+        >
+          <Text className="text-ink text-xs font-semibold">New</Text>
+        </Pressable>
+      ) : (
+        <Text className="text-ink-soft text-xl">›</Text>
+      )}
     </Pressable>
   );
 }
@@ -535,14 +588,6 @@ function progressDetail(
     parts.push(`${game.mistakes} mistake${game.mistakes > 1 ? "s" : ""}`);
   }
   return parts.join(" · ");
-}
-
-/** Progress prefixed with the difficulty, for the generic Continue card. */
-function progressText(
-  game: GameState,
-  settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean },
-): string {
-  return `${DIFFICULTY_LABELS[game.difficulty] ?? game.difficulty} · ${progressDetail(game, settings)}`;
 }
 
 function SectionLabel({ children }: { children: string }) {
