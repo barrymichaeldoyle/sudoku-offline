@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { useWindowDimensions } from "react-native";
 
+import { DifficultyDonut } from "@/components/DifficultyDonut";
 import { NativeAdCard } from "@/components/NativeAdCard";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -13,7 +14,7 @@ import {
   DIFFICULTY_DOT,
   DIFFICULTY_LABELS,
 } from "@/domain/sudoku/difficultyPresentation";
-import { NEW_GAME_DIFFICULTIES } from "@/domain/sudoku/types";
+import { NEW_GAME_DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
 import { getGameStats, type GameStats } from "@/services/statsService";
 import { useSettingsStore } from "@/state/useSettingsStore";
@@ -51,11 +52,6 @@ export default function StatsScreen() {
       };
     }, []),
   );
-
-  // Largest per-difficulty completion count, so the Normal bars are sized relatively.
-  const maxCompleted = stats
-    ? Math.max(1, ...NEW_GAME_DIFFICULTIES.map((d) => stats.normal.byDifficulty[d].completed))
-    : 1;
 
   return (
     <Screen className="bg-canvas flex-1">
@@ -128,21 +124,42 @@ export default function StatsScreen() {
               })()}
 
               <Text className={clsx(SECTION_LABEL_CLASS, "mt-1")}>By Difficulty</Text>
-              {NEW_GAME_DIFFICULTIES.map((difficulty) => {
-                const stat = stats.normal.byDifficulty[difficulty];
-                return (
-                  <StatRow
-                    key={difficulty}
-                    dot={DIFFICULTY_DOT[difficulty]}
-                    label={DIFFICULTY_LABELS[difficulty]}
-                    completed={stat.completed}
-                    bestSeconds={stat.bestSeconds}
-                    averageSeconds={stat.averageSeconds}
-                    showTime={settings.timerEnabled}
-                    barPct={Math.round((stat.completed / maxCompleted) * 100)}
+              {(() => {
+                // Share of completions at a glance; the rows double as its
+                // legend and carry the exact counts and times.
+                const donut = (
+                  <DifficultyDonut
+                    completedByDifficulty={completedCounts(stats)}
+                    size={large ? 180 : 150}
                   />
                 );
-              })}
+                const rows = NEW_GAME_DIFFICULTIES.map((difficulty) => {
+                  const stat = stats.normal.byDifficulty[difficulty];
+                  return (
+                    <StatRow
+                      key={difficulty}
+                      dot={DIFFICULTY_DOT[difficulty]}
+                      label={DIFFICULTY_LABELS[difficulty]}
+                      completed={stat.completed}
+                      bestSeconds={stat.bestSeconds}
+                      averageSeconds={stat.averageSeconds}
+                      showTime={settings.timerEnabled}
+                    />
+                  );
+                });
+                // Tablet: donut beside the rows; phone: donut above them.
+                return large ? (
+                  <View className="flex-row items-center gap-8 px-2">
+                    {donut}
+                    <View className="flex-1 gap-3">{rows}</View>
+                  </View>
+                ) : (
+                  <>
+                    <View className="items-center py-2">{donut}</View>
+                    {rows}
+                  </>
+                );
+              })()}
             </View>
 
             {/* Daily Puzzles — the streak plus each track on its own. */}
@@ -188,6 +205,15 @@ export default function StatsScreen() {
   );
 }
 
+/** Per-difficulty completed counts in the shape the donut takes. */
+function completedCounts(stats: GameStats): Record<Difficulty, number> {
+  const counts = {} as Record<Difficulty, number>;
+  for (const difficulty of Object.keys(stats.normal.byDifficulty) as Difficulty[]) {
+    counts[difficulty] = stats.normal.byDifficulty[difficulty].completed;
+  }
+  return counts;
+}
+
 /** No play at all — neither a normal completion nor a completed daily on any track. */
 function isStatsEmpty(stats: GameStats): boolean {
   return (
@@ -199,8 +225,7 @@ function isStatsEmpty(stats: GameStats): boolean {
 /**
  * A breakdown row used in both the Normal "By Difficulty" list and the Daily
  * track cards: a colour dot, a label (+ optional note), the completed count and
- * — when timing is on — best/avg times. Pass `barPct` to draw a relative
- * completion bar (the difficulty rows do; the daily track cards don't).
+ * — when timing is on — best/avg times.
  */
 function StatRow({
   dot,
@@ -210,7 +235,6 @@ function StatRow({
   bestSeconds,
   averageSeconds,
   showTime,
-  barPct,
 }: {
   dot: string;
   label: string;
@@ -219,7 +243,6 @@ function StatRow({
   bestSeconds: number | null;
   averageSeconds: number | null;
   showTime: boolean;
-  barPct?: number;
 }) {
   const large = useWindowDimensions().width >= 700;
   const empty = completed === 0;
@@ -254,14 +277,6 @@ function StatRow({
           ) : null}
         </View>
       </View>
-      {/* Completion bar, sized relative to your most-played difficulty. */}
-      {barPct != null ? (
-        <View
-          className={clsx("bg-surface-muted overflow-hidden rounded-full", large ? "h-2" : "h-1.5")}
-        >
-          <View className={clsx("h-full rounded-full", dot)} style={{ width: `${barPct}%` }} />
-        </View>
-      ) : null}
     </View>
   );
 }

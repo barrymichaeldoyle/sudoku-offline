@@ -25,6 +25,19 @@ export const DIFFICULTY_DOT: Record<Difficulty, string> = {
 };
 
 /**
+ * The same colour cue as `DIFFICULTY_DOT`, but as the raw CSS variable name for
+ * places that need a literal colour value (SVG fills) instead of a class.
+ * Resolve with `useCSSVariable` from `@/tw` so light/dark stays reactive.
+ */
+export const DIFFICULTY_COLOR_VAR: Record<Difficulty, string> = {
+  easy: "--color-difficulty-easy",
+  medium: "--color-difficulty-medium",
+  hard: "--color-difficulty-hard",
+  expert: "--color-difficulty-expert",
+  extreme: "--color-difficulty-extreme",
+};
+
+/**
  * The two daily tracks borrow the colour of the difficulty they actually are —
  * the Daily Puzzle is a medium grid, the Daily Challenge an extreme one — so the
  * cue carries the same meaning as the New Game list rather than an arbitrary
