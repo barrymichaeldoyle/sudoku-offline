@@ -1,3 +1,4 @@
+import { getDatabase, withWriteLock } from "@/data/db/client";
 import { saveGame } from "@/data/repositories/gameRepository";
 import { seedSampleStats } from "@/data/repositories/statsRepository";
 import { CELL_COUNT, type CellValue, type GameState, type NoteMask } from "@/domain/sudoku/types";
@@ -65,6 +66,41 @@ export function buildScreenshotGame(): GameState {
   };
 }
 
+// The second in-progress game, so the home shot shows the per-difficulty
+// continue rows doing their job (Medium and Expert both resumable). Only its
+// home-row summary is ever visible — the capture never opens this board — so
+// the blank layout is a simple prefix split chosen for the counts alone:
+// 26 of 48 blanks filled reads as 54%.
+const EXPERT_BLANK_COUNT = 48;
+const EXPERT_FILLED_COUNT = 26;
+
+function buildScreenshotExpertGame(): GameState {
+  const now = new Date().toISOString();
+  let givens = "";
+  const values: CellValue[] = [];
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const isBlank = i < EXPERT_BLANK_COUNT;
+    givens += isBlank ? "0" : SOLUTION[i];
+    values.push(!isBlank || i < EXPERT_FILLED_COUNT ? Number(SOLUTION[i]) : null);
+  }
+  return {
+    id: "screenshot-game-expert",
+    puzzleId: "screenshot-puzzle-expert",
+    difficulty: "expert",
+    givens,
+    solution: SOLUTION,
+    values,
+    notes: Array.from({ length: CELL_COUNT }, () => 0),
+    status: "active",
+    elapsedSeconds: 1141, // renders as 19:01
+    mistakes: 0,
+    hintsUsed: 0,
+    startedAt: now,
+    completedAt: null,
+    updatedAt: now,
+  };
+}
+
 /**
  * Retry a DB write that loses a race with another in-flight statement. Arriving
  * via deep link, the seed's `BEGIN EXCLUSIVE` can collide with the home screen's
@@ -91,6 +127,18 @@ async function withLockRetry<T>(fn: () => Promise<T>, attempts = 12, delayMs = 1
  * deterministic, so every capture run (and every locale) looks identical.
  */
 export async function seedScreenshotData(): Promise<void> {
+  // Start from an empty games table so leftover dev games can't leak into the
+  // shots — and so a previously abandoned copy of a seed game can't block its
+  // re-insert (saveGame's guard refuses to revive terminal rows).
+  await withLockRetry(() => wipeGames());
   await withLockRetry(() => seedSampleStats());
   await withLockRetry(() => saveGame(buildScreenshotGame()));
+  await withLockRetry(() => saveGame(buildScreenshotExpertGame()));
+}
+
+async function wipeGames(): Promise<void> {
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM games");
+  });
 }
