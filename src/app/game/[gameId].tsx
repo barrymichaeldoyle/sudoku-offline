@@ -916,9 +916,9 @@ function CompletionOverlay({
   return (
     <View
       accessibilityViewIsModal
-      // -inset-4 bleeds the dim past the content column's p-4 so it still
-      // reaches the screen edges; z-10 keeps it under the header (z-20).
-      className="absolute -inset-4 z-10 items-center justify-center p-8"
+      // Bleed horizontally and below the content column, but start beneath the
+      // header so the results card can never overlap its title or controls.
+      className="absolute -inset-x-4 top-32 -bottom-4 z-10 items-center justify-start p-8"
     >
       {/* A tap on the dimmed area peeks the finished board rather than being a
           dead zone — same outcome as the "View Board" button. The card below is
@@ -929,8 +929,15 @@ function CompletionOverlay({
         accessibilityRole="button"
         accessibilityLabel="View your completed board"
       />
-      <View className="border-line bg-surface max-h-full w-full overflow-hidden rounded-3xl border">
-        <ScrollView contentContainerClassName="gap-2 p-6" showsVerticalScrollIndicator={false}>
+      <View
+        className="border-line bg-surface max-h-full w-full overflow-hidden rounded-3xl border"
+        style={{ flexShrink: 1 }}
+      >
+        <ScrollView
+          contentContainerClassName="gap-2 p-6"
+          showsVerticalScrollIndicator
+          bounces={false}
+        >
           <Text className="text-center text-4xl">🏆</Text>
           <Text className="text-ink text-center text-2xl font-bold">{heading}</Text>
           <Text className="text-ink-soft text-center">
