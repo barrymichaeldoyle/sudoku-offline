@@ -8,6 +8,7 @@ import { AppState, Share, Switch, useWindowDimensions } from "react-native";
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
 import { GameControls } from "@/components/GameControls";
+import { HardwareKeyboardCapture } from "@/components/HardwareKeyboardCapture";
 import { InputModeToggle } from "@/components/InputModeToggle";
 import { NativeAdCard } from "@/components/NativeAdCard";
 import { NavBackButton } from "@/components/NavBackButton";
@@ -134,8 +135,15 @@ export default function GameScreen() {
     game.values.some((v, i) => v != null && !isGivenCell(game.givens, i)) ||
     game.notes.some((n) => n !== 0);
 
+  // Hardware-keyboard input is live only while the board itself is editable —
+  // any overlay (pause, reset, hint, wrong-solution, completion) unmounts the
+  // capture so keystrokes can't edit the board behind it.
+  const keyboardCaptureActive =
+    !completed && !paused && !hintPromptVisible && !showResetConfirm && !incorrectComplete;
+
   return (
     <Screen className="bg-canvas flex-1">
+      {keyboardCaptureActive ? <HardwareKeyboardCapture /> : null}
       <View className="w-full flex-1 gap-3 self-center p-4">
         {/* Lifted above the completion scrim (z-10) so its back/settings stay
             tappable while the results card is up; back goes Home once finished
