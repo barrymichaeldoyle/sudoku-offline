@@ -24,6 +24,7 @@ minimumReleaseAgeExclude:
   - typescript@7.0.2
   - "@lottiefiles/dotlottie-react@0.19.8"
   - "@lottiefiles/dotlottie-web@0.77.0"
+  - tailwindcss@4.3.3
 
 overrides:
   lightningcss: 1.30.1
