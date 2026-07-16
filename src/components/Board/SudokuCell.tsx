@@ -113,7 +113,14 @@ function SudokuCellComponent(props: SudokuCellProps) {
       accessibilityLabel={a11yLabel}
       accessibilityState={{ selected: isSelected }}
       className={clsx(
-        "flex-1 items-center justify-center border-[0.5px] border-grid-minor",
+        "flex-1 items-center justify-center",
+        // An error cell keeps its red fill even while selected (error outranks
+        // selection for the background), so selection is shown as a gold ring
+        // instead — otherwise the selected cell is indistinguishable from any
+        // other mistake and the player loses track of it.
+        isSelected && props.isConflict
+          ? "border-2 border-cell-selected"
+          : "border-[0.5px] border-grid-minor",
         // The thicker 3x3 box boundaries are drawn as a single overlay layer in
         // SudokuBoard so the major lines always sit on top of the lighter cell
         // lines, rather than relying on per-cell border paint order.
