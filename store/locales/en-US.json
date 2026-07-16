@@ -2,7 +2,7 @@
   "title": "Offline Sudoku",
   "subtitle": "Classic daily number puzzles",
   "promoText": "Play clean classic Sudoku anywhere. Works offline, with daily puzzles, pencil notes, hints, stats, dark mode, and no ads while you solve.",
-  "description": "Offline Sudoku is a clean, focused Sudoku app that works anywhere, no Wi-Fi needed.\n\nPlay classic 9x9 Sudoku puzzles with pencil notes, hints, daily challenges, stats, streaks, dark mode, and no ads while you solve.\n\nDesigned for focused solving\n- No ads during gameplay\n- Clean, readable Sudoku board\n- Fast number input\n- Pencil notes\n- Undo and erase\n- Highlight rows, columns, boxes, and matching numbers\n- Optional mistake checking\n- Auto-save progress\n\nPlay every day\n- Daily Sudoku puzzle\n- Daily streaks\n- Completion stats\n- Best times by difficulty\n- Mistake-free tracking\n- Shareable results\n\nWorks offline\n- Start puzzles without internet\n- Continue games offline\n- Play daily puzzles offline\n- View stats offline\n- Change settings offline\n\nChoose your challenge\n- Easy\n- Medium\n- Hard\n- Expert\n\nComfortable to use\n- Light mode\n- Dark mode\n- Haptics toggle\n- Timer toggle\n- Large, clear numbers\n- Clean visual design\n\nOffline Sudoku is made for people who want a simple, respectful Sudoku app: classic puzzles, offline play, and no interruptions while solving.",
+  "description": "Offline Sudoku is a clean, focused Sudoku app that works anywhere, no Wi-Fi needed.\n\nPlay classic 9x9 Sudoku puzzles with pencil notes, hints, daily challenges, stats, streaks, dark mode, and no ads while you solve.\n\nDesigned for focused solving\n- No ads during gameplay\n- Clean, readable Sudoku board\n- Fast number input\n- Pencil notes\n- Undo and erase\n- Highlight rows, columns, boxes, and matching numbers\n- Optional mistake checking\n- Auto-save progress\n\nPlay every day\n- Daily Sudoku puzzle\n- Daily streaks\n- Completion stats\n- Best times by difficulty\n- Mistake-free tracking\n- Shareable results\n\nWorks offline\n- Start puzzles without internet\n- Continue games offline\n- Play daily puzzles offline\n- View stats offline\n- Change settings offline\n\nChoose your challenge\n- Easy\n- Medium\n- Hard\n- Expert\n\nComfortable to use\n- Light mode\n- Dark mode\n- Haptics toggle\n- Timer toggle\n- Large, clear numbers\n- Clean visual design\n- Hardware keyboard support on iPad\n\nOffline Sudoku is made for people who want a simple, respectful Sudoku app: classic puzzles, offline play, and no interruptions while solving.",
   "keywords": [
     "classic",
     "daily",
@@ -16,7 +16,7 @@
     "relaxing",
     "grid"
   ],
-  "releaseNotes": "Improves the completed-puzzle screen on smaller iPhones.",
+  "releaseNotes": "Adds hardware keyboard support on iPad: type 1-9 to fill cells, 0 or backspace to erase, N for notes, U and R for undo and redo. Fixes the selected cell being hard to spot when it shows a mistake.",
   "privacyPolicyUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/privacy.html",
   "supportUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/support.html",
   "marketingUrl": "https://barrymichaeldoyle.com/sudoku"
