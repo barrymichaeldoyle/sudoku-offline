@@ -41,6 +41,7 @@ export type AdService = {
 
 const REWARDED_HINT_AD_UNIT_ID = Platform.select({
   ios: "ca-app-pub-3482457944656598/5403777597",
+  android: "ca-app-pub-3482457944656598/5473269201",
   default: TestIds.REWARDED,
 });
 
