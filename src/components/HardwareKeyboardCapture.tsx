@@ -51,10 +51,12 @@ export function HardwareKeyboardCapture() {
       const digit = Number(key);
       const game = useGameStore.getState().game;
       // Parity with the number pad: a digit locked by "disable completed
-      // numbers" isn't enterable from the keyboard either.
+      // numbers" isn't enterable from the keyboard either. Shake the dimmed
+      // pad button so the rejection is visible, not a silent "is this broken?".
       if (useSettingsStore.getState().settings.disableCompletedNumbers && game) {
         const placed = game.values.filter((v) => v === digit).length;
         if (placed >= BOARD_SIZE) {
+          useGameStore.getState().flashLockedDigit(digit);
           return;
         }
       }

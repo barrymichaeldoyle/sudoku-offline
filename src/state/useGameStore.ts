@@ -51,6 +51,13 @@ type GameStore = {
   /** Actions popped by undo, available to replay via redo until the next edit. */
   redoStack: GameAction[];
 
+  /**
+   * Pad button to shake because its digit was typed on a hardware keyboard
+   * while locked by "disable completed numbers" — silent rejection would read
+   * as a bug. The nonce retriggers the shake on repeated presses.
+   */
+  lockedDigitFlash: { digit: number; nonce: number } | null;
+
   /** True while a hint confirmation prompt is shown. */
   hintPromptVisible: boolean;
   /** Rewarded-ad upsell vs a simple confirm-before-reveal prompt. */
@@ -76,6 +83,8 @@ type GameStore = {
 
   pressCell: (index: number) => void;
   pressNumber: (num: number) => void;
+  /** Shake the pad button for a digit whose keyboard input was rejected. */
+  flashLockedDigit: (digit: number) => void;
   erase: () => void;
   /**
    * Hint entry point. Always opens a prompt first so accidental taps do not
@@ -160,6 +169,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   incorrectComplete: false,
   undoStack: [],
   redoStack: [],
+  lockedDigitFlash: null,
   hintPromptVisible: false,
   hintPromptMode: null,
   hintCooldownUntil: null,
@@ -354,6 +364,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (selectedCell != null) {
       applyNumber(set, get, selectedCell, num);
     }
+  },
+
+  flashLockedDigit(digit) {
+    set((state) => ({
+      lockedDigitFlash: { digit, nonce: (state.lockedDigitFlash?.nonce ?? 0) + 1 },
+    }));
   },
 
   erase() {
