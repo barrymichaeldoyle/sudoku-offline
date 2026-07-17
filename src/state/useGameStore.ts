@@ -6,6 +6,8 @@ import { create } from "zustand";
 import { completeGame, getGameById, saveGame } from "@/data/repositories/gameRepository";
 import {
   areAlignedBoxPeers,
+  getColIndex,
+  getRowIndex,
   isBoardFull,
   isGivenCell,
   isPuzzleComplete,
@@ -20,9 +22,10 @@ import {
   removeNote,
   toggleNote,
 } from "@/domain/sudoku/notes";
-import { CELL_COUNT } from "@/domain/sudoku/types";
+import { BOARD_SIZE, CELL_COUNT } from "@/domain/sudoku/types";
 import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
+import { announce } from "@/services/announce";
 import { haptics } from "@/services/haptics";
 import { hasRemoveAds } from "@/state/useEntitlementStore";
 import { getSettings, useSettingsStore } from "@/state/useSettingsStore";
@@ -83,6 +86,12 @@ type GameStore = {
 
   pressCell: (index: number) => void;
   pressNumber: (num: number) => void;
+  /**
+   * Step the selection ring with a hardware-keyboard arrow key. Pure movement:
+   * unlike pressCell it never places a number or erases, even in number-first
+   * mode with a tool armed. Clamped at the board edges (no wrapping).
+   */
+  moveSelection: (dRow: number, dCol: number) => void;
   /** Shake the pad button for a digit whose keyboard input was rejected. */
   flashLockedDigit: (digit: number) => void;
   erase: () => void;
@@ -270,6 +279,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       notes: Array.from({ length: CELL_COUNT }, () => 0),
       mistakes: 0,
       hintsUsed: 0,
+      hintedCells: [],
       elapsedSeconds,
       status: "active",
       completedAt: null,
@@ -348,6 +358,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ selectedCell: index, carryNoteDigit: null });
   },
 
+  moveSelection(dRow, dCol) {
+    const { game, selectedCell } = get();
+    if (!game || game.status === "completed") {
+      return;
+    }
+    // First arrow press "enters" the board at the center cell, the spot with
+    // the shortest path to anywhere else; after that, arrows step one cell.
+    if (selectedCell == null) {
+      const center = Math.floor(CELL_COUNT / 2);
+      set({ selectedCell: center, carryNoteDigit: null });
+      announceCell(center, game.values[center]);
+      return;
+    }
+    const row = Math.min(BOARD_SIZE - 1, Math.max(0, getRowIndex(selectedCell) + dRow));
+    const col = Math.min(BOARD_SIZE - 1, Math.max(0, getColIndex(selectedCell) + dCol));
+    const index = row * BOARD_SIZE + col;
+    set({ selectedCell: index, carryNoteDigit: null });
+    announceCell(index, game.values[index]);
+  },
+
   pressNumber(num) {
     const { game, selectedCell } = get();
     if (game?.status === "completed") {
@@ -367,9 +397,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   flashLockedDigit(digit) {
-    set((state) => ({
-      lockedDigitFlash: { digit, nonce: (state.lockedDigitFlash?.nonce ?? 0) + 1 },
-    }));
+    const nonce = (get().lockedDigitFlash?.nonce ?? 0) + 1;
+    set({ lockedDigitFlash: { digit, nonce } });
+    // The shake is visual-only; give screen-reader users the same rejection.
+    announce(`${digit} is locked, all nine are placed`);
+    // Ephemeral: clear once the shake has played (280ms) so stale flash state
+    // can't re-trigger on board cells that acquire this digit later.
+    setTimeout(() => {
+      if (get().lockedDigitFlash?.nonce === nonce) {
+        set({ lockedDigitFlash: null });
+      }
+    }, 400);
   },
 
   erase() {
@@ -475,9 +513,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       undoStack: undoStack.slice(0, -1),
       redoStack: [...redoStack, action],
       carryNoteDigit: null,
-      // Undoing a revealed hint lifts its cooldown so the button is usable again
-      // (the hintsUsed tally stays — the hint was still spent).
-      ...(action.type === "place_value" && action.fromHint ? { hintCooldownUntil: null } : {}),
     });
     scheduleSave(next);
   },
@@ -594,7 +629,7 @@ type GetFn = () => GameStore;
 /** Clear a cell's value and notes (recording an undo action). No-op on givens. */
 function eraseCellAt(set: SetFn, get: GetFn, index: number): void {
   const { game, undoStack } = get();
-  if (!game || isGivenCell(game.givens, index)) {
+  if (!game || isGivenCell(game.givens, index) || game.hintedCells.includes(index)) {
     return;
   }
   const previousValue = game.values[index];
@@ -652,9 +687,16 @@ function carryNoteToCell(set: SetFn, get: GetFn, index: number, num: number): vo
   scheduleSave(next);
 }
 
+// Same wording as SudokuCell's accessibilityLabel, so keyboard navigation and
+// touch exploration describe a cell identically to screen-reader users.
+function announceCell(index: number, value: CellValue): void {
+  const position = `Row ${getRowIndex(index) + 1}, column ${getColIndex(index) + 1}`;
+  announce(value != null ? `${position}, ${value}` : `${position}, empty`);
+}
+
 function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
   const { game, notesMode, undoStack } = get();
-  if (!game || isGivenCell(game.givens, index)) {
+  if (!game || isGivenCell(game.givens, index) || game.hintedCells.includes(index)) {
     return;
   }
 
@@ -742,7 +784,7 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
  * rewarded-hint prompt if it was open. No-op when nothing is left to reveal.
  */
 function revealHint(set: SetFn, get: GetFn): void {
-  const { game, undoStack } = get();
+  const { game } = get();
   if (!game) {
     return;
   }
@@ -752,12 +794,9 @@ function revealHint(set: SetFn, get: GetFn): void {
     return;
   }
   const { index, value } = found;
-  const previousValue = game.values[index];
-  const previousNotes = game.notes[index];
   const values = game.values.slice();
   values[index] = value;
   let notes: NoteMask[];
-  let clearedNotes: { cellIndex: number; previousNotes: NoteMask }[] | undefined;
   if (getSettings().autoNoteCleanup) {
     const cleanup = cleanupNotesAfterPlacement(
       game.notes,
@@ -766,29 +805,23 @@ function revealHint(set: SetFn, get: GetFn): void {
       getSettings().autoNoteCleanupScope,
     );
     notes = cleanup.notes;
-    clearedNotes = cleanup.cleared;
   } else {
     notes = game.notes.slice();
   }
   notes[index] = 0;
 
-  const action: GameAction = {
-    type: "place_value",
-    cellIndex: index,
-    previousValue,
-    nextValue: value,
-    previousNotes,
-    nextNotes: 0,
-    clearedNotes,
-    fromHint: true,
+  const next: GameState = {
+    ...game,
+    values,
+    notes,
+    hintsUsed: game.hintsUsed + 1,
+    hintedCells: [...game.hintedCells, index],
   };
-  const next: GameState = { ...game, values, notes, hintsUsed: game.hintsUsed + 1 };
   haptics.place();
   void track("hint_used", { difficulty: game.difficulty });
   set({
     game: next,
     selectedCell: index,
-    undoStack: [...undoStack, action],
     redoStack: [],
     hintPromptVisible: false,
     hintPromptMode: null,

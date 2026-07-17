@@ -93,6 +93,34 @@ export function getBoxPeerIndices(cellIndex: number): number[] {
   return BOX_PEER_CACHE[cellIndex];
 }
 
+/**
+ * A digit is "completed" once it appears nine times with no two copies sharing
+ * a row, column, or box — a structurally valid full set. Raw counts alone
+ * would also treat an over-placed digit (nine copies including duplicates) as
+ * complete, locking it while the box that legitimately needs it is still empty.
+ */
+export function isDigitCompleted(values: readonly CellValue[], digit: number): boolean {
+  const rows = new Set<number>();
+  const cols = new Set<number>();
+  const boxes = new Set<number>();
+  let count = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] !== digit) {
+      continue;
+    }
+    count++;
+    rows.add(getRowIndex(i));
+    cols.add(getColIndex(i));
+    boxes.add(getBoxIndex(i));
+  }
+  return (
+    count === BOARD_SIZE &&
+    rows.size === BOARD_SIZE &&
+    cols.size === BOARD_SIZE &&
+    boxes.size === BOARD_SIZE
+  );
+}
+
 export function parseValuesString(input: string): CellValue[] {
   const values: CellValue[] = Array.from({ length: CELL_COUNT });
   for (let i = 0; i < CELL_COUNT; i++) {

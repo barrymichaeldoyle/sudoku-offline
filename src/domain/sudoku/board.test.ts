@@ -6,6 +6,7 @@ import {
   getRowIndex,
   hasDuplicate,
   isBoardFull,
+  isDigitCompleted,
   isGivenCell,
   isPuzzleComplete,
   isValueCorrect,
@@ -168,5 +169,41 @@ describe("completionPercent", () => {
 
   it("is 100 when there are no blanks to fill", () => {
     expect(completionPercent(parseValuesString(SOLUTION), SOLUTION)).toBe(100);
+  });
+});
+
+describe("isDigitCompleted", () => {
+  it("is true for every digit of a solved board", () => {
+    const values = parseValuesString(SOLUTION);
+    for (let digit = 1; digit <= 9; digit++) {
+      expect(isDigitCompleted(values, digit)).toBe(true);
+    }
+  });
+
+  it("is false when fewer than nine are placed", () => {
+    const values = parseValuesString(SOLUTION);
+    const index = values.indexOf(5);
+    values[index] = null;
+    expect(isDigitCompleted(values, 5)).toBe(false);
+  });
+
+  it("is false when nine are placed but two share a unit", () => {
+    // Start from the solved board, then move one 2 next to another 2: still
+    // nine 2s on the board, but two share a row, and one row has none.
+    const values = parseValuesString(SOLUTION);
+    const first = values.indexOf(2);
+    values[first] = null;
+    const second = values.indexOf(2);
+    // Place the removed 2 adjacent to another 2, inside the same box.
+    const neighbor = second + (getColIndex(second) < 8 ? 1 : -1);
+    values[neighbor] = 2;
+    expect(values.filter((v) => v === 2)).toHaveLength(9);
+    expect(isDigitCompleted(values, 2)).toBe(false);
+  });
+
+  it("is false when over-placed beyond nine", () => {
+    const values = parseValuesString(SOLUTION);
+    values[values.indexOf(3)] = 2; // ten 2s
+    expect(isDigitCompleted(values, 2)).toBe(false);
   });
 });

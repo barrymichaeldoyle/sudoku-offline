@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useWindowDimensions } from "react-native";
 import { Keyframe, ReduceMotion } from "react-native-reanimated";
 
+import { isDigitCompleted } from "@/domain/sudoku/board";
 import { BOARD_SIZE } from "@/domain/sudoku/types";
 import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
@@ -48,14 +49,22 @@ export function NumberPad() {
     return counts;
   }, [game]);
 
+  // Completion is structural (nine copies, no shared row/col/box), not just a
+  // count of nine: an over-placed digit with duplicates must stay unlocked or
+  // it can never be entered in the box that still needs it.
+  const completedDigits = useMemo(
+    () => NUMBERS.map((num) => (game ? isDigitCompleted(game.values, num) : false)),
+    [game],
+  );
+
   return (
     <View className="flex-row justify-between gap-1.5">
       {NUMBERS.map((num) => {
         const isSelected = inputMode === "number" && selectedNumber === num;
         const left = Math.max(0, remaining[num]);
-        // A digit is "complete" once all nine are placed. Only dim/lock it when
-        // the player opted in; otherwise it stays a normal, tappable button.
-        const isComplete = left <= 0;
+        // Only dim/lock a completed digit when the player opted in; otherwise
+        // it stays a normal, tappable button.
+        const isComplete = completedDigits[num - 1];
         const locked = completed || (disableCompletedNumbers && isComplete);
         const isFlashing = lockedFlash?.digit === num;
         return (
