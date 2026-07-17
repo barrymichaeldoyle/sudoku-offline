@@ -47,6 +47,7 @@ function freshGame(): GameState {
     elapsedSeconds: 0,
     mistakes: 0,
     hintsUsed: 0,
+    hintedCells: [],
     startedAt: "2026-06-19T00:00:00.000Z",
     completedAt: null,
     updatedAt: "2026-06-19T00:00:00.000Z",
@@ -243,6 +244,9 @@ describe("useGameStore reducers", () => {
   });
 
   it("undo restores peer notes cleared by auto note cleanup", () => {
+    useSettingsStore.setState((state) => ({
+      settings: { ...state.settings, autoNoteCleanup: true },
+    }));
     const s = useGameStore.getState();
     const NOTE_5 = 1 << 4; // note 5 -> bit 4
     // Pencil note 5 into cell 1 (a peer of cell 0 in the same row).
@@ -303,6 +307,9 @@ describe("useGameStore reducers", () => {
     });
 
     it("re-clears peer notes when redoing a placement", () => {
+      useSettingsStore.setState((state) => ({
+        settings: { ...state.settings, autoNoteCleanup: true },
+      }));
       const s = useGameStore.getState();
       s.toggleNotesMode();
       s.pressCell(1); // peer of 0
@@ -582,19 +589,30 @@ describe("useGameStore reducers", () => {
       expect(useGameStore.getState().game!.hintsUsed).toBe(1);
     });
 
-    it("undoing a hint lifts the cooldown but keeps hintsUsed counted", async () => {
+    it("keeps a revealed hint locked against number input, notes, erase, and undo", async () => {
       mockIsRewardedHintAvailable.mockResolvedValue(false);
       await useGameStore.getState().requestHint();
       useGameStore.getState().confirmHint();
       const revealed = useGameStore.getState();
       const placed = revealed.game!.values.findIndex((v) => v != null);
+      const hintedValue = revealed.game!.values[placed];
+      expect(revealed.game!.hintedCells).toEqual([placed]);
       expect(revealed.hintCooldownUntil).not.toBeNull();
 
+      const s = useGameStore.getState();
+      s.pressCell(placed);
+      s.pressNumber(hintedValue === 9 ? 8 : 9);
+      s.toggleNotesMode();
+      s.pressNumber(1);
+      s.erase();
       useGameStore.getState().undo();
+
       const after = useGameStore.getState();
-      expect(after.game!.values[placed]).toBeNull(); // the hint is undone
-      expect(after.hintCooldownUntil).toBeNull(); // cooldown lifted
-      expect(after.game!.hintsUsed).toBe(1); // but the hint was still spent
+      expect(after.game!.values[placed]).toBe(hintedValue);
+      expect(after.game!.notes[placed]).toBe(0);
+      expect(after.game!.hintedCells).toEqual([placed]);
+      expect(after.hintCooldownUntil).toBe(revealed.hintCooldownUntil);
+      expect(after.game!.hintsUsed).toBe(1);
     });
 
     it("undoing a normal placement leaves the hint cooldown intact", async () => {

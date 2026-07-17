@@ -81,6 +81,7 @@
   --color-num-given: #1f2937; /* near-black: the fixed clues */
   --color-num-user: #2563eb; /* clear blue: the player's entries, distinct from givens */
   --color-num-user-selected: #1d4ed8; /* deeper blue: user entry on the bright selected fill (reads on gold + amber) */
+  --color-num-hint-selected: #166534; /* deeper green: hint value on the bright selected fill (reads on gold + amber) */
   --color-num-note: #667085;
   --color-num-error: #c75c5c;
 
@@ -134,6 +135,7 @@
     --color-num-given: #f2f4f7;
     --color-num-user: #84caff;
     --color-num-user-selected: #1d4ed8; /* same deep blue: the dark amber selected fill is light, so it reads here too */
+    --color-num-hint-selected: #166534; /* same deep green: reads on the light amber fill in both themes */
     --color-num-note: #cbd5e1;
     --color-num-error: #fda29b;
 

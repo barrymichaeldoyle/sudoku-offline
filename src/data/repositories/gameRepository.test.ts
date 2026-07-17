@@ -45,6 +45,7 @@ function freshGame(): GameState {
     elapsedSeconds: 0,
     mistakes: 0,
     hintsUsed: 0,
+    hintedCells: [],
     startedAt: now,
     completedAt: null,
     updatedAt: now,
@@ -108,7 +109,13 @@ describe("gameRepository", () => {
     );
     mockGetDatabase.mockResolvedValue({ withExclusiveTransactionAsync });
 
-    const game = { ...freshGame(), elapsedSeconds: 321, mistakes: 2, hintsUsed: 1 };
+    const game = {
+      ...freshGame(),
+      elapsedSeconds: 321,
+      mistakes: 2,
+      hintsUsed: 1,
+      hintedCells: [12],
+    };
     game.values[80] = 9; // the move that completes the board
 
     await completeGame(game);
@@ -121,6 +128,7 @@ describe("gameRepository", () => {
     );
     expect(gamesUpdate?.[0]).toContain("values_string = ?");
     expect(gamesUpdate?.[0]).toContain("notes_json = ?");
+    expect(gamesUpdate?.[0]).toContain("hinted_cells_json = ?");
     expect(gamesUpdate?.[0]).toContain("elapsed_seconds = ?");
   });
 

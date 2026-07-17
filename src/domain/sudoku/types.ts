@@ -41,6 +41,8 @@ export type GameState = {
   elapsedSeconds: number;
   mistakes: number;
   hintsUsed: number;
+  /** Cells revealed by hints. These behave as locked clues, not player input. */
+  hintedCells: number[];
   startedAt: string;
   completedAt: string | null;
   updatedAt: string;
@@ -56,8 +58,6 @@ export type GameAction =
       nextNotes: NoteMask;
       /** Peer cells whose notes auto-cleanup removed, for restoring on undo. */
       clearedNotes?: { cellIndex: number; previousNotes: NoteMask }[];
-      /** Set when this placement came from a hint, so undo can lift the cooldown. */
-      fromHint?: boolean;
     }
   | {
       type: "set_notes";

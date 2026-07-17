@@ -85,6 +85,21 @@ const TOGGLE_GROUPS: { title: string; toggles: ToggleDef[] }[] = [
     ],
   },
   {
+    title: "Value colors",
+    toggles: [
+      {
+        key: "colorUserValues",
+        label: "Player input color",
+        hint: "Show numbers you enter in a different color from clues",
+      },
+      {
+        key: "colorHintValues",
+        label: "Hint color",
+        hint: "Show locked hint values in a different color from clues",
+      },
+    ],
+  },
+  {
     title: "Notes",
     toggles: [
       {

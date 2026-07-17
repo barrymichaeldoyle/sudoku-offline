@@ -20,6 +20,7 @@ type GameRow = {
   elapsed_seconds: number;
   mistakes: number;
   hints_used: number;
+  hinted_cells_json: string;
   started_at: string;
   completed_at: string | null;
   updated_at: string;
@@ -45,6 +46,7 @@ function rowToGame(row: GameRow): GameState {
     elapsedSeconds: row.elapsed_seconds,
     mistakes: row.mistakes,
     hintsUsed: row.hints_used,
+    hintedCells: JSON.parse(row.hinted_cells_json ?? "[]") as number[],
     startedAt: row.started_at,
     completedAt: row.completed_at,
     updatedAt: row.updated_at,
@@ -66,6 +68,7 @@ export function newGameState(puzzle: Puzzle): GameState {
     elapsedSeconds: 0,
     mistakes: 0,
     hintsUsed: 0,
+    hintedCells: [],
     startedAt: now,
     completedAt: null,
     updatedAt: now,
@@ -115,9 +118,10 @@ export async function saveGame(
     await db.runAsync(
       `INSERT INTO games
          (id, puzzle_id, difficulty, givens, solution, values_string, notes_json,
-          status, elapsed_seconds, mistakes, hints_used, started_at, completed_at, updated_at,
+          status, elapsed_seconds, mistakes, hints_used, hinted_cells_json,
+          started_at, completed_at, updated_at,
           shared_daily_track, shared_daily_date_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          puzzle_id = excluded.puzzle_id,
          difficulty = excluded.difficulty,
@@ -129,6 +133,7 @@ export async function saveGame(
          elapsed_seconds = excluded.elapsed_seconds,
          mistakes = excluded.mistakes,
          hints_used = excluded.hints_used,
+         hinted_cells_json = excluded.hinted_cells_json,
          started_at = excluded.started_at,
          completed_at = excluded.completed_at,
          updated_at = excluded.updated_at,
@@ -147,6 +152,7 @@ export async function saveGame(
       game.elapsedSeconds,
       game.mistakes,
       game.hintsUsed,
+      JSON.stringify(game.hintedCells),
       game.startedAt,
       game.completedAt,
       new Date().toISOString(),
@@ -210,7 +216,7 @@ export async function completeGame(game: GameState): Promise<GameState> {
         `UPDATE games
           SET status = 'completed', completed_at = ?, updated_at = ?,
               values_string = ?, notes_json = ?,
-              elapsed_seconds = ?, mistakes = ?, hints_used = ?
+              elapsed_seconds = ?, mistakes = ?, hints_used = ?, hinted_cells_json = ?
         WHERE id = ?`,
         completedAt,
         completedAt,
@@ -219,6 +225,7 @@ export async function completeGame(game: GameState): Promise<GameState> {
         game.elapsedSeconds,
         game.mistakes,
         game.hintsUsed,
+        JSON.stringify(game.hintedCells),
         game.id,
       );
       // If this game is the tracked daily, mark its progress complete and carry

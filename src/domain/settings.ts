@@ -23,6 +23,10 @@ export type Settings = {
   mistakeTrackingEnabled: boolean;
   highlightSameNumbers: boolean;
   highlightPeers: boolean;
+  /** Distinguish player-entered values from fixed clues with blue ink. */
+  colorUserValues: boolean;
+  /** Distinguish locked hint values from fixed clues with success-colored ink. */
+  colorHintValues: boolean;
   hapticsEnabled: boolean;
   autoNoteCleanup: boolean;
   /** Scope of auto-clear notes; only applies when `autoNoteCleanup` is on. */
@@ -56,8 +60,12 @@ export const DEFAULT_SETTINGS: Settings = {
   mistakeTrackingEnabled: true,
   highlightSameNumbers: true,
   highlightPeers: true,
+  colorUserValues: true,
+  colorHintValues: true,
   hapticsEnabled: true,
-  autoNoteCleanup: true,
+  // Off by default: silently removing pencil marks can feel like lost input
+  // unless the player has explicitly opted into automatic cleanup.
+  autoNoteCleanup: false,
   autoNoteCleanupScope: "all",
   // Off by default (incl. the full-experience preset): notes appearing in cells
   // the player didn't pencil reads as a bug to anyone who hasn't opted in.
@@ -87,6 +95,7 @@ export const MINIMAL_SETTINGS: Settings = {
   highlightPeers: false,
   showRemainingCounts: false,
   disableCompletedNumbers: false,
+  autoNoteCleanup: true,
   autoNoteCleanupScope: "box",
 };
 

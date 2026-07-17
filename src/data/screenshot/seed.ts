@@ -60,6 +60,7 @@ export function buildScreenshotGame(): GameState {
     elapsedSeconds: 272, // renders as 04:32
     mistakes: 0,
     hintsUsed: 0,
+    hintedCells: [],
     startedAt: now,
     completedAt: null,
     updatedAt: now,
@@ -95,6 +96,7 @@ function buildScreenshotExpertGame(): GameState {
     elapsedSeconds: 1141, // renders as 19:01
     mistakes: 0,
     hintsUsed: 0,
+    hintedCells: [],
     startedAt: now,
     completedAt: null,
     updatedAt: now,

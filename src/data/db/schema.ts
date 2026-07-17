@@ -139,6 +139,14 @@ ALTER TABLE games ADD COLUMN shared_daily_track TEXT;
 ALTER TABLE games ADD COLUMN shared_daily_date_key TEXT;
 `,
   },
+  {
+    // Persist cells revealed by hints so rewarded clues remain visually
+    // distinct and immutable after the app restarts.
+    version: 5,
+    up: `
+ALTER TABLE games ADD COLUMN hinted_cells_json TEXT NOT NULL DEFAULT '[]';
+`,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

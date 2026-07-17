@@ -42,8 +42,11 @@ export function SudokuBoard({ size }: { size?: number }) {
   const game = useGameStore((s) => s.game);
   const selectedCell = useGameStore((s) => s.selectedCell);
   const pressCell = useGameStore((s) => s.pressCell);
+  const lockedFlash = useGameStore((s) => s.lockedDigitFlash);
   const highlightPeers = useSettingsStore((s) => s.settings.highlightPeers);
   const highlightSameNumbers = useSettingsStore((s) => s.settings.highlightSameNumbers);
+  const colorUserValues = useSettingsStore((s) => s.settings.colorUserValues);
+  const colorHintValues = useSettingsStore((s) => s.settings.colorHintValues);
   const mistakeChecking = useSettingsStore((s) => s.settings.mistakeCheckingEnabled);
 
   const peers = useMemo(
@@ -95,10 +98,16 @@ export function SudokuBoard({ size }: { size?: number }) {
                 value={value}
                 notes={game.notes[index]}
                 isGiven={given}
+                isHint={game.hintedCells.includes(index)}
+                colorUserValues={colorUserValues}
+                colorHintValues={colorHintValues}
                 isSelected={selectedCell === index}
                 isPeer={highlightPeers && peers.has(index)}
                 isSameValue={highlightSameNumbers && value != null && value === selectedValue}
                 isConflict={conflicts?.[index] ?? false}
+                flashNonce={
+                  lockedFlash != null && value === lockedFlash.digit ? lockedFlash.nonce : null
+                }
                 onPress={pressCell}
                 fontSize={fontSize}
                 noteFontSize={noteFontSize}

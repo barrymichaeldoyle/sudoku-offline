@@ -2,12 +2,21 @@ import type { CellValue, NoteMask } from "@/domain/sudoku/types";
 
 import { clsx } from "clsx";
 import { memo, useEffect, useRef } from "react";
-import { Keyframe, ReduceMotion } from "react-native-reanimated";
+import {
+  Keyframe,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 
 import { getColIndex, getRowIndex } from "@/domain/sudoku/board";
 import { hasNote } from "@/domain/sudoku/notes";
 import { Pressable, Text, View } from "@/tw";
 import { Animated } from "@/tw/animated";
+
+import { numberColor } from "./cell-color";
 
 // Scale-up bounce when a value appears (or changes); a quick shrink on the way
 // out. Keyed by value so replacing one digit with another re-triggers it.
@@ -47,10 +56,19 @@ type SudokuCellProps = {
   value: CellValue;
   notes: NoteMask;
   isGiven: boolean;
+  isHint: boolean;
+  colorUserValues: boolean;
+  colorHintValues: boolean;
   isSelected: boolean;
   isPeer: boolean;
   isSameValue: boolean;
   isConflict: boolean;
+  /**
+   * Set (to the flash nonce) while this cell's digit is being shake-rejected
+   * on the number pad, so the on-board copies of the digit shake along with
+   * the pad button — the pad alone is easy to miss. Null when not flashing.
+   */
+  flashNonce: number | null;
   onPress: (index: number) => void;
   // Pixel font sizes scaled to the cell; when omitted, fixed Tailwind sizes are
   // used (board renders at its container width with no measured size).
@@ -80,19 +98,9 @@ function background({
 // so givens use a fixed dark ink; user entries keep a deeper blue so the
 // player can still tell their own number apart from a clue while it's selected.
 // Errors always read in the error colour.
-function numberColor({
-  isConflict,
-  isSelected,
-  isGiven,
-}: Pick<SudokuCellProps, "isConflict" | "isSelected" | "isGiven">): string {
-  if (isConflict) return "text-num-error";
-  if (isSelected) return isGiven ? "text-cell-selected-ink" : "text-num-user-selected";
-  if (isGiven) return "text-num-given";
-  return "text-num-user";
-}
-
 function SudokuCellComponent(props: SudokuCellProps) {
-  const { index, value, notes, isGiven, isSelected, onPress, fontSize, noteFontSize } = props;
+  const { index, value, notes, isGiven, isHint, isSelected, onPress, fontSize, noteFontSize } =
+    props;
   const row = getRowIndex(index);
   const col = getColIndex(index);
   // Skip the entrance animation for values present on first render (givens and
@@ -102,9 +110,26 @@ function SudokuCellComponent(props: SudokuCellProps) {
   useEffect(() => {
     hasMounted.current = true;
   }, []);
+
+  // Same side-to-side "no" shake as the pad button, driven imperatively so it
+  // can't disturb the value's keyed enter/exit animations with a remount.
+  const shakeX = useSharedValue(0);
+  useEffect(() => {
+    if (props.flashNonce == null) {
+      return;
+    }
+    const step = (toValue: number) =>
+      withTiming(toValue, { duration: 56, reduceMotion: ReduceMotion.System });
+    shakeX.value = withSequence(step(-5), step(5), step(-4), step(2), step(0));
+  }, [props.flashNonce, shakeX]);
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shakeX.value }],
+  }));
   const a11yLabel =
     `Row ${row + 1}, column ${col + 1}` +
-    (value != null ? `, ${value}${isGiven ? " given" : ""}` : ", empty");
+    (value != null
+      ? `, ${value}${isGiven ? " given" : isHint ? " revealed hint, locked" : ""}`
+      : ", empty");
 
   return (
     <Pressable
@@ -132,6 +157,7 @@ function SudokuCellComponent(props: SudokuCellProps) {
           key={value}
           entering={hasMounted.current ? VALUE_ENTER : undefined}
           exiting={VALUE_EXIT}
+          style={shakeStyle}
           className="items-center justify-center"
         >
           <Text
@@ -140,7 +166,7 @@ function SudokuCellComponent(props: SudokuCellProps) {
               fontSize == null && "text-2xl",
               // Bold clues anchor the puzzle; the player's own entries sit a
               // step lighter so they read as distinct from the givens.
-              isGiven || props.isConflict ? "font-bold" : "font-medium",
+              isGiven || isHint || props.isConflict ? "font-bold" : "font-medium",
               numberColor(props),
             )}
           >

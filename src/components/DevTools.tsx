@@ -32,6 +32,7 @@ function buildPreviewGame(): GameState {
     elapsedSeconds: 372,
     mistakes: 1,
     hintsUsed: 2,
+    hintedCells: [],
     startedAt: now,
     completedAt: now,
     updatedAt: now,

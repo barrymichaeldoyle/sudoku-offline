@@ -1,4 +1,23 @@
-import { DEFAULT_SETTINGS, normalizeSettings } from "./settings";
+import { DEFAULT_SETTINGS, MINIMAL_SETTINGS, normalizeSettings } from "./settings";
+
+describe("settings presets", () => {
+  it("does not auto-clear notes in the standard preset", () => {
+    expect(DEFAULT_SETTINGS.autoNoteCleanup).toBe(false);
+  });
+
+  it("keeps box-only note cleanup in the minimal preset", () => {
+    expect(MINIMAL_SETTINGS.autoNoteCleanup).toBe(true);
+    expect(MINIMAL_SETTINGS.autoNoteCleanupScope).toBe("box");
+  });
+
+  it.each([DEFAULT_SETTINGS, MINIMAL_SETTINGS])(
+    "keeps player and hint value colors enabled in existing presets",
+    (preset) => {
+      expect(preset.colorUserValues).toBe(true);
+      expect(preset.colorHintValues).toBe(true);
+    },
+  );
+});
 
 describe("normalizeSettings", () => {
   it("returns defaults for null/undefined", () => {
@@ -11,6 +30,12 @@ describe("normalizeSettings", () => {
     expect(result.hapticsEnabled).toBe(false);
     expect(result.theme).toBe("dark");
     expect(result.timerEnabled).toBe(DEFAULT_SETTINGS.timerEnabled);
+  });
+
+  it("defaults new value-color preferences on for existing stored settings", () => {
+    const result = normalizeSettings({ timerEnabled: false });
+    expect(result.colorUserValues).toBe(true);
+    expect(result.colorHintValues).toBe(true);
   });
 
   it("ignores unknown keys", () => {

@@ -87,6 +87,7 @@ function completedGame(): GameState {
     elapsedSeconds: 100,
     mistakes: 0,
     hintsUsed: 0,
+    hintedCells: [],
     startedAt: now,
     completedAt: null,
     updatedAt: now,
