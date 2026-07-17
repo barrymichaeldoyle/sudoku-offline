@@ -89,8 +89,8 @@ importers:
         specifier: ~2.32.0
         version: 2.32.0(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
       react-native-google-mobile-ads:
-        specifier: ^16.4.0
-        version: 16.4.0(expo@57.0.6)(react@19.2.3)
+        specifier: ^16.3.3
+        version: 16.3.3(expo@57.0.6)(react@19.2.3)
       react-native-reanimated:
         specifier: 4.5.0
         version: 4.5.0(react-native-worklets@0.10.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
@@ -4143,8 +4143,8 @@ packages:
       react: '*'
       react-native: '*'
 
-  react-native-google-mobile-ads@16.4.0:
-    resolution: {integrity: sha512-I+H9huEO30XaNZ4InPLCZS2DsnbegGjWqFavJMFssDnm78OPJkAOodY6OSCsEtonq0pdG2YbhchhIuZmE427Mw==}
+  react-native-google-mobile-ads@16.3.3:
+    resolution: {integrity: sha512-7AFdH3sUyAvwJc7dNJ7sxqfKJVWcdPRx5HdfWQOEsJTp9y+wOJ2V6cnLNkgBjZQG/W/ODZQDq4pKg51zBju2eg==}
     peerDependencies:
       expo: '>=47.0.0'
     peerDependenciesMeta:
@@ -9402,7 +9402,7 @@ snapshots:
       react: 19.2.3
       react-native: 0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3)
 
-  react-native-google-mobile-ads@16.4.0(expo@57.0.6)(react@19.2.3):
+  react-native-google-mobile-ads@16.3.3(expo@57.0.6)(react@19.2.3):
     dependencies:
       '@iabtcf/core': 1.5.6
       use-deep-compare-effect: 1.8.1(react@19.2.3)
