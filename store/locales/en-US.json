@@ -16,7 +16,7 @@
     "relaxing",
     "grid"
   ],
-  "releaseNotes": "Adds hardware keyboard support on iPad: type 1-9 to fill cells, 0 or backspace to erase, N for notes, U and R for undo and redo. Fixes the selected cell being hard to spot when it shows a mistake.",
+  "releaseNotes": "Arrow keys on a hardware keyboard now move the selection around the board, with VoiceOver announcements as you go. Typing a digit on the cell that already holds it clears it, and rejected keystrokes shake the matching numbers on the board. Completed numbers no longer lock while duplicate entries are on the board. New settings let you toggle the coloring of your own entries and revealed hints.",
   "privacyPolicyUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/privacy.html",
   "supportUrl": "https://barrymichaeldoyle.github.io/sudoku-offline/support.html",
   "marketingUrl": "https://barrymichaeldoyle.com/sudoku"
