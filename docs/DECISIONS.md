@@ -66,11 +66,21 @@ unsettled beside the otherwise calm Stats UI. While a new query runs, the
 current rows soften slightly. Removed rows fade out, retained rows move into
 place, and new rows fade in using short Reduce Motion-aware transitions.
 
+The custom menu moves VoiceOver focus to the selected option when it opens and
+returns focus to the trigger after it closes. Menu rows use minimum heights and
+the menu widens and can scroll when Dynamic Type makes its content larger. The
+compact section and control labels stop at 150% scaling so the trigger remains
+reachable while result content continues to use the system scale. A changed
+selection uses the existing preference-gated selection haptic. If a filter has
+no matches, the empty state offers a direct “Show all games” recovery action.
+
 **Why:** Existing `completed_games` data already supports the feature without a
 migration. Query-backed filtering gives predictable memory and render cost,
 while the cap prevents Stats becoming an unbounded archive screen. Stable
 control geometry and restrained list transitions make filtering feel like one
-continuous interaction instead of an abrupt screen replacement.
+continuous interaction instead of an abrupt screen replacement. Explicit focus
+management and an empty-state recovery path keep the custom control usable
+without relying on sight or a precise gesture.
 
 ## 2026-07-28: Fixed game geometry is the Dynamic Type exception
 

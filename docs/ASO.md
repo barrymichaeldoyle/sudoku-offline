@@ -600,7 +600,7 @@ Filter results and revisit solved boards
 Visual:
 
 - Recent Games section in Stats
-- Native filter picker and several retained results
+- Stable filter menu and several retained results
 - Clear solved-board affordances
 
 ### Screenshot 6

@@ -223,7 +223,10 @@ loop.
 All/Daily/difficulty filters, and loads 10 more at a time up to 100. Retained
 games can reopen their solved board; rows without a retained game are explicit
 summary-only results. The custom select has stable dimensions, and result
-changes use short, Reduce Motion-aware fade and layout transitions. No schema
+changes use short, Reduce Motion-aware fade and layout transitions. Its menu
+manages VoiceOver focus, accommodates larger text with minimum row heights and
+adaptive width and scrolling, and respects the haptics setting when a selection
+changes. Empty filtered results offer a “Show all games” action. No schema
 migration is required.
 
 ### BF-104: Explanatory hints and accessibility hardening
