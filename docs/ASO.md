@@ -1,6 +1,6 @@
 # App Store Optimization Strategy
 
-Last reviewed: 2026-06-27
+Last reviewed: 2026-07-28
 
 Submitted product name: **Offline Sudoku**
 
@@ -228,14 +228,12 @@ Rules:
 Current Apple keyword field for `Offline Sudoku`:
 
 ```text
-classic,daily,puzzle,number,logic,brain,notes,hints,wifi,relaxing,grid
+logic,brain,notes,hints,wifi,relaxing,grid,pencil,beginner,expert,easy,hard,training,focus,game,mind
 ```
 
-Example if app name is `QuietGrid: Offline Sudoku`:
-
-```text
-classic,daily,puzzle,number,logic,brain,notes,hints,wifi,relaxing
-```
+This uses all 100 bytes. It avoids exact words already present in the title and
+subtitle, while supporting honest combinations around hints, pencil notes,
+difficulty, focus, and offline play.
 
 ## Google Play keyword principles
 
@@ -496,13 +494,14 @@ Sudoku Offline gives you a simple and focused way to play anywhere.
 
 The first three screenshots are the most important.
 
-The store listing should communicate:
+The next release listing should communicate:
 
 1. Offline
 2. No ads while playing
-3. Clean classic Sudoku
-4. Daily habit
-5. Notes/hints/stats
+3. Hints that teach
+4. Recent game history
+5. Daily habit and stats
+6. Dark mode
 
 ## Screenshot set
 
@@ -511,21 +510,20 @@ The store listing should communicate:
 Headline:
 
 ```text
-Sudoku Offline
+Clean, classic Sudoku
 ```
 
 Subheadline:
 
 ```text
-Classic puzzles, no Wi-Fi needed
+Works offline, no Wi-Fi needed
 ```
 
 Visual:
 
-- Clean game board
+- Home screen with clear play and continue choices
 - Light theme
 - No clutter
-- Number pad visible
 
 ### Screenshot 2
 
@@ -552,93 +550,76 @@ Visual:
 Headline:
 
 ```text
-Daily Sudoku
-```
-
-Subheadline:
-
-```text
-Build a calm daily streak
-```
-
-Visual:
-
-- Daily puzzle card
-- Streak indicator
-- Completion state
-
-### Screenshot 4
-
-Headline:
-
-```text
-Pencil notes made easy
-```
-
-Subheadline:
-
-```text
-Fast notes, undo, hints and erase
-```
-
-Visual:
-
-- Board with pencil notes
-- Notes mode highlighted
-
-### Screenshot 5
-
-Headline:
-
-```text
-Track your progress
-```
-
-Subheadline:
-
-```text
-Best times, streaks and stats
-```
-
-Visual:
-
-- Stats screen
-
-### Screenshot 6
-
-Headline:
-
-```text
-Dark mode
-```
-
-Subheadline:
-
-```text
 Easy on the eyes
+```
+
+Subheadline:
+
+```text
+Dark mode for late-night solving
 ```
 
 Visual:
 
 - Dark theme board
 
-### Screenshot 7
+### Screenshot 4
 
 Headline:
 
 ```text
-Choose your challenge
+Hints that explain
 ```
 
 Subheadline:
 
 ```text
-Easy, Medium, Hard and Expert
+See the candidates and learn why
 ```
 
 Visual:
 
-- Difficulty picker
+- Active board with a revealed hint selected
+- Candidate explanation shown without covering the board
+- Highlighted row, column, and box visible
+
+### Screenshot 5
+
+Headline:
+
+```text
+Review recent games
+```
+
+Subheadline:
+
+```text
+Filter results and revisit solved boards
+```
+
+Visual:
+
+- Recent Games section in Stats
+- Native filter picker and several retained results
+- Clear solved-board affordances
+
+### Screenshot 6
+
+Headline:
+
+```text
+Build a daily streak
+```
+
+Subheadline:
+
+```text
+Track your times and progress
+```
+
+Visual:
+
+- Stats screen
 
 ## Screenshot rules
 
@@ -1061,6 +1042,26 @@ they must follow these rules:
 10. Prioritize conversion quality, not just installs.
 11. Monitor reviews for complaints about ads, crashes, readability, and lost progress.
 12. Update this document after meaningful ASO experiments.
+13. Run `pnpm metadata:check` before pushing Apple metadata.
+
+---
+
+# Next Release Metadata Package
+
+Prepared on 2026-07-28 for the first release after 1.1.3.
+
+- Keep the app name and subtitle unchanged so the release does not alter every
+  discovery field at once.
+- Use the full 100-byte keyword field documented above.
+- Lead promotional text with explanatory hints and Recent Games.
+- Update the description with candidate explanations, history filters, solved
+  board review, Help & About, VoiceOver, and Reduce Motion.
+- Use release notes that describe only user-visible changes.
+- Replace the four-image screenshot set with the six-image sequence above after
+  native QA and deterministic capture.
+- Do not run a Product Page Optimization test until baseline traffic is large
+  enough to interpret. The first future test should isolate the opening
+  screenshot message.
 
 ---
 

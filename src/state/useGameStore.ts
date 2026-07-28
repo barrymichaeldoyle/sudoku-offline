@@ -3,7 +3,12 @@ import type { CellValue, GameAction, GameState, NoteMask } from "@/domain/sudoku
 
 import { create } from "zustand";
 
-import { completeGame, getGameById, saveGame } from "@/data/repositories/gameRepository";
+import {
+  completeGame,
+  getGameById,
+  saveGame,
+  saveRestartedGame,
+} from "@/data/repositories/gameRepository";
 import {
   areAlignedBoxPeers,
   getColIndex,
@@ -14,7 +19,7 @@ import {
   isValueCorrect,
   parseValuesString,
 } from "@/domain/sudoku/board";
-import { findHintCell, HINT_COOLDOWN_MS } from "@/domain/sudoku/hints";
+import { describeHint, findHintCell, HINT_COOLDOWN_MS, type Hint } from "@/domain/sudoku/hints";
 import {
   addNote,
   cleanupNotesAfterPlacement,
@@ -27,6 +32,7 @@ import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
 import { announce } from "@/services/announce";
 import { haptics } from "@/services/haptics";
+import { maybeRequestReview, suppressReviewPromptTemporarily } from "@/services/reviewService";
 import { hasRemoveAds } from "@/state/useEntitlementStore";
 import { getSettings, useSettingsStore } from "@/state/useSettingsStore";
 
@@ -67,6 +73,8 @@ type GameStore = {
   hintPromptMode: "rewarded" | "confirm" | null;
   /** Epoch ms until which the Hint button is on cooldown, or null when ready. */
   hintCooldownUntil: number | null;
+  /** Teaching context for the most recently revealed hint; session-only UI. */
+  hintExplanation: Hint | null;
 
   /** Timer: in-memory wall-clock anchor; committed seconds live on game. */
   running: boolean;
@@ -106,6 +114,7 @@ type GameStore = {
   /** Watch the rewarded ad and, if granted, reveal one hint. */
   confirmRewardedHint: () => Promise<void>;
   dismissHintPrompt: () => void;
+  dismissHintExplanation: () => void;
   /** Close the "board full but incorrect" modal (keep playing). */
   dismissIncorrectComplete: () => void;
   undo: () => void;
@@ -153,6 +162,32 @@ function commitElapsed(state: Pick<GameStore, "game" | "running" | "lastStartedA
   return { ...game, elapsedSeconds: game.elapsedSeconds + delta };
 }
 
+/** Stop charging solve time while a hint prompt or explanation has focus. */
+function suspendTimerForHint(set: SetFn, get: GetFn): GameState | null {
+  const state = get();
+  if (!state.game || !getSettings().timerEnabled || !state.running) {
+    return state.game;
+  }
+  const committed = commitElapsed(state);
+  set({ game: committed, running: false, lastStartedAt: null });
+  scheduleSave(committed);
+  return committed;
+}
+
+/** Resume only after every hint surface is closed and the game is still active. */
+function resumeTimerAfterHint(set: SetFn, get: GetFn): void {
+  const state = get();
+  const shouldRun =
+    getSettings().timerEnabled &&
+    state.game?.status === "active" &&
+    !state.hintPromptVisible &&
+    state.hintExplanation == null;
+  set({
+    running: shouldRun,
+    lastStartedAt: shouldRun ? Date.now() : null,
+  });
+}
+
 /** Entering the game screen to play should always start unpaused. */
 function activateForPlay(game: GameState): GameState {
   if (game.status === "completed" || game.status === "abandoned") {
@@ -182,6 +217,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   hintPromptVisible: false,
   hintPromptMode: null,
   hintCooldownUntil: null,
+  hintExplanation: null,
   running: false,
   lastStartedAt: null,
 
@@ -216,6 +252,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
+      hintExplanation: null,
       ...timerStateForActiveGame(isActive),
     });
   },
@@ -237,6 +274,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
+      hintExplanation: null,
       ...timerStateForActiveGame(isActive),
     });
   },
@@ -256,6 +294,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
+      hintExplanation: null,
       running: false,
       lastStartedAt: null,
     });
@@ -301,9 +340,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
+      hintExplanation: null,
       ...timerStateForActiveGame(true),
     });
-    scheduleSave(next);
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    pendingGame = null;
+    void saveRestartedGame(next).catch((err) => {
+      console.error("Failed to persist restarted game", err);
+    });
   },
 
   setInputMode(mode) {
@@ -445,16 +492,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
         revealHint(set, get);
         return;
       }
+      suspendTimerForHint(set, get);
       set({ hintPromptVisible: true, hintPromptMode: "confirm" });
       return;
     }
     const adReady = await adService.isRewardedHintAvailable().catch(() => false);
     if (!adReady) {
+      suspendTimerForHint(set, get);
       set({ hintPromptVisible: true, hintPromptMode: "confirm" });
       return;
     }
     // Online and not premium → watch a rewarded ad to reveal the hint.
     void track("rewarded_hint_offered", { difficulty: game.difficulty });
+    suspendTimerForHint(set, get);
     set({ hintPromptVisible: true, hintPromptMode: "rewarded" });
   },
 
@@ -471,11 +521,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     const game = get().game;
     void track("rewarded_hint_watched", { difficulty: game?.difficulty ?? "" });
+    suppressReviewPromptTemporarily();
     revealHint(set, get);
   },
 
   dismissHintPrompt() {
     set({ hintPromptVisible: false, hintPromptMode: null });
+    resumeTimerAfterHint(set, get);
+  },
+
+  dismissHintExplanation() {
+    set({ hintExplanation: null });
+    resumeTimerAfterHint(set, get);
   },
 
   dismissIncorrectComplete() {
@@ -573,8 +630,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resume() {
-    const { game } = get();
+    const { game, hintPromptVisible, hintExplanation } = get();
     if (!game || game.status === "completed") {
+      return;
+    }
+    if (hintPromptVisible || hintExplanation != null) {
       return;
     }
     if (!getSettings().timerEnabled) {
@@ -611,7 +671,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    if (game.status === "paused") {
+    if (game.status === "paused" || state.hintPromptVisible || state.hintExplanation != null) {
       set({ running: false, lastStartedAt: null });
       return;
     }
@@ -780,17 +840,19 @@ function applyNumber(set: SetFn, get: GetFn, index: number, num: number): void {
 
 /**
  * Reveal one correct cell from the solution and bump `hintsUsed`. Prefers a
- * naked single, else the first empty cell (see `findHintCell`). Closes the
- * rewarded-hint prompt if it was open. No-op when nothing is left to reveal.
+ * genuine naked single, otherwise the unresolved cell with the narrowest
+ * honest candidate set (see `findHintCell`). Closes the hint prompt if it was
+ * open. No-op when nothing is left to reveal.
  */
 function revealHint(set: SetFn, get: GetFn): void {
-  const { game } = get();
+  const game = suspendTimerForHint(set, get);
   if (!game) {
     return;
   }
   const found = findHintCell(game.values, game.givens, game.solution);
   if (!found) {
     set({ hintPromptVisible: false, hintPromptMode: null });
+    resumeTimerAfterHint(set, get);
     return;
   }
   const { index, value } = found;
@@ -818,7 +880,8 @@ function revealHint(set: SetFn, get: GetFn): void {
     hintedCells: [...game.hintedCells, index],
   };
   haptics.place();
-  void track("hint_used", { difficulty: game.difficulty });
+  void track("hint_used", { difficulty: game.difficulty, strategy: found.strategy });
+  announce(describeHint(found).announcement);
   set({
     game: next,
     selectedCell: index,
@@ -826,6 +889,7 @@ function revealHint(set: SetFn, get: GetFn): void {
     hintPromptVisible: false,
     hintPromptMode: null,
     hintCooldownUntil: Date.now() + HINT_COOLDOWN_MS,
+    hintExplanation: found,
   });
   finalizeAfterPlacement(set, get, next, values, isBoardFull(game.values));
 }
@@ -846,7 +910,13 @@ function finalizeAfterPlacement(
       saveTimer = null;
     }
     pendingGame = null;
-    set({ game: completed, justCompleted: true, running: false, lastStartedAt: null });
+    set({
+      game: completed,
+      justCompleted: true,
+      running: false,
+      lastStartedAt: null,
+      hintExplanation: null,
+    });
     haptics.complete();
     void track("puzzle_completed", {
       difficulty: completed.difficulty,
@@ -857,9 +927,13 @@ function finalizeAfterPlacement(
     // Persisting the win is the load-bearing write: if it fails the home screen
     // shows the puzzle unfinished. Surface the error rather than swallowing it so
     // a regression doesn't silently lose completions.
-    void completeGame(completed).catch((err) => {
-      console.error("Failed to persist completed game", err);
-    });
+    void completeGame(completed)
+      .then(() => {
+        void maybeRequestReview();
+      })
+      .catch((err) => {
+        console.error("Failed to persist completed game", err);
+      });
     return;
   }
   // The board just became completely filled but doesn't match the solution.

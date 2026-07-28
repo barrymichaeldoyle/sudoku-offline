@@ -31,6 +31,7 @@ import {
 import { describeChallengeOutcome, type ChallengeTarget } from "@/domain/shareLink";
 import { formatShareText } from "@/domain/shareText";
 import { completionPercent, isGivenCell } from "@/domain/sudoku/board";
+import { describeHint } from "@/domain/sudoku/hints";
 import { NEW_GAME_DIFFICULTIES, type GameState } from "@/domain/sudoku/types";
 import { track } from "@/services/analyticsService";
 import { launchPuzzle } from "@/services/gameLauncher";
@@ -39,6 +40,7 @@ import {
   requestDailyReminderPermission,
   syncDailyReminderSchedule,
 } from "@/services/notificationService";
+import { suppressReviewPromptTemporarily } from "@/services/reviewService";
 import {
   getDailyCompletionInfo,
   getDailyDisplayForGame,
@@ -69,6 +71,7 @@ export default function GameScreen() {
   const loading = useGameStore((s) => s.loading);
   const justCompleted = useGameStore((s) => s.justCompleted);
   const hintPromptVisible = useGameStore((s) => s.hintPromptVisible);
+  const hintExplanation = useGameStore((s) => s.hintExplanation);
   const incorrectComplete = useGameStore((s) => s.incorrectComplete);
   const dismissIncorrectComplete = useGameStore((s) => s.dismissIncorrectComplete);
   const loadGame = useGameStore((s) => s.loadGame);
@@ -139,7 +142,12 @@ export default function GameScreen() {
   // any overlay (pause, reset, hint, wrong-solution, completion) unmounts the
   // capture so keystrokes can't edit the board behind it.
   const keyboardCaptureActive =
-    !completed && !paused && !hintPromptVisible && !showResetConfirm && !incorrectComplete;
+    !completed &&
+    !paused &&
+    !hintPromptVisible &&
+    !hintExplanation &&
+    !showResetConfirm &&
+    !incorrectComplete;
 
   return (
     <Screen className="bg-canvas flex-1">
@@ -155,7 +163,9 @@ export default function GameScreen() {
           />
         </View>
         {beatTarget && game.status !== "completed" ? <ChallengeBanner target={beatTarget} /> : null}
+        {hintExplanation && !paused && !justCompleted ? <HintExplanationCard /> : null}
         <View
+          pointerEvents={hintExplanation ? "none" : "auto"}
           // Bottom-aligned so the grid→actions gap equals the actions→numbers
           // gap (both the column's gap-3); leftover slack sits above the grid.
           className="flex-1 items-center justify-end"
@@ -182,7 +192,10 @@ export default function GameScreen() {
             </View>
           ) : null}
         </View>
-        <View className="gap-3">
+        <View
+          pointerEvents={hintExplanation ? "none" : "auto"}
+          className={clsx("gap-3", hintExplanation && "opacity-40")}
+        >
           <GameControls />
           <NumberPad />
         </View>
@@ -418,6 +431,9 @@ function IncorrectCompleteOverlay({
 function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: () => void }) {
   const game = useGameStore((s) => s.game);
   const running = useGameStore((s) => s.running);
+  const hintInteractionActive = useGameStore(
+    (s) => s.hintPromptVisible || s.hintExplanation != null,
+  );
   const pause = useGameStore((s) => s.pause);
   const resume = useGameStore((s) => s.resume);
   const timerEnabled = useSettingsStore((s) => s.settings.timerEnabled);
@@ -501,9 +517,20 @@ function GameHeader({ onBack, onSettings }: { onBack: () => void; onSettings: ()
               {game.status === "completed" ? null : (
                 <Pressable
                   onPress={running ? pause : resume}
+                  disabled={hintInteractionActive}
                   accessibilityRole="button"
-                  accessibilityLabel={running ? "Pause game" : "Resume game"}
-                  className="bg-surface-muted h-7 w-7 items-center justify-center rounded-full active:opacity-70"
+                  accessibilityLabel={
+                    hintInteractionActive
+                      ? "Timer paused while using a hint"
+                      : running
+                        ? "Pause game"
+                        : "Resume game"
+                  }
+                  accessibilityState={{ disabled: hintInteractionActive }}
+                  className={clsx(
+                    "bg-surface-muted h-7 w-7 items-center justify-center rounded-full active:opacity-70",
+                    hintInteractionActive && "opacity-50",
+                  )}
                 >
                   <SimpleIcon name={running ? "pause" : "play"} tone="muted" size={14} />
                 </Pressable>
@@ -616,6 +643,47 @@ function PausedOverlay({ boardSize }: { boardSize: number }) {
   );
 }
 
+function HintExplanationCard() {
+  const hint = useGameStore((s) => s.hintExplanation);
+  const dismiss = useGameStore((s) => s.dismissHintExplanation);
+  if (!hint) {
+    return null;
+  }
+  const explanation = describeHint(hint);
+
+  return (
+    <View
+      accessibilityViewIsModal
+      className="border-line bg-surface z-30 w-full max-w-[560px] self-center overflow-hidden rounded-2xl border"
+    >
+      <ScrollView
+        bounces={false}
+        style={{ maxHeight: 190 }}
+        contentContainerClassName="gap-3 p-4"
+        showsVerticalScrollIndicator
+      >
+        <View className="flex-row items-start gap-3">
+          <SimpleIcon name="hint" tone="primary" size={24} />
+          <View className="flex-1 gap-1">
+            <Text accessibilityRole="header" className="text-ink text-xl font-bold">
+              {explanation.title}
+            </Text>
+            <Text className="text-ink-soft text-sm">{explanation.body}</Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={dismiss}
+          accessibilityRole="button"
+          accessibilityLabel="Close hint explanation and resume the timer"
+          className="bg-primary w-full items-center rounded-xl py-2.5 active:opacity-80"
+        >
+          <Text className="text-on-primary text-base font-semibold">Got it</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
+}
+
 function HintPromptOverlay() {
   const hintPromptMode = useGameStore((s) => s.hintPromptMode);
   const confirmHint = useGameStore((s) => s.confirmHint);
@@ -630,10 +698,10 @@ function HintPromptOverlay() {
         accessibilityViewIsModal
         className="absolute inset-0 items-center justify-center bg-black/50 p-8"
       >
-        <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
+        <View className="border-line bg-surface w-full max-w-[560px] gap-2 rounded-3xl border p-6">
           <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
           <Text className="text-ink-soft text-center">
-            This will reveal one correct cell. You can undo if you change your mind.
+            This reveals one correct cell and explains the candidates around it.
           </Text>
 
           <Pressable
@@ -677,6 +745,7 @@ function HintPromptOverlay() {
       return;
     }
     void track("premium_upgrade_tapped", { source: "hint_prompt" });
+    suppressReviewPromptTemporarily();
     setBusy(true);
     try {
       const ok = await purchaseRemoveAds();
@@ -694,16 +763,18 @@ function HintPromptOverlay() {
       accessibilityViewIsModal
       className="absolute inset-0 items-center justify-center bg-black/50 p-8"
     >
-      <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
+      <View className="border-line bg-surface w-full max-w-[560px] gap-2 rounded-3xl border p-6">
         <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
-        <Text className="text-ink-soft text-center">Watch a short ad to reveal one hint.</Text>
+        <Text className="text-ink-soft text-center">
+          Watch a short ad to reveal one hint and see why it fits.
+        </Text>
 
         {/* Icon pinned left, label centered in the remaining space. */}
         <Pressable
           onPress={onWatch}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel="Watch ad to reveal a hint"
+          accessibilityLabel="Watch ad to reveal and explain a hint"
           className={clsx(
             "mt-4 flex-row items-center rounded-2xl bg-primary px-5 py-4 active:opacity-80",
             busy && "opacity-50",

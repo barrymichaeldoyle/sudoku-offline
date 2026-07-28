@@ -5,8 +5,13 @@ jest.mock("@/services/haptics", () => ({
   haptics: { place: jest.fn(), invalid: jest.fn(), complete: jest.fn(), toggle: jest.fn() },
 }));
 jest.mock("@/services/analyticsService", () => ({ track: jest.fn() }));
+jest.mock("@/services/reviewService", () => ({
+  maybeRequestReview: jest.fn().mockResolvedValue(false),
+  suppressReviewPromptTemporarily: jest.fn(),
+}));
 jest.mock("@/data/repositories/gameRepository", () => ({
   saveGame: jest.fn().mockResolvedValue(undefined),
+  saveRestartedGame: jest.fn().mockResolvedValue(undefined),
   completeGame: jest.fn().mockResolvedValue(undefined),
   getGameById: jest.fn().mockResolvedValue(null),
 }));
@@ -531,6 +536,25 @@ describe("useGameStore reducers", () => {
       expect(state.hintPromptMode).toBe("confirm");
     });
 
+    it("suspends solve time for the hint prompt and resumes when it is dismissed", async () => {
+      useGameStore.setState((state) => ({
+        game: { ...state.game!, elapsedSeconds: 10 },
+        running: true,
+        lastStartedAt: Date.now() - 3_000,
+      }));
+
+      await useGameStore.getState().requestHint();
+      const paused = useGameStore.getState();
+      expect(paused.running).toBe(false);
+      expect(paused.lastStartedAt).toBeNull();
+      expect(paused.game!.elapsedSeconds).toBeGreaterThanOrEqual(13);
+
+      paused.dismissHintPrompt();
+      const resumed = useGameStore.getState();
+      expect(resumed.running).toBe(true);
+      expect(resumed.lastStartedAt).not.toBeNull();
+    });
+
     it("reveals a free hint after confirming while offline", async () => {
       mockIsRewardedHintAvailable.mockResolvedValue(false);
       await useGameStore.getState().requestHint();
@@ -540,6 +564,26 @@ describe("useGameStore reducers", () => {
       expect(state.hintPromptVisible).toBe(false);
       const placed = state.game!.values.findIndex((v) => v != null);
       expect(state.game!.values[placed]).toBe(Number(SOLUTION[placed]));
+      expect(state.hintExplanation).toMatchObject({
+        index: placed,
+        value: Number(SOLUTION[placed]),
+      });
+      useGameStore.getState().dismissHintExplanation();
+      expect(useGameStore.getState().hintExplanation).toBeNull();
+    });
+
+    it("keeps solve time suspended while the player reads the explanation", async () => {
+      mockIsRewardedHintAvailable.mockResolvedValue(false);
+      await useGameStore.getState().requestHint();
+      useGameStore.getState().confirmHint();
+
+      const explaining = useGameStore.getState();
+      expect(explaining.hintExplanation).not.toBeNull();
+      expect(explaining.running).toBe(false);
+      expect(explaining.lastStartedAt).toBeNull();
+
+      explaining.dismissHintExplanation();
+      expect(useGameStore.getState().running).toBe(true);
     });
 
     it("opens a confirm prompt for premium instead of revealing instantly", async () => {

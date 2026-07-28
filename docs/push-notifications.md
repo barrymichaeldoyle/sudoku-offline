@@ -23,7 +23,7 @@
 Pairs with [`handover.md`](./handover.md) (phase status),
 [`retention-monetization.md`](./retention-monetization.md) (reward-ad retention
 ideas), and the Expo SDK 56
-[`expo-notifications`](https://docs.expo.dev/versions/v56.0.0/sdk/notifications/)
+[`expo-notifications`](https://docs.expo.dev/versions/v57.0.0/sdk/notifications/)
 docs.
 
 ---

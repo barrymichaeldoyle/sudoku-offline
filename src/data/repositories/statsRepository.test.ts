@@ -3,7 +3,12 @@ jest.mock("../db/client", () => ({
 }));
 
 import { getDatabase } from "../db/client";
-import { getCompletedGameStats, getDailyTrackStats } from "./statsRepository";
+import {
+  getCompletedGameCount,
+  getCompletedGameStats,
+  getDailyTrackStats,
+  getRecentGames,
+} from "./statsRepository";
 
 const mockGetDatabase = getDatabase as jest.Mock;
 
@@ -40,5 +45,116 @@ describe("statsRepository", () => {
     expect(byTrack.daily.averageSeconds).toBe(360); // rounded
     expect(byTrack.challenge.completed).toBe(2);
     expect(byTrack.challenge.bestSeconds).toBe(1500);
+  });
+
+  it("returns recent runs newest-first and only reopens the retained matching board", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: "completion-1",
+        game_id: "game-1",
+        difficulty: "hard",
+        date_key: "2026-07-28",
+        daily_track: "challenge",
+        elapsed_seconds: 900,
+        mistakes: 2,
+        hints_used: 1,
+        completed_at: "2026-07-28T12:00:00.000Z",
+        can_reopen: 1,
+      },
+      {
+        id: "completion-0",
+        game_id: "game-1",
+        difficulty: "hard",
+        date_key: null,
+        daily_track: null,
+        elapsed_seconds: 1100,
+        mistakes: 3,
+        hints_used: 0,
+        completed_at: "2026-07-20T12:00:00.000Z",
+        can_reopen: 0,
+      },
+    ]);
+    mockGetDatabase.mockResolvedValue({ getAllAsync });
+
+    const recent = await getRecentGames({ limit: 250 });
+
+    expect(getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("ORDER BY cg.completed_at DESC"),
+      100,
+      0,
+    );
+    expect(getAllAsync.mock.calls[0][0]).toContain("g.completed_at = cg.completed_at");
+    expect(getAllAsync.mock.calls[0][0]).toContain("LEFT JOIN games");
+    expect(recent[0]).toMatchObject({
+      gameId: "game-1",
+      dailyTrack: "challenge",
+      canReopen: true,
+    });
+    expect(recent[1].canReopen).toBe(false);
+  });
+
+  it("keeps completion summaries when the retained game no longer exists", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: "completion-only",
+        game_id: "deleted-game",
+        difficulty: "medium",
+        date_key: null,
+        daily_track: null,
+        elapsed_seconds: 420,
+        mistakes: 0,
+        hints_used: 0,
+        completed_at: "2026-07-28T12:00:00.000Z",
+        can_reopen: 0,
+      },
+    ]);
+    mockGetDatabase.mockResolvedValue({ getAllAsync });
+
+    const recent = await getRecentGames();
+
+    expect(getAllAsync.mock.calls[0][0]).toContain("LEFT JOIN games");
+    expect(recent).toEqual([
+      expect.objectContaining({
+        id: "completion-only",
+        canReopen: false,
+      }),
+    ]);
+  });
+
+  it("falls back to the default recent-game limit for invalid input", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    mockGetDatabase.mockResolvedValue({ getAllAsync });
+
+    await getRecentGames({ limit: Number.NaN, offset: Number.NaN });
+
+    expect(getAllAsync).toHaveBeenCalledWith(expect.any(String), 20, 0);
+  });
+
+  it("filters daily history without interpolating user input", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    mockGetDatabase.mockResolvedValue({ getAllAsync });
+
+    await getRecentGames({ filter: "daily", limit: 11 });
+
+    expect(getAllAsync.mock.calls[0][0]).toContain("cg.date_key IS NOT NULL");
+    expect(getAllAsync.mock.calls[0].slice(1)).toEqual([11, 0]);
+  });
+
+  it("binds a difficulty filter and supports offsets", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    mockGetDatabase.mockResolvedValue({ getAllAsync });
+
+    await getRecentGames({ filter: "hard", limit: 10, offset: 20 });
+
+    expect(getAllAsync.mock.calls[0][0]).toContain("cg.difficulty = ?");
+    expect(getAllAsync.mock.calls[0].slice(1)).toEqual(["hard", 10, 20]);
+  });
+
+  it("counts completed runs for review eligibility", async () => {
+    const getFirstAsync = jest.fn().mockResolvedValue({ count: 3 });
+    mockGetDatabase.mockResolvedValue({ getFirstAsync });
+
+    await expect(getCompletedGameCount()).resolves.toBe(3);
+    expect(getFirstAsync).toHaveBeenCalledWith("SELECT COUNT(*) AS count FROM completed_games");
   });
 });

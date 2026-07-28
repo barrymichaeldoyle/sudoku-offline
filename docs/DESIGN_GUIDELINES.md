@@ -1,6 +1,6 @@
 # Design Guidelines
 
-Last reviewed: 2026-06-27
+Last reviewed: 2026-07-28
 
 Product name: **Offline Sudoku**
 
@@ -1160,8 +1160,12 @@ Where practical, support system font scaling for:
 - Modals
 - Buttons
 
-For the Sudoku board, dynamic type may need constraints to preserve layout, but
-numbers must remain readable.
+The Sudoku board and number pad use fixed geometry, so their digits and notes do
+not scale independently. Numbers must remain readable at every supported device
+size. Surrounding screen text, settings, Stats, help, and modal explanations
+should continue to honour system scaling; overlays must scroll when their
+content no longer fits. Compact game-control labels may shrink to one line
+rather than overlap.
 
 ---
 
@@ -1484,16 +1488,18 @@ Not allowed:
 - Blocking offline gameplay
 
 Hints have no free allowance, but they always work offline. Premium
-(`remove_ads`) gets unlimited instant hints. A free user online watches a short
-rewarded ad per hint; a free user **offline** (no ad loaded) gets the hint free
-— the premium experience — so a missing connection never blocks a hint and an ad
-is never shown when one can't load. See [`HINT_FLOW.md`](./HINT_FLOW.md).
+(`remove_ads`) gets unlimited hints and can opt into instant reveal; otherwise a
+confirmation prevents accidental taps. A free user online watches a short
+rewarded ad per hint; a free user **offline** (no ad loaded) confirms a free
+reveal, matching the premium experience, so a missing connection never blocks a hint
+and an ad is never shown when one can't load. Every reveal is followed by an
+honest candidate-based explanation. See [`HINT_FLOW.md`](./HINT_FLOW.md).
 
 The rewarded-hint prompt (only shown when an ad is loaded) should be clear:
 
 ```text
 Need a hint?
-Watch a short ad to reveal one hint.
+Watch a short ad to reveal one hint and see why it fits.
 ```
 
 Always offer the calm premium upgrade alongside the ad ("Remove ads · Unlimited

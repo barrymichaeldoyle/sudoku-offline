@@ -98,6 +98,7 @@ export function NumberPad() {
                 )}
               >
                 <Text
+                  allowFontScaling={false}
                   className={clsx(
                     "font-semibold leading-tight",
                     large ? "text-4xl" : "text-2xl",
@@ -108,6 +109,7 @@ export function NumberPad() {
                 </Text>
                 {showRemainingCounts ? (
                   <Text
+                    allowFontScaling={false}
                     className={clsx(
                       "font-semibold leading-none",
                       large ? "text-sm" : "text-[10px]",

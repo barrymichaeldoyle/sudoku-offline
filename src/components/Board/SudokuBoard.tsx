@@ -41,6 +41,7 @@ function MajorGridLines() {
 export function SudokuBoard({ size }: { size?: number }) {
   const game = useGameStore((s) => s.game);
   const selectedCell = useGameStore((s) => s.selectedCell);
+  const hintExplanation = useGameStore((s) => s.hintExplanation);
   const pressCell = useGameStore((s) => s.pressCell);
   const lockedFlash = useGameStore((s) => s.lockedDigitFlash);
   const highlightPeers = useSettingsStore((s) => s.settings.highlightPeers);
@@ -102,7 +103,7 @@ export function SudokuBoard({ size }: { size?: number }) {
                 colorUserValues={colorUserValues}
                 colorHintValues={colorHintValues}
                 isSelected={selectedCell === index}
-                isPeer={highlightPeers && peers.has(index)}
+                isPeer={(highlightPeers || hintExplanation != null) && peers.has(index)}
                 isSameValue={highlightSameNumbers && value != null && value === selectedValue}
                 isConflict={conflicts?.[index] ?? false}
                 flashNonce={

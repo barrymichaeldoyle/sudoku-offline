@@ -7,6 +7,7 @@ import { Alert, Platform, Switch } from "react-native";
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { SimpleIcon } from "@/components/SimpleIcon";
 import { resetStats } from "@/data/repositories/statsRepository";
 import { ENTITLEMENT_REMOVE_ADS, IAP_ENABLED } from "@/domain/entitlements";
 import { formatReminderTime } from "@/domain/reminder";
@@ -402,7 +403,8 @@ export default function SettingsScreen() {
                   <View className="border-line bg-surface gap-0.5 rounded-2xl border px-4 py-3">
                     <Text className="text-ink text-base font-medium">Premium active</Text>
                     <Text className="text-ink-soft text-sm">
-                      No ads. Hints without prompts. Thanks for your support.
+                      No ads. Unlimited hints, with optional instant reveal. Thanks for your
+                      support.
                     </Text>
                   </View>
                   <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
@@ -441,15 +443,39 @@ export default function SettingsScreen() {
 
           <View className="gap-3">
             <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              Help
+            </Text>
+            <Pressable
+              onPress={() => router.push("/help")}
+              accessibilityRole="button"
+              accessibilityLabel="Help and about"
+              className="border-line bg-surface flex-row items-center gap-3 rounded-2xl border px-4 py-4 active:opacity-80"
+            >
+              <SimpleIcon name="help" size={22} />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-ink text-base font-medium">Help & About</Text>
+                <Text className="text-ink-soft text-sm">
+                  How to play, support, privacy, and app information
+                </Text>
+              </View>
+              <Text className="text-ink-soft text-xl">›</Text>
+            </Pressable>
+          </View>
+
+          <View className="gap-3">
+            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
               Data
             </Text>
             <Pressable
               onPress={onResetStats}
               accessibilityRole="button"
-              accessibilityLabel="Reset stats"
-              className="border-danger items-center rounded-2xl border py-4 active:opacity-80"
+              accessibilityLabel="Reset stats, including recent game history and daily streak"
+              className="border-danger items-center gap-1 rounded-2xl border px-4 py-3.5 active:opacity-80"
             >
               <Text className="text-danger text-base font-medium">Reset Stats</Text>
+              <Text className="text-ink-soft text-center text-sm">
+                Clears recent game history and your daily streak
+              </Text>
             </Pressable>
           </View>
 

@@ -1,7 +1,7 @@
 # App Store Release Status
 
-Status of **Offline Sudoku** version 1.0.0 on the Apple App Store.
-Last reviewed: 2026-06-27.
+Release history and operations for **Offline Sudoku** on the Apple App Store.
+Last reviewed: 2026-07-28.
 
 > Native `ios/` and `android/` folders are gitignored (Continuous Native
 > Generation). All native config lives in `app.json` / config plugins and is
@@ -12,18 +12,16 @@ Last reviewed: 2026-06-27.
 
 ## Current status
 
-- Version 1.0.0 has been submitted and is **Waiting for Review**.
+- Version 1.1.3 is **Available** on the App Store.
 - App Store Connect app ID: `6782209083`.
 - Bundle ID: `com.barrymichaeldoyle.sudokuoffline`.
-- The submitted store name and installed display name are **Offline Sudoku**.
-- Release is manual: `store.config.json` sets `automaticRelease: false`. After
-  approval, release the version explicitly in App Store Connect.
+- The store name is **Offline Sudoku** and the installed display name is
+  **Sudoku**.
+- Future releases are manual: `store.config.json` sets
+  `automaticRelease: false`. After approval, release each version explicitly in
+  App Store Connect.
 - `phasedRelease: true` is configured for eligible updates; it is not a
   substitute for manually releasing this first version.
-- Do not replace the submitted binary for documentation-only or roadmap work.
-  If Apple reports an issue, address only that issue and resubmit.
-- The next binary changes `expo.name` to **Sudoku**, shortening the installed
-  home-screen label while retaining **Offline Sudoku** as the App Store title.
 
 ## Completed release setup
 
@@ -48,8 +46,8 @@ Last reviewed: 2026-06-27.
   Purchases" section incl. Restore Purchases. The `remove_ads` non-consumable
   (store id `REMOVE_ADS_PRODUCT_ID =
   com.barrymichaeldoyle.sudokuoffline.remove_ads`) was created and attached to
-  the version submitted for first review. Production availability still depends
-  on App Review approval and an active Paid Apps agreement. Web is stubbed via
+  the version submitted for first review. Production availability depends on an
+  active Paid Apps agreement. Web is stubbed via
   `purchaseService.web.ts`.
   - **Launch price: USD $2.99** (one tier; Apple auto-generates local prices per
     storefront). Chosen as an impulse "support the dev" price — the ads are
@@ -76,7 +74,7 @@ Last reviewed: 2026-06-27.
 
 ---
 
-## While the version is in review
+## Historical first-release review procedure
 
 - Monitor App Store Connect messages and respond promptly.
 - Keep the support and privacy URLs live. Both were verified on 2026-06-27.
@@ -84,7 +82,7 @@ Last reviewed: 2026-06-27.
 - Documentation, roadmap planning, Android preparation, and non-binary website
   work can continue without disturbing the submitted build.
 
-## After approval
+## Historical first-release approval checklist
 
 1. Manually release version 1.0.0 in App Store Connect.
 2. Confirm the public product page resolves at
@@ -120,29 +118,73 @@ One command does everything:
 pnpm capture:screenshots
 ```
 
-It boots the iPhone 17 Pro (raw `1206x2622`) and iPad Pro 13" (raw `2064x2752`)
-simulators if needed, installs the newest local simulator build onto both (the
-iPhone build runs on the iPad as-is), starts Metro with
-`EXPO_PUBLIC_SCREENSHOT_MODE=1` if nothing is on `:8081` (and stops it after),
-drives both devices through the four seeded states
-(`sudokuoffline://shots/{home,game,stats}` in light plus game in dark), writes
+It builds one Release simulator app with
+`EXPO_PUBLIC_SCREENSHOT_MODE=1`, boots the iPhone 17 Pro (raw `1206x2622`) and
+iPad Pro 13" (raw `2064x2752`) simulators if needed, installs that build on
+both, and drives the devices through six seeded states
+(`home`, `game`, `hint`, `history`, and `stats` in light plus `game` in dark), writes
 the raws to `assets/store/screenshots/raw/`, then runs
 `pnpm generate:screenshots` to composite them onto the cream caption frame at
 the required App Store sizes (iPhone `1284x2778`, iPad `2064x2752`). Along the
 way it pins a clean 09:41 status bar, pre-approves the URL scheme so
-SpringBoard's "Open in Sudoku?" prompt never appears, and disables the Expo
-dev-menu floating gear, onboarding sheet, and menu-at-launch. Edit
-captions/sizes in `scripts/generate-store-screenshots.mjs`.
+SpringBoard's "Open in Sudoku?" prompt never appears. The embedded Release
+bundle keeps Metro and Expo development-client UI out of the captured assets.
+Edit captions/sizes in `scripts/generate-store-screenshots.mjs`.
 
-Two caveats: a simulator build must exist somewhere (run `npx expo run:ios`
-once on a fresh machine), and if you already have Metro running on `:8081` it
-is reused as-is — it must have been started with
-`EXPO_PUBLIC_SCREENSHOT_MODE=1` (the flag is inlined at bundle time), or the
-`/shots` routes will be inert and the captures wrong.
+The upload order is:
+
+1. Clean, classic Sudoku
+2. No ads while you play
+3. Easy on the eyes
+4. Hints that explain
+5. Review recent games
+6. Build a daily streak
+
+The compositor validates that all 12 raw captures exist before replacing any
+generated files. It also removes obsolete numbered images from the raw and
+generated device folders so an old screenshot cannot be uploaded by mistake,
+and strips alpha channels from the final PNGs for App Store Connect.
 
 The shots route seeds a fixed, photogenic state (stats, a 7-day streak, both
-dailies solved, a known in-progress game, no ad cards); the seed and route live
+dailies solved, recent retained boards, a known in-progress game, an explained
+hint, and no ad cards); the seed and route live
 in `src/data/screenshot/seed.ts` and `src/app/shots/[screen].tsx`, and both are
 inert without `EXPO_PUBLIC_SCREENSHOT_MODE=1`. Adding a locale later means a
 per-locale captions file plus launching with the target locale — the deep-link
 states stay the same.
+
+Before pushing metadata, run:
+
+```
+pnpm metadata:check
+```
+
+This validates Apple field limits, the 100-byte keyword budget, exact
+title/subtitle keyword duplication, and the project copy rule that store
+metadata does not use em dashes.
+
+## Checklist for the first release after 1.1.3
+
+1. Set a new marketing version in `app.json` and `package.json`. Use `1.2.0` for
+   this feature release unless product scope changes before QA.
+2. Run `pnpm ci:check`, then `pnpm release:ios` to build with the production EAS
+   profile and submit the binary to App Store Connect and TestFlight. EAS
+   auto-increments the build number.
+3. Test the processed build through an internal TestFlight group on physical
+   iPhone and iPad hardware. Include an upgrade from 1.1.3, offline launch and
+   play, hints, Recent Games and solved-board review, notifications, universal
+   links, rewarded hints, Remove Ads purchase/restore, VoiceOver, Dynamic Type,
+   Reduce Motion, dark mode, and restart-after-completion.
+4. Review the new App Store Connect age-rating questions, including social
+   media capabilities, and confirm the existing App Privacy answers still
+   match AdMob, EAS Insights, purchases, and the absence of tracking.
+5. Create the new version entry in App Store Connect, select the tested build,
+   push the localized copy with `pnpm metadata:push`, and upload the six final
+   images from each device folder in `assets/store/screenshots/`.
+6. Verify agreements, tax, banking, pricing, territories, the Remove Ads
+   product, support URL, privacy URL, and marketing URL are all active.
+7. Complete App Review contact details and notes, choose manual release with
+   phased rollout, click Add for Review, then submit the draft for review.
+8. After approval, manually release the version, monitor crashes and reviews,
+   and compare impressions, product-page views, conversion, downloads, ratings,
+   and proceeds with the 1.1.3 baseline.

@@ -1,11 +1,17 @@
 import LottieView from "lottie-react-native";
 import { StyleSheet } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 
 import confetti from "@/assets/lottie/confetti.json";
 import { View } from "@/tw";
 
 /** Full-screen confetti celebration. Remount to replay. */
 export function ConfettiBurst() {
+  const reducedMotion = useReducedMotion();
+  if (reducedMotion) {
+    return null;
+  }
+
   return (
     <View pointerEvents="none" className="absolute inset-0 z-50">
       <LottieView

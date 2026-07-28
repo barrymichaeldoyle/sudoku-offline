@@ -8,11 +8,12 @@
 // Re-capture the raw sources from the simulators, then run: pnpm generate:screenshots
 // Style follows docs/DESIGN_GUIDELINES.md §20.2.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Resvg } from "@resvg/resvg-js";
+import sharp from "sharp";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -63,8 +64,22 @@ const SHOTS = [
     caption: "No ads while you play",
     subtitle: "Stay focused from start to finish",
   },
-  { name: "3-stats", caption: "Build a daily streak", subtitle: "Track your times and progress" },
-  { name: "4-dark", caption: "Easy on the eyes", subtitle: "Dark mode for late-night solving" },
+  {
+    name: "3-dark",
+    caption: "Easy on the eyes",
+    subtitle: "Dark mode for late-night solving",
+  },
+  {
+    name: "4-hints",
+    caption: "Hints that explain",
+    subtitle: "See the candidates and learn why",
+  },
+  {
+    name: "5-history",
+    caption: "Review recent games",
+    subtitle: "Filter results and revisit solved boards",
+  },
+  { name: "6-stats", caption: "Build a daily streak", subtitle: "Track your times and progress" },
 ];
 
 function escapeXml(s) {
@@ -162,20 +177,57 @@ function buildSvg(device, shot, dataUri) {
 }
 
 async function main() {
+  // Validate the complete capture set before replacing any generated output.
+  // A partial simulator run should never leave the upload folder half-updated.
+  await Promise.all(
+    Object.keys(DEVICES).flatMap((device) =>
+      SHOTS.map((shot) => access(resolve(RAW, `${device}-${shot.name}.png`))),
+    ),
+  );
+
+  const rawEntries = await readdir(RAW, { withFileTypes: true });
+  for (const device of Object.keys(DEVICES)) {
+    const expectedRaw = new Set(SHOTS.map((shot) => `${device}-${shot.name}.png`));
+    for (const entry of rawEntries) {
+      if (
+        entry.isFile() &&
+        new RegExp(`^${device}-\\d+-.*\\.png$`).test(entry.name) &&
+        !expectedRaw.has(entry.name)
+      ) {
+        await unlink(resolve(RAW, entry.name));
+      }
+    }
+  }
+
   let count = 0;
   for (const device of Object.keys(DEVICES)) {
-    await mkdir(resolve(OUT, device), { recursive: true });
+    const deviceOut = resolve(OUT, device);
+    await mkdir(deviceOut, { recursive: true });
+    const expected = new Set(SHOTS.map((shot) => `${shot.name}.png`));
+    for (const entry of await readdir(deviceOut, { withFileTypes: true })) {
+      if (entry.isFile() && /^\d+-.*\.png$/.test(entry.name) && !expected.has(entry.name)) {
+        await unlink(resolve(deviceOut, entry.name));
+      }
+    }
     for (const shot of SHOTS) {
       const rawPath = resolve(RAW, `${device}-${shot.name}.png`);
       const b64 = (await readFile(rawPath)).toString("base64");
       const svg = buildSvg(device, shot, `data:image/png;base64,${b64}`);
-      const png = new Resvg(svg, {
+      const rendered = new Resvg(svg, {
         font: { loadSystemFonts: true },
         fitTo: { mode: "width", value: DEVICES[device].canvas.w },
       })
         .render()
         .asPng();
-      const outPath = resolve(OUT, device, `${shot.name}.png`);
+      // App Store Connect rejects screenshots with alpha channels, even when
+      // every pixel is visually opaque. Resvg emits RGBA PNGs, so flatten and
+      // encode each final asset as RGB.
+      const png = await sharp(rendered)
+        .flatten({ background: BG_TOP })
+        .removeAlpha()
+        .png()
+        .toBuffer();
+      const outPath = resolve(deviceOut, `${shot.name}.png`);
       await writeFile(outPath, png);
       console.log(
         `${outPath.replace(`${ROOT}/`, "")}  (${DEVICES[device].canvas.w}x${DEVICES[device].canvas.h})`,

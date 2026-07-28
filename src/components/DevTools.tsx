@@ -9,6 +9,7 @@ import { setEntitlement } from "@/data/repositories/entitlementRepository";
 import { resetStats, seedSampleStats } from "@/data/repositories/statsRepository";
 import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
 import { adService } from "@/services/adService";
+import { requestReviewForDevelopment } from "@/services/reviewService";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useGameStore } from "@/state/useGameStore";
 import { Pressable, Text, View } from "@/tw";
@@ -65,6 +66,7 @@ export default function DevTools() {
       hintPromptVisible: false,
       hintPromptMode: null,
       hintCooldownUntil: null,
+      hintExplanation: null,
       running: false,
       lastStartedAt: null,
       loading: false,
@@ -99,6 +101,17 @@ export default function DevTools() {
     Alert.alert("Rewarded ad", granted ? "Reward granted ✅" : "Closed without earning a reward.");
   };
 
+  const testReviewPrompt = async () => {
+    const result = await requestReviewForDevelopment();
+    const message = {
+      requested: "The native request was sent. iOS still decides whether to show the sheet.",
+      unavailable: "The native review action is unavailable in this build or distribution mode.",
+      failed: "The native review request failed. Check the Metro and device logs.",
+      disabled: "This diagnostic is available in development builds only.",
+    }[result];
+    Alert.alert("Review prompt", message);
+  };
+
   return (
     <View className="gap-3">
       <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
@@ -108,6 +121,7 @@ export default function DevTools() {
         <DevButton label="Pop confetti 🎉" onPress={popConfetti} />
         <DevButton label="Preview success screen" onPress={previewSuccess} />
         <DevButton label="Test rewarded hint ad" onPress={() => void testRewardedAd()} />
+        <DevButton label="Test native review prompt" onPress={() => void testReviewPrompt()} />
         <DevButton label="Seed sample stats" onPress={() => void seedStats()} />
         <DevButton label="Clear stats" onPress={() => void clearStats()} />
         <DevButton

@@ -1,6 +1,6 @@
 # Offline Sudoku — Current Handover
 
-Living implementation and release-status summary. Last updated: 2026-06-27.
+Living implementation and release-status summary. Last updated: 2026-07-28.
 
 Historical MVP decisions remain in [`mvp-handoff.md`](./mvp-handoff.md), but
 this file is the source of truth for what exists now. Product and growth work is
@@ -9,10 +9,9 @@ prioritized in [`ROADMAP.md`](./ROADMAP.md).
 ## Release state
 
 - Product name: **Offline Sudoku**.
-- Installed home-screen name: **Sudoku** for the next binary; the submitted
-  1.0.0 binary still displays **Offline Sudoku**.
-- Version: `1.0.0`.
-- iOS: submitted to App Store Connect and Waiting for Review.
+- Installed home-screen name: **Sudoku**.
+- Version: `1.1.3`.
+- iOS: available on the App Store.
 - Apple app ID: `6782209083`.
 - Release mode: manual after approval (`automaticRelease: false`).
 - Android: configured at the Expo app level but not prepared for Play release.
@@ -23,10 +22,10 @@ checklist.
 
 ## How to work in this repo
 
-- Read the exact Expo SDK 56 documentation before changing native or Expo APIs:
-  https://docs.expo.dev/versions/v56.0.0/.
-- Use pnpm. The stack is Expo SDK 56, Expo Router, React 19.2, React Native
-  0.85, TypeScript, Zustand, SQLite, Tailwind 4, NativeWind 5, and
+- Read the exact Expo SDK 57 documentation before changing native or Expo APIs:
+  https://docs.expo.dev/versions/v57.0.0/.
+- Use pnpm. The stack is Expo SDK 57, Expo Router, React 19.2, React Native
+  0.86, TypeScript, Zustand, SQLite, Tailwind 4, NativeWind 5, and
   `react-native-css`.
 - Use wrapped components from `src/tw`; plain React Native components do not
   receive `className` at runtime.
@@ -48,9 +47,14 @@ Players can:
 - play a deterministic Daily Puzzle and extreme Daily Challenge offline;
 - resume an active game with debounced SQLite autosave;
 - use cell-first or number-first input, pencil notes, undo, erase, and hints;
+- receive candidate-based explanations after hints, including honest conflict
+  guidance when a wrong nearby entry affects the board;
 - configure mistake checking, highlighting, note cleanup, timer, haptics, and
   light/dark/system appearance;
-- view aggregate stats, best times, mistake-free totals, and daily streaks;
+- view aggregate stats, best times, mistake-free totals, daily streaks, and
+  recent completed games filtered by Daily or difficulty, loading up to 100;
+- reopen the retained solved board for a recent result;
+- open in-app play guidance, support, privacy, and version information;
 - share an exact puzzle or daily challenge through universal links with a time
   or mistake target to beat;
 - opt into a locally scheduled daily reminder;
@@ -66,11 +70,12 @@ Hints remain available offline when an ad cannot load.
 
 - SQLite opens through one shared client with WAL enabled.
 - Ordered `PRAGMA user_version` migrations run inside exclusive transactions.
-- Schema version 3 is current. Never edit a shipped migration; add the next
+- Schema version 5 is current. Never edit a shipped migration; add the next
   numbered migration.
 - Bundled packs cover easy, medium, hard, expert, daily, and challenge puzzles.
-- Completed game rows are retained and already provide the foundation for a
-  recent-game history UI.
+- Completed game rows are retained and drive the capped Recent Games section in
+  Stats without an additional migration. It loads 10 at a time, filters in
+  SQLite, and caps the visible list at 100.
 - Daily progress is keyed by `(date_key, track)` where track is `daily` or
   `challenge`.
 
@@ -86,6 +91,27 @@ Hints remain available offline when an ad cannot load.
   users.
 - The entitlement cache is the offline source of truth and is refreshed
   best-effort from the store.
+- `expo-store-review` requests the native rating sheet after at least three
+  completions across two sessions, with a 180-day app cooldown and suppression
+  around rewarded-ad and purchase flows. The OS may still suppress a request.
+- Development Settings includes a native review smoke test. It bypasses
+  eligibility without changing production counters or cooldown state.
+
+### Accessibility
+
+- Board cells and controls expose spoken labels and important state.
+- Dynamic Type remains enabled outside fixed board/keypad geometry; game
+  overlays are width-capped and scrollable for large text and iPad.
+- Reduce Motion suppresses confetti and the existing board/control animations
+  use reduced-motion-aware helpers.
+
+### Dependency security
+
+- Exact patch-level transitive overrides in `pnpm-workspace.yaml` remediate the
+  current Expo/Jest toolchain advisories without upgrading beyond the Expo SDK
+  57 compatibility set.
+- Run `pnpm audit` after dependency changes and follow the removal policy in
+  [`DECISIONS.md`](./DECISIONS.md) rather than leaving obsolete overrides.
 
 ### Notifications
 
@@ -112,16 +138,19 @@ details.
 - Only `en-US` exists today.
 - Store screenshots are generated from deterministic seeded app states. See
   [`APP_STORE_LAUNCH.md`](./APP_STORE_LAUNCH.md#generating-store-screenshots).
+- The next release metadata highlights explanatory hints and Recent Games. Its
+  six-shot iPhone and iPad sets were captured from a Release simulator build,
+  visually reviewed, and encoded without alpha channels.
+- `pnpm metadata:check` enforces Apple copy limits, a 100-byte keyword field, and
+  the store copy punctuation rule.
 - Universal links use `sudokuoffline.expo.app`; installed users open the exact
   puzzle and other users see a store landing page.
 
 ## Known gaps
 
-- Undo does not restore peer notes removed by automatic note cleanup.
 - Product events are not available for funnel or retention analysis beyond the
   device-local queue.
-- There is no native rating prompt.
-- There is no recent-game history screen or achievement system.
+- There is no achievement system.
 - The app and store listing have no non-English localization.
 - Android production ads, Play Billing, listing, compliance forms, submission
   profile, and platform QA are incomplete.

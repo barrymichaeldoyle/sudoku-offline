@@ -162,6 +162,32 @@ export async function saveGame(
   });
 }
 
+/**
+ * Persist an intentional reset even when the retained row is completed.
+ * saveGame's terminal-state guard correctly rejects late active autosaves, so
+ * restarting a solved board needs this explicit path.
+ */
+export async function saveRestartedGame(game: GameState): Promise<void> {
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.runAsync(
+      `UPDATE games
+          SET values_string = ?, notes_json = ?, status = 'active',
+              elapsed_seconds = ?, mistakes = ?, hints_used = ?,
+              hinted_cells_json = ?, completed_at = NULL, updated_at = ?
+        WHERE id = ?`,
+      valuesToString(game.values),
+      JSON.stringify(game.notes),
+      game.elapsedSeconds,
+      game.mistakes,
+      game.hintsUsed,
+      JSON.stringify(game.hintedCells),
+      game.updatedAt,
+      game.id,
+    );
+  });
+}
+
 export async function getGameById(id: string): Promise<GameState | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<GameRow>("SELECT * FROM games WHERE id = ?", id);

@@ -1,14 +1,8 @@
 import { getDatabase, withWriteLock } from "@/data/db/client";
 import { saveGame } from "@/data/repositories/gameRepository";
 import { seedSampleStats } from "@/data/repositories/statsRepository";
+import { findHintCell, type Hint } from "@/domain/sudoku/hints";
 import { CELL_COUNT, type CellValue, type GameState, type NoteMask } from "@/domain/sudoku/types";
-
-/**
- * True only in builds made with `EXPO_PUBLIC_SCREENSHOT_MODE=1`. Gates the
- * hidden `/shots` deep-link route (see app/shots/[screen].tsx) so none of this
- * scaffolding is reachable in a normal release build.
- */
-export const SCREENSHOT_MODE = process.env.EXPO_PUBLIC_SCREENSHOT_MODE === "1";
 
 export const SCREENSHOT_GAME_ID = "screenshot-game";
 
@@ -67,6 +61,31 @@ export function buildScreenshotGame(): GameState {
   };
 }
 
+export type ScreenshotHintState = {
+  game: GameState;
+  hint: Hint;
+};
+
+/** The game state shown behind the explanatory-hint marketing screenshot. */
+export function buildScreenshotHintState(): ScreenshotHintState {
+  const game = buildScreenshotGame();
+  const hint = findHintCell(game.values, game.givens, game.solution);
+  if (!hint) {
+    throw new Error("Screenshot game must contain a revealable hint cell");
+  }
+  const values = game.values.slice();
+  values[hint.index] = hint.value;
+  return {
+    hint,
+    game: {
+      ...game,
+      values,
+      hintsUsed: 1,
+      hintedCells: [hint.index],
+    },
+  };
+}
+
 // The second in-progress game, so the home shot shows the per-difficulty
 // continue rows doing their job (Medium and Expert both resumable). Only its
 // home-row summary is ever visible — the capture never opens this board — so
@@ -103,6 +122,57 @@ function buildScreenshotExpertGame(): GameState {
   };
 }
 
+function buildScreenshotCompletedGame({
+  id,
+  difficulty,
+  elapsedSeconds,
+  mistakes,
+  hintsUsed,
+}: Pick<GameState, "id" | "difficulty" | "elapsedSeconds" | "mistakes" | "hintsUsed">): GameState {
+  const now = new Date();
+  return {
+    id,
+    puzzleId: `${id}-puzzle`,
+    difficulty,
+    givens: buildScreenshotGame().givens,
+    solution: SOLUTION,
+    values: SOLUTION.split("").map(Number),
+    notes: Array.from({ length: CELL_COUNT }, () => 0),
+    status: "active",
+    elapsedSeconds,
+    mistakes,
+    hintsUsed,
+    hintedCells: hintsUsed > 0 ? [1] : [],
+    startedAt: new Date(now.getTime() - elapsedSeconds * 1000).toISOString(),
+    completedAt: null,
+    updatedAt: now.toISOString(),
+  };
+}
+
+const SCREENSHOT_HISTORY_GAMES: GameState[] = [
+  buildScreenshotCompletedGame({
+    id: "screenshot-history-hard",
+    difficulty: "hard",
+    elapsedSeconds: 612,
+    mistakes: 0,
+    hintsUsed: 1,
+  }),
+  buildScreenshotCompletedGame({
+    id: "screenshot-history-easy",
+    difficulty: "easy",
+    elapsedSeconds: 238,
+    mistakes: 0,
+    hintsUsed: 0,
+  }),
+  buildScreenshotCompletedGame({
+    id: "screenshot-history-expert",
+    difficulty: "expert",
+    elapsedSeconds: 1084,
+    mistakes: 2,
+    hintsUsed: 2,
+  }),
+];
+
 /**
  * Retry a DB write that loses a race with another in-flight statement. Arriving
  * via deep link, the seed's `BEGIN EXCLUSIVE` can collide with the home screen's
@@ -122,6 +192,52 @@ async function withLockRetry<T>(fn: () => Promise<T>, attempts = 12, delayMs = 1
   }
 }
 
+async function seedScreenshotHistory(): Promise<void> {
+  await Promise.all(SCREENSHOT_HISTORY_GAMES.map((game) => saveGame(game)));
+  const now = Date.now();
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      // Keep the three retained boards at the top of the history screenshot.
+      // The larger stats fixture remains available below them for aggregates.
+      await txn.runAsync(
+        `UPDATE completed_games
+            SET completed_at = ?
+          WHERE id LIKE 'dev-%'`,
+        new Date(now - 30 * 86_400_000).toISOString(),
+      );
+      await Promise.all(
+        SCREENSHOT_HISTORY_GAMES.flatMap((game, index) => {
+          const completedAt = new Date(now - index * 86_400_000).toISOString();
+          return [
+            txn.runAsync(
+              `UPDATE games
+                  SET status = 'completed', completed_at = ?, updated_at = ?
+                WHERE id = ?`,
+              completedAt,
+              completedAt,
+              game.id,
+            ),
+            txn.runAsync(
+              `INSERT OR REPLACE INTO completed_games
+               (id, game_id, puzzle_id, difficulty, date_key, elapsed_seconds, mistakes, hints_used, completed_at)
+             VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
+              `${game.id}-completion`,
+              game.id,
+              game.puzzleId,
+              game.difficulty,
+              game.elapsedSeconds,
+              game.mistakes,
+              game.hintsUsed,
+              completedAt,
+            ),
+          ];
+        }),
+      );
+    });
+  });
+}
+
 /**
  * Put the app into a fixed, photogenic state for store screenshots: seeded
  * stats + a 7-day streak + both dailies solved (via seedSampleStats), plus a
@@ -136,6 +252,7 @@ export async function seedScreenshotData(): Promise<void> {
   await withLockRetry(() => seedSampleStats());
   await withLockRetry(() => saveGame(buildScreenshotGame()));
   await withLockRetry(() => saveGame(buildScreenshotExpertGame()));
+  await withLockRetry(() => seedScreenshotHistory());
 }
 
 async function wipeGames(): Promise<void> {

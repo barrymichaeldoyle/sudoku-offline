@@ -35,6 +35,9 @@ function ControlButton({ label, icon, active, checked, disabled, onPress }: Cont
     >
       <SimpleIcon name={icon} tone={active ? "onPrimary" : "muted"} size={large ? 30 : undefined} />
       <Text
+        adjustsFontSizeToFit
+        minimumFontScale={0.72}
+        numberOfLines={1}
         className={clsx(
           "font-semibold",
           large ? "text-base" : "text-sm",

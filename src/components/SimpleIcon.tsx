@@ -6,6 +6,7 @@ import {
   Cog,
   Eraser,
   Eye,
+  CircleHelp,
   House,
   Keyboard,
   Lightbulb,
@@ -29,6 +30,7 @@ export type SimpleIconName =
   | "erase"
   | "eye"
   | "hint"
+  | "help"
   | "home"
   | "input"
   | "notes"
@@ -57,6 +59,7 @@ const ICONS: Record<SimpleIconName, LucideComponent> = {
   erase: Eraser,
   eye: Eye,
   hint: Lightbulb,
+  help: CircleHelp,
   home: House,
   input: Keyboard,
   notes: StickyNote,

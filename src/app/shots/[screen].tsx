@@ -3,12 +3,13 @@ import { useEffect, useRef } from "react";
 
 import {
   buildScreenshotGame,
+  buildScreenshotHintState,
   SCREENSHOT_GAME_ID,
-  SCREENSHOT_MODE,
   SCREENSHOT_SELECTED_CELL,
   seedScreenshotData,
 } from "@/data/screenshot/seed";
 import { ENTITLEMENT_REMOVE_ADS } from "@/domain/entitlements";
+import { SCREENSHOT_MODE } from "@/domain/screenshotMode";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
@@ -21,8 +22,8 @@ import { View } from "@/tw";
  *
  * Seeds a fixed app state (see data/screenshot/seed.ts) and lands on the target
  * screen, so a capture script never has to tap through the UI. `screen` is one
- * of home | game | stats; `theme` is light | dark | system. Inert unless the
- * app was built with EXPO_PUBLIC_SCREENSHOT_MODE=1.
+ * of home | game | hint | history | stats; `theme` is light | dark | system.
+ * Inert unless the app was built with EXPO_PUBLIC_SCREENSHOT_MODE=1.
  */
 export default function Shots() {
   const { screen, theme } = useLocalSearchParams<{ screen?: string; theme?: string }>();
@@ -49,12 +50,25 @@ export default function Shots() {
       }
       await seedScreenshotData();
 
-      if (screen === "game") {
+      if (screen === "game" || screen === "hint") {
         // Prime the store so the game screen's loadGame() early-returns and the
         // pre-selected center cell (for highlighting) survives the mount.
-        useGameStore.getState().setGame(buildScreenshotGame());
-        useGameStore.setState({ selectedCell: SCREENSHOT_SELECTED_CELL });
+        if (screen === "hint") {
+          const { game, hint } = buildScreenshotHintState();
+          useGameStore.getState().setGame(game);
+          useGameStore.setState({
+            selectedCell: hint.index,
+            hintExplanation: hint,
+            running: false,
+            lastStartedAt: null,
+          });
+        } else {
+          useGameStore.getState().setGame(buildScreenshotGame());
+          useGameStore.setState({ selectedCell: SCREENSHOT_SELECTED_CELL });
+        }
         router.replace({ pathname: "/game/[gameId]", params: { gameId: SCREENSHOT_GAME_ID } });
+      } else if (screen === "history") {
+        router.replace({ pathname: "/stats", params: { view: "history" } });
       } else if (screen === "stats") {
         router.replace("/stats");
       } else {

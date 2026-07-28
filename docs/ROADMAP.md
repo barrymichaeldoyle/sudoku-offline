@@ -1,6 +1,6 @@
 # Offline Sudoku — Bang-for-Buck Roadmap
 
-Last reviewed: 2026-06-27.
+Last reviewed: 2026-07-28.
 
 This is the assignment-ready backlog for growing the app primarily through
 store discovery, product quality, retention, ratings, and sharing rather than
@@ -10,9 +10,8 @@ paid marketing. Current implementation status lives in
 
 ## Operating rules
 
-- Version 1.0.0 is Waiting for App Review. Do not replace or withdraw the binary
-  for roadmap work unless Apple identifies a release blocker.
-- Binary changes belong to 1.0.1 or later.
+- Version 1.1.3 is publicly available on the App Store.
+- Unreleased binary changes belong to the next version after 1.1.3.
 - Establish a post-launch baseline before interpreting an ASO or product change.
 - Assign one task ID per agent. An agent may split its task into commits, but it
   must not absorb neighboring roadmap items without approval.
@@ -28,12 +27,12 @@ paid marketing. Current implementation status lives in
 
 | Rank | Initiative | Expected leverage | Effort | Start |
 | ---: | ---------- | ----------------- | ------ | ----- |
-| 1 | Rating prompt | High organic conversion/trust | Small | 1.0.1 |
+| 1 | Rating prompt | High organic conversion/trust | Small | Implemented locally |
 | 2 | Launch baseline and ASO iteration | High; prevents blind decisions | Small | At launch |
 | 3 | Android release | High addressable reach | Medium | Start prep now |
-| 4 | Brand/share-loop polish | Medium-high organic acquisition | Small | Now/1.0.1 |
+| 4 | Brand/share-loop polish | Medium-high organic acquisition | Small | Next release |
 | 5 | First localized release | Medium-high global reach | Medium | After baseline |
-| 6 | Recent game history | Medium retention value | Small-medium | After 1.0.1 |
+| 6 | Recent game history | Medium retention value | Small-medium | Implemented locally |
 | 7 | Achievements | Unproven retention value | Medium | Validate later |
 | 8 | Streak restore/archive | Unproven; adds monetization complexity | Medium-large | Defer |
 
@@ -44,6 +43,7 @@ paid marketing. Current implementation status lives in
 **Priority:** P0  
 **Effort:** Small, operational  
 **Dependency:** App approval and manual release
+**Status:** Initial App Store release completed; ongoing baseline measurement remains.
 
 **Goal:** capture a trustworthy baseline before changing acquisition surfaces.
 
@@ -69,7 +69,7 @@ paid marketing. Current implementation status lives in
 
 **Priority:** P0  
 **Effort:** Small  
-**Dependency:** None for docs/web; app string changes target 1.0.1
+**Dependency:** None for docs/web; future app string changes target the next release
 
 **Goal:** use **Offline Sudoku** consistently as the public/store brand while
 intentionally using **Sudoku** as the shorter installed home-screen label.
@@ -115,6 +115,12 @@ measured, isolated changes.
 - No unsupported claims, rankings, testimonials, or misleading "ad-free" copy.
 - Results and the winning/reverted variant are recorded in `docs/ASO.md`.
 
+**Implementation note (2026-07-28):** The next release package now includes a
+100-byte keyword field, revised promotional text, description and release
+notes, plus deterministic hint and Recent Games screenshot scenes. Keep the
+title and subtitle stable for this release. Final screenshots remain gated by
+native QA.
+
 Official references:
 
 - https://developer.apple.com/help/app-store-connect/create-product-page-optimization-tests/overview-of-product-page-optimization
@@ -126,8 +132,9 @@ Official references:
 
 **Priority:** P1  
 **Effort:** Small  
-**Target:** 1.0.1  
-**Dependency:** Public App Store release
+**Target:** Next iOS release
+**Dependency:** Public App Store release (satisfied)
+**Status:** Implemented locally; native release verification remains.
 
 **Goal:** earn ratings at moments of demonstrated satisfaction without nagging.
 
@@ -138,7 +145,7 @@ purchase flow, or more than once per app-defined cooldown.
 
 **Scope:**
 
-- Add the SDK 56-compatible store-review package.
+- Add the SDK 57-compatible store-review package.
 - Add locally persisted eligibility and last-attempt state.
 - Ask the OS to present its native review sheet; do not build a custom star
   selector or gate negative users away from the store.
@@ -153,6 +160,10 @@ purchase flow, or more than once per app-defined cooldown.
   on the OS sheet actually appearing.
 - Privacy disclosures do not change.
 
+**Implementation note (2026-07-28):** A development-only Settings action
+bypasses eligibility to smoke-test native linkage without mutating the saved
+production cooldown or counters.
+
 Official reference:
 https://developer.apple.com/app-store/ratings-and-reviews/
 
@@ -160,7 +171,7 @@ https://developer.apple.com/app-store/ratings-and-reviews/
 
 **Priority:** P1  
 **Effort:** Small  
-**Target:** 1.0.1 plus static web deploy  
+**Target:** Next app release plus static web deploy
 **Dependency:** BF-002
 
 **Goal:** turn successful puzzle sharing into a reliable organic acquisition
@@ -186,6 +197,7 @@ loop.
 **Priority:** P2  
 **Effort:** Small-medium  
 **Dependency:** Rating prompt can ship independently
+**Status:** Implemented locally; native release verification remains.
 
 **Goal:** add visible value from data already retained in `completed_games`.
 
@@ -194,8 +206,8 @@ loop.
 - Add a paginated/reasonably capped Recent Games section from Stats.
 - Show date, difficulty, time when enabled, mistakes when tracked, hints, and
   daily/challenge context.
-- Decide explicitly whether history rows are summaries only or can reopen a
-  completed board. Prefer summaries for the first version.
+- Allow a retained completed board to reopen read-only; label older rows without
+  a retained game as summaries only.
 - Keep Reset Stats behavior explicit: it currently deletes completed history.
 
 **Acceptance criteria:**
@@ -206,6 +218,43 @@ loop.
 - List performance remains acceptable with a large local history.
 - Documentation and reset confirmation explain that history is removed with
   stats.
+
+**Implementation note (2026-07-28):** Stats queries 10 rows initially, supports
+All/Daily/difficulty filters, and loads 10 more at a time up to 100. Retained
+games can reopen their solved board; rows without a retained game are explicit
+summary-only results. No schema migration is required.
+
+### BF-104: Explanatory hints and accessibility hardening
+
+**Priority:** P2
+
+**Effort:** Small-medium
+
+**Target:** Next iOS release
+
+**Dependency:** None
+**Status:** Implemented locally; native accessibility QA remains.
+
+**Goal:** make hints more useful than a bare reveal and keep the game usable
+with assistive settings.
+
+**Scope:**
+
+- Explain genuine naked singles, narrowed candidate sets, and conflicting
+  nearby entries without overstating the available logic.
+- Keep the revealed cell and peers visible while the explanation is open.
+- Improve spoken board/control state and modal behavior.
+- Respect Reduce Motion and protect fixed board/keypad geometry under Dynamic
+  Type.
+- Exercise phone and iPad layouts with large text and VoiceOver.
+
+**Acceptance criteria:**
+
+- Candidate choice and explanation copy are unit-tested.
+- A reveal never presents a false “only candidate” claim.
+- The board and keypad remain readable at supported text sizes.
+- Hint overlays remain dismissible and scrollable on phone and iPad.
+- Reduce Motion suppresses nonessential celebration motion.
 
 ## Android release program
 
@@ -413,9 +462,9 @@ one agent.
 1. BF-001 immediately after approval; BF-002 can start now.
 2. BF-201 now if the Play account exists, because its elapsed-time requirement
    may dominate the Android schedule.
-3. BF-101 and BF-102 for 1.0.1.
+3. Finish native verification for BF-101 and BF-103; continue BF-102 separately.
 4. BF-003 after a baseline is available.
 5. BF-202 and BF-203 in parallel once Android verification is authorized.
 6. BF-301, then assign one locale at a time under BF-302.
-7. BF-103 when acquisition/release work is stable.
+7. Measure BF-103 usage after its first public release.
 8. Revisit BF-401 through BF-403 only with post-launch evidence.

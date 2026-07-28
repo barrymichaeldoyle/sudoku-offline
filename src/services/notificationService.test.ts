@@ -8,7 +8,6 @@ jest.mock("expo-notifications", () => ({
   IosAuthorizationStatus: { PROVISIONAL: 3 },
   SchedulableTriggerInputTypes: { DATE: "date" },
 }));
-jest.mock("react-native", () => ({ Platform: { OS: "ios" } }));
 jest.mock("@/data/repositories/dailyRepository", () => ({
   getDailyProgress: jest.fn(),
   getCompletedDailyDateKeys: jest.fn(),

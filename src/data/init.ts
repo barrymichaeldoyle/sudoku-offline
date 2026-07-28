@@ -1,6 +1,7 @@
 import { adService } from "@/services/adService";
 import { track } from "@/services/analyticsService";
 import { syncDailyReminderSchedule } from "@/services/notificationService";
+import { recordReviewSession } from "@/services/reviewService";
 import { applyThemePreference } from "@/services/theme";
 import { useEntitlementStore } from "@/state/useEntitlementStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
@@ -29,6 +30,7 @@ export function initializeApp(): Promise<void> {
         console.error("Failed to reconcile stuck completions", err);
       });
       await useSettingsStore.getState().hydrate();
+      await recordReviewSession().catch(() => undefined);
       applyThemePreference(useSettingsStore.getState().settings.theme);
       await useEntitlementStore.getState().hydrate();
       // Keep the daily reminder accurate across launches (date rollover, a daily

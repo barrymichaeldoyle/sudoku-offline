@@ -30,6 +30,32 @@ export type DailyTrackStat = {
   totalSeconds: number;
 };
 
+export type RecentGame = {
+  id: string;
+  gameId: string;
+  difficulty: Difficulty;
+  dateKey: string | null;
+  dailyTrack: DailyTrack | null;
+  elapsedSeconds: number;
+  mistakes: number;
+  hintsUsed: number;
+  completedAt: string;
+  /**
+   * False for an older run of a puzzle that was subsequently restarted. The
+   * summary remains historically correct, but the retained games row now holds
+   * the newer board and must not be opened as though it were the old result.
+   */
+  canReopen: boolean;
+};
+
+export type RecentGameFilter = "all" | "daily" | "easy" | "medium" | "hard" | "expert";
+
+export type RecentGameQuery = {
+  limit?: number;
+  offset?: number;
+  filter?: RecentGameFilter;
+};
+
 type AggregateRow = {
   difficulty: string;
   completed: number;
@@ -46,6 +72,19 @@ type DailyAggregateRow = {
   avg: number | null;
   total: number | null;
   mistake_free: number;
+};
+
+type RecentGameRow = {
+  id: string;
+  game_id: string;
+  difficulty: string;
+  date_key: string | null;
+  daily_track: string | null;
+  elapsed_seconds: number;
+  mistakes: number;
+  hints_used: number;
+  completed_at: string;
+  can_reopen: number;
 };
 
 function emptyByDifficulty(): Record<Difficulty, DifficultyStat> {
@@ -145,6 +184,76 @@ export async function getDailyTrackStats(): Promise<Record<DailyTrack, DailyTrac
   }
 
   return byTrack;
+}
+
+/**
+ * Most recent completed runs across ordinary and daily play. No migration is
+ * required: completed_games owns the immutable run summary, while games retains
+ * the solved board for the latest run of a puzzle.
+ */
+export async function getRecentGames({
+  limit = 20,
+  offset = 0,
+  filter = "all",
+}: RecentGameQuery = {}): Promise<RecentGame[]> {
+  const db = await getDatabase();
+  const normalizedLimit = Math.trunc(limit);
+  const safeLimit = Number.isFinite(normalizedLimit)
+    ? Math.min(100, Math.max(1, normalizedLimit))
+    : 20;
+  const normalizedOffset = Math.trunc(offset);
+  const safeOffset = Number.isFinite(normalizedOffset) ? Math.max(0, normalizedOffset) : 0;
+  const filterSql =
+    filter === "daily"
+      ? "AND (cg.date_key IS NOT NULL OR g.shared_daily_track IS NOT NULL)"
+      : filter === "all"
+        ? ""
+        : "AND cg.difficulty = ?";
+  const filterParams = filter === "all" || filter === "daily" ? [] : [filter];
+  const rows = await db.getAllAsync<RecentGameRow>(
+    `SELECT cg.id,
+            cg.game_id,
+            cg.difficulty,
+            COALESCE(cg.date_key, g.shared_daily_date_key) AS date_key,
+            COALESCE(dp.track, g.shared_daily_track) AS daily_track,
+            cg.elapsed_seconds,
+            cg.mistakes,
+            cg.hints_used,
+            cg.completed_at,
+            CASE WHEN g.completed_at = cg.completed_at THEN 1 ELSE 0 END AS can_reopen
+       FROM completed_games cg
+       LEFT JOIN games g ON g.id = cg.game_id
+       LEFT JOIN daily_progress dp ON dp.game_id = cg.game_id
+      WHERE 1 = 1
+      ${filterSql}
+      ORDER BY cg.completed_at DESC, cg.id DESC
+      LIMIT ? OFFSET ?`,
+    ...filterParams,
+    safeLimit,
+    safeOffset,
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    gameId: row.game_id,
+    difficulty: row.difficulty as Difficulty,
+    dateKey: row.date_key,
+    dailyTrack: (row.daily_track as DailyTrack | null) ?? null,
+    elapsedSeconds: row.elapsed_seconds,
+    mistakes: row.mistakes,
+    hintsUsed: row.hints_used,
+    completedAt: row.completed_at,
+    canReopen: row.can_reopen === 1,
+  }));
+}
+
+/** Number of completed runs, used by post-completion review eligibility. */
+export async function getCompletedGameCount(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ count: number }>(
+    "SELECT COUNT(*) AS count FROM completed_games",
+  );
+  return row?.count ?? 0;
 }
 
 /**

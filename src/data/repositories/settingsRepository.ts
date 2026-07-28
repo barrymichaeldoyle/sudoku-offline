@@ -78,3 +78,41 @@ export async function setReminderPromptSeen(): Promise<void> {
     );
   });
 }
+
+export type ReviewPromptState = {
+  sessionCount: number;
+  lastAttemptAt: string | null;
+};
+
+const REVIEW_PROMPT_KEY = "review_prompt_state";
+
+export async function loadReviewPromptState(): Promise<ReviewPromptState> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM settings WHERE key = ?",
+    REVIEW_PROMPT_KEY,
+  );
+  if (!row) {
+    return { sessionCount: 0, lastAttemptAt: null };
+  }
+  try {
+    const parsed = JSON.parse(row.value) as Partial<ReviewPromptState>;
+    return {
+      sessionCount: Math.max(0, Math.trunc(parsed.sessionCount ?? 0)),
+      lastAttemptAt: typeof parsed.lastAttemptAt === "string" ? parsed.lastAttemptAt : null,
+    };
+  } catch {
+    return { sessionCount: 0, lastAttemptAt: null };
+  }
+}
+
+export async function saveReviewPromptState(state: ReviewPromptState): Promise<void> {
+  await withWriteLock(async () => {
+    const db = await getDatabase();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+      REVIEW_PROMPT_KEY,
+      JSON.stringify(state),
+    );
+  });
+}

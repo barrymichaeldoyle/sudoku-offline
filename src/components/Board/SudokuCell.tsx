@@ -125,11 +125,14 @@ function SudokuCellComponent(props: SudokuCellProps) {
   const shakeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shakeX.value }],
   }));
+  const noteValues = NOTE_NUMBERS.filter((n) => hasNote(notes, n));
+  const noteDescription = noteValues.length > 0 ? `, notes ${noteValues.join(", ")}` : ", empty";
   const a11yLabel =
     `Row ${row + 1}, column ${col + 1}` +
     (value != null
       ? `, ${value}${isGiven ? " given" : isHint ? " revealed hint, locked" : ""}`
-      : ", empty");
+      : noteDescription) +
+    (props.isConflict ? ", conflicting or incorrect" : "");
 
   return (
     <Pressable
@@ -157,21 +160,25 @@ function SudokuCellComponent(props: SudokuCellProps) {
           key={value}
           entering={hasMounted.current ? VALUE_ENTER : undefined}
           exiting={VALUE_EXIT}
-          style={shakeStyle}
           className="items-center justify-center"
         >
-          <Text
-            style={fontSize != null ? { fontSize } : undefined}
-            className={clsx(
-              fontSize == null && "text-2xl",
-              // Bold clues anchor the puzzle; the player's own entries sit a
-              // step lighter so they read as distinct from the givens.
-              isGiven || isHint || props.isConflict ? "font-bold" : "font-medium",
-              numberColor(props),
-            )}
-          >
-            {value}
-          </Text>
+          {/* Keep the layout entry/exit scale and the rejection shake on
+              separate animated views so their transform styles never compete. */}
+          <Animated.View style={shakeStyle} className="items-center justify-center">
+            <Text
+              allowFontScaling={false}
+              style={fontSize != null ? { fontSize } : undefined}
+              className={clsx(
+                fontSize == null && "text-2xl",
+                // Bold clues anchor the puzzle; the player's own entries sit a
+                // step lighter so they read as distinct from the givens.
+                isGiven || isHint || props.isConflict ? "font-bold" : "font-medium",
+                numberColor(props),
+              )}
+            >
+              {value}
+            </Text>
+          </Animated.View>
         </Animated.View>
       ) : notes ? (
         <View className="h-full w-full flex-row flex-wrap p-[1px]">
@@ -183,6 +190,7 @@ function SudokuCellComponent(props: SudokuCellProps) {
                   exiting={NOTE_EXIT}
                 >
                   <Text
+                    allowFontScaling={false}
                     style={noteFontSize != null ? { fontSize: noteFontSize } : undefined}
                     className={clsx(
                       noteFontSize == null && "text-[9px]",

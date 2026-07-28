@@ -1,14 +1,22 @@
 import { clsx } from "clsx";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { useWindowDimensions } from "react-native";
 
 import { DifficultyDonut } from "@/components/DifficultyDonut";
 import { NativeAdCard } from "@/components/NativeAdCard";
+import { RecentGamesSection } from "@/components/RecentGamesSection";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { getGameById } from "@/data/repositories/gameRepository";
+import {
+  getRecentGames,
+  type RecentGame,
+  type RecentGameFilter,
+} from "@/data/repositories/statsRepository";
 import { NATIVE_AD_UNIT_IDS } from "@/domain/adUnits";
 import { DAILY_TRACKS, type DailyTrack } from "@/domain/daily";
+import { SCREENSHOT_MODE } from "@/domain/screenshotMode";
 import {
   DAILY_TRACK_DOT,
   DIFFICULTY_DOT,
@@ -17,6 +25,7 @@ import {
 import { NEW_GAME_DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
 import { getGameStats, type GameStats } from "@/services/statsService";
+import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
 import { ScrollView, Text, View } from "@/tw";
 
@@ -32,25 +41,80 @@ const DAILY_TRACK_NOTES: Record<DailyTrack, string> = {
 };
 
 const SECTION_LABEL_CLASS = "text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase";
+const RECENT_PAGE_SIZE = 10;
 
 export default function StatsScreen() {
   const router = useRouter();
+  const { view } = useLocalSearchParams<{ view?: string }>();
   const settings = useSettingsStore((s) => s.settings);
+  const setGame = useGameStore((s) => s.setGame);
   const [stats, setStats] = useState<GameStats | null>(null);
+  const [recentGames, setRecentGames] = useState<RecentGame[]>([]);
+  const [recentFilter, setRecentFilter] = useState<RecentGameFilter>("all");
+  const [recentLimit, setRecentLimit] = useState(RECENT_PAGE_SIZE);
+  const [recentHasMore, setRecentHasMore] = useState(false);
+  const [recentLoading, setRecentLoading] = useState(false);
   // Wide screens (iPad) use a wider column and a single 4-across stat row so the
   // content fills the canvas instead of floating as a narrow strip.
   const large = useWindowDimensions().width >= 700;
+  const historyOnly = SCREENSHOT_MODE && view === "history";
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      getGameStats().then((s) => {
-        if (!cancelled) setStats(s);
+      getGameStats().then((nextStats) => {
+        if (!cancelled) setStats(nextStats);
       });
       return () => {
         cancelled = true;
       };
     }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      setRecentLoading(true);
+      getRecentGames({ filter: recentFilter, limit: recentLimit + 1 })
+        .then((rows) => {
+          if (!cancelled) {
+            setRecentHasMore(rows.length > recentLimit);
+            setRecentGames(rows.slice(0, recentLimit));
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setRecentHasMore(false);
+            setRecentGames([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setRecentLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [recentFilter, recentLimit]),
+  );
+
+  const changeRecentFilter = useCallback((filter: RecentGameFilter) => {
+    setRecentFilter(filter);
+    setRecentLimit(RECENT_PAGE_SIZE);
+  }, []);
+
+  const openRecentGame = useCallback(
+    async (recent: RecentGame) => {
+      if (!recent.canReopen) {
+        return;
+      }
+      const game = await getGameById(recent.gameId);
+      if (!game) {
+        return;
+      }
+      setGame(game);
+      router.push({ pathname: "/game/[gameId]", params: { gameId: game.id } });
+    },
+    [router, setGame],
   );
 
   return (
@@ -76,128 +140,143 @@ export default function StatsScreen() {
             className={clsx("w-full gap-8 self-center", large ? "max-w-[820px]" : "max-w-[640px]")}
           >
             {/* Normal Puzzles — ordinary play, kept apart from the daily tracks. */}
-            <View className="gap-3">
-              <Text className={SECTION_LABEL_CLASS}>Normal Puzzles</Text>
+            {historyOnly ? null : (
+              <View className="gap-3">
+                <Text className={SECTION_LABEL_CLASS}>Normal Puzzles</Text>
 
-              {(() => {
-                const completed = (
-                  <StatCard
-                    label="Completed"
-                    value={String(stats.normal.totalCompleted)}
-                    icon="🏆"
-                  />
-                );
-                const mistakeFree =
-                  settings.mistakeTrackingEnabled && stats.normal.totalCompleted > 0 ? (
+                {(() => {
+                  const completed = (
                     <StatCard
-                      label="Mistake-free"
-                      value={String(stats.normal.mistakeFreeCompleted)}
-                      icon="🎯"
-                      hint={`${Math.round(
-                        (stats.normal.mistakeFreeCompleted / stats.normal.totalCompleted) * 100,
-                      )}% of completed`}
+                      label="Completed"
+                      value={String(stats.normal.totalCompleted)}
+                      icon="🏆"
+                    />
+                  );
+                  const mistakeFree =
+                    settings.mistakeTrackingEnabled && stats.normal.totalCompleted > 0 ? (
+                      <StatCard
+                        label="Mistake-free"
+                        value={String(stats.normal.mistakeFreeCompleted)}
+                        icon="🎯"
+                        hint={`${Math.round(
+                          (stats.normal.mistakeFreeCompleted / stats.normal.totalCompleted) * 100,
+                        )}% of completed`}
+                      />
+                    ) : null;
+                  const time = settings.timerEnabled ? (
+                    <StatCard
+                      label="Time played"
+                      value={formatPlaytime(stats.normal.totalSeconds)}
+                      icon="⏱️"
                     />
                   ) : null;
-                const time = settings.timerEnabled ? (
-                  <StatCard
-                    label="Time played"
-                    value={formatPlaytime(stats.normal.totalSeconds)}
-                    icon="⏱️"
-                  />
-                ) : null;
-                // Tablet: all the headline stats sit in one row across the width.
-                return large ? (
-                  <View className="flex-row gap-3">
-                    {completed}
-                    {mistakeFree}
-                    {time}
-                  </View>
-                ) : (
-                  <>
+                  // Tablet: all the headline stats sit in one row across the width.
+                  return large ? (
                     <View className="flex-row gap-3">
                       {completed}
                       {mistakeFree}
+                      {time}
                     </View>
-                    {time ? <View className="flex-row">{time}</View> : null}
-                  </>
-                );
-              })()}
+                  ) : (
+                    <>
+                      <View className="flex-row gap-3">
+                        {completed}
+                        {mistakeFree}
+                      </View>
+                      {time ? <View className="flex-row">{time}</View> : null}
+                    </>
+                  );
+                })()}
 
-              <Text className={clsx(SECTION_LABEL_CLASS, "mt-1")}>By Difficulty</Text>
-              {(() => {
-                // Share of completions at a glance; the rows double as its
-                // legend and carry the exact counts and times.
-                const donut = (
-                  <DifficultyDonut
-                    completedByDifficulty={completedCounts(stats)}
-                    size={large ? 180 : 150}
+                <Text className={clsx(SECTION_LABEL_CLASS, "mt-1")}>By Difficulty</Text>
+                {(() => {
+                  // Share of completions at a glance; the rows double as its
+                  // legend and carry the exact counts and times.
+                  const donut = (
+                    <DifficultyDonut
+                      completedByDifficulty={completedCounts(stats)}
+                      size={large ? 180 : 150}
+                    />
+                  );
+                  const rows = NEW_GAME_DIFFICULTIES.map((difficulty) => {
+                    const stat = stats.normal.byDifficulty[difficulty];
+                    return (
+                      <StatRow
+                        key={difficulty}
+                        dot={DIFFICULTY_DOT[difficulty]}
+                        label={DIFFICULTY_LABELS[difficulty]}
+                        completed={stat.completed}
+                        bestSeconds={stat.bestSeconds}
+                        averageSeconds={stat.averageSeconds}
+                        showTime={settings.timerEnabled}
+                      />
+                    );
+                  });
+                  // Tablet: donut beside the rows; phone: donut above them.
+                  return large ? (
+                    <View className="flex-row items-center gap-8 px-2">
+                      {donut}
+                      <View className="flex-1 gap-3">{rows}</View>
+                    </View>
+                  ) : (
+                    <>
+                      <View className="items-center py-2">{donut}</View>
+                      {rows}
+                    </>
+                  );
+                })()}
+              </View>
+            )}
+
+            {/* Daily Puzzles: the streak plus each track on its own. */}
+            {historyOnly ? null : (
+              <View className="gap-3">
+                <Text className={SECTION_LABEL_CLASS}>Daily Puzzles</Text>
+                <View className="flex-row gap-3">
+                  <StatCard
+                    label="Current streak"
+                    value={String(stats.daily.streak.current)}
+                    icon="🔥"
                   />
-                );
-                const rows = NEW_GAME_DIFFICULTIES.map((difficulty) => {
-                  const stat = stats.normal.byDifficulty[difficulty];
+                  <StatCard
+                    label="Longest streak"
+                    value={String(stats.daily.streak.longest)}
+                    icon="🏅"
+                  />
+                </View>
+                {DAILY_TRACKS.map((track) => {
+                  const stat = stats.daily.byTrack[track];
                   return (
                     <StatRow
-                      key={difficulty}
-                      dot={DIFFICULTY_DOT[difficulty]}
-                      label={DIFFICULTY_LABELS[difficulty]}
+                      key={track}
+                      dot={DAILY_TRACK_DOT[track]}
+                      label={DAILY_TRACK_LABELS[track]}
+                      note={DAILY_TRACK_NOTES[track]}
                       completed={stat.completed}
                       bestSeconds={stat.bestSeconds}
                       averageSeconds={stat.averageSeconds}
                       showTime={settings.timerEnabled}
                     />
                   );
-                });
-                // Tablet: donut beside the rows; phone: donut above them.
-                return large ? (
-                  <View className="flex-row items-center gap-8 px-2">
-                    {donut}
-                    <View className="flex-1 gap-3">{rows}</View>
-                  </View>
-                ) : (
-                  <>
-                    <View className="items-center py-2">{donut}</View>
-                    {rows}
-                  </>
-                );
-              })()}
-            </View>
-
-            {/* Daily Puzzles — the streak plus each track on its own. */}
-            <View className="gap-3">
-              <Text className={SECTION_LABEL_CLASS}>Daily Puzzles</Text>
-              <View className="flex-row gap-3">
-                <StatCard
-                  label="Current streak"
-                  value={String(stats.daily.streak.current)}
-                  icon="🔥"
-                />
-                <StatCard
-                  label="Longest streak"
-                  value={String(stats.daily.streak.longest)}
-                  icon="🏅"
-                />
+                })}
               </View>
-              {DAILY_TRACKS.map((track) => {
-                const stat = stats.daily.byTrack[track];
-                return (
-                  <StatRow
-                    key={track}
-                    dot={DAILY_TRACK_DOT[track]}
-                    label={DAILY_TRACK_LABELS[track]}
-                    note={DAILY_TRACK_NOTES[track]}
-                    completed={stat.completed}
-                    bestSeconds={stat.bestSeconds}
-                    averageSeconds={stat.averageSeconds}
-                    showTime={settings.timerEnabled}
-                  />
-                );
-              })}
-            </View>
+            )}
+
+            <RecentGamesSection
+              games={recentGames}
+              filter={recentFilter}
+              hasMore={recentHasMore}
+              loading={recentLoading}
+              settings={settings}
+              onFilterChange={changeRecentFilter}
+              onShowMore={() => setRecentLimit((limit) => Math.min(100, limit + RECENT_PAGE_SIZE))}
+              onOpen={(game) => void openRecentGame(game)}
+            />
 
             {/* Calm, non-gameplay surface — a single native card below the stats.
                 Self-gates on premium / no-fill, so it just renders nothing when
                 there's no ad or the user has Remove Ads. */}
-            <NativeAdCard unitId={NATIVE_AD_UNIT_IDS.stats} />
+            {historyOnly ? null : <NativeAdCard unitId={NATIVE_AD_UNIT_IDS.stats} />}
           </View>
         </ScrollView>
       )}

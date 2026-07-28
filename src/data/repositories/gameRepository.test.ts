@@ -27,6 +27,7 @@ import {
   getResumableGamesByDifficulty,
   reconcileStuckCompletions,
   saveGame,
+  saveRestartedGame,
 } from "./gameRepository";
 
 const mockGetDatabase = getDatabase as jest.Mock;
@@ -239,5 +240,17 @@ describe("gameRepository", () => {
     expect(sql).toContain("ON CONFLICT(id) DO UPDATE");
     expect(sql).toContain("games.status NOT IN ('completed', 'abandoned')");
     expect(sql).toContain("excluded.status IN ('completed', 'abandoned')");
+  });
+
+  it("uses an explicit write when intentionally restarting a completed game", async () => {
+    const runAsync = jest.fn().mockResolvedValue(undefined);
+    mockGetDatabase.mockResolvedValue({ runAsync });
+
+    await saveRestartedGame(freshGame());
+
+    const sql = runAsync.mock.calls[0]?.[0] as string;
+    expect(sql).toContain("status = 'active'");
+    expect(sql).toContain("completed_at = NULL");
+    expect(sql).not.toContain("ON CONFLICT");
   });
 });

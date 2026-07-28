@@ -19,3 +19,9 @@ jest.mock("expo-notifications", () => ({
   IosAuthorizationStatus: { PROVISIONAL: 4 },
   SchedulableTriggerInputTypes: { DATE: "date" },
 }));
+
+jest.mock("expo-store-review", () => ({
+  hasAction: jest.fn().mockResolvedValue(false),
+  isAvailableAsync: jest.fn().mockResolvedValue(false),
+  requestReview: jest.fn().mockResolvedValue(undefined),
+}));

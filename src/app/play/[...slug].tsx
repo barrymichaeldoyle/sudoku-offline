@@ -201,7 +201,7 @@ function ChallengeLanding({ parsed }: { parsed: ParsedChallenge | null }) {
             You've been challenged to a Sudoku
           </Text>
           <Text className="text-ink-soft text-center text-base">
-            Get Sudoku Offline to play this exact puzzle and try to beat their run.
+            Get Offline Sudoku to play this exact puzzle and try to beat their run.
           </Text>
         </View>
 

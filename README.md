@@ -4,13 +4,13 @@ Classic Sudoku that works offline, with no ads while you play.
 
 ## Get the app
 
-Version 1.0.0 has been submitted to Apple and is waiting for App Review. The
-Google Play release has not started yet.
+Version 1.1.3 is available on the App Store. The Google Play release has not
+started yet.
 
-| Platform                                             | Status             |
-| ---------------------------------------------------- | ------------------ |
-| [App Store](https://apps.apple.com/app/id6782209083) | Waiting for review |
-| Google Play                                          | Not submitted      |
+| Platform                                             | Status        |
+| ---------------------------------------------------- | ------------- |
+| [App Store](https://apps.apple.com/app/id6782209083) | Available     |
+| Google Play                                          | Not submitted |
 
 ## Support
 

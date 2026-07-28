@@ -6,7 +6,7 @@ jest.mock("@/data/repositories/statsRepository", () => ({ seedSampleStats: jest.
 import { hasDuplicate, isGivenCell } from "@/domain/sudoku/board";
 import { CELL_COUNT } from "@/domain/sudoku/types";
 
-import { buildScreenshotGame, SCREENSHOT_SELECTED_CELL } from "./seed";
+import { buildScreenshotGame, buildScreenshotHintState, SCREENSHOT_SELECTED_CELL } from "./seed";
 
 describe("buildScreenshotGame", () => {
   const game = buildScreenshotGame();
@@ -55,5 +55,30 @@ describe("buildScreenshotGame", () => {
     // has filled, so selection highlighting renders against a user entry.
     expect(isGivenCell(game.givens, SCREENSHOT_SELECTED_CELL)).toBe(false);
     expect(game.values[SCREENSHOT_SELECTED_CELL]).not.toBeNull();
+  });
+});
+
+describe("buildScreenshotHintState", () => {
+  it("reveals and selects a real hint without mutating the base screenshot game", () => {
+    const base = buildScreenshotGame();
+    const { game, hint } = buildScreenshotHintState();
+
+    expect(base.values[hint.index]).toBeNull();
+    expect(game.values[hint.index]).toBe(hint.value);
+    expect(game.hintedCells).toEqual([hint.index]);
+    expect(game.hintsUsed).toBe(1);
+  });
+
+  it("keeps the explanation honest for the seeded board", () => {
+    const { hint } = buildScreenshotHintState();
+
+    if (hint.strategy === "naked_single") {
+      expect(hint.candidates).toEqual([hint.value]);
+    } else if (hint.strategy === "candidate_choice") {
+      expect(hint.candidates).toContain(hint.value);
+      expect(hint.candidates.length).toBeGreaterThan(1);
+    } else {
+      expect(hint.candidates).not.toContain(hint.value);
+    }
   });
 });
