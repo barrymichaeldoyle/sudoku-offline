@@ -222,7 +222,9 @@ loop.
 **Implementation note (2026-07-28):** Stats queries 10 rows initially, supports
 All/Daily/difficulty filters, and loads 10 more at a time up to 100. Retained
 games can reopen their solved board; rows without a retained game are explicit
-summary-only results. No schema migration is required.
+summary-only results. The custom select has stable dimensions, and result
+changes use short, Reduce Motion-aware fade and layout transitions. No schema
+migration is required.
 
 ### BF-104: Explanatory hints and accessibility hardening
 

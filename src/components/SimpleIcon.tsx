@@ -2,6 +2,8 @@ import type { ComponentProps, ComponentType } from "react";
 
 import {
   ChartColumn,
+  Check,
+  ChevronDown,
   ChevronLeft,
   Cog,
   Eraser,
@@ -26,7 +28,9 @@ import { useCSSVariable } from "@/tw";
 
 export type SimpleIconName =
   | "back"
+  | "check"
   | "close"
+  | "down"
   | "erase"
   | "eye"
   | "hint"
@@ -55,7 +59,9 @@ type LucideComponent = ComponentType<ComponentProps<typeof Cog>>;
 
 const ICONS: Record<SimpleIconName, LucideComponent> = {
   back: ChevronLeft,
+  check: Check,
   close: X,
+  down: ChevronDown,
   erase: Eraser,
   eye: Eye,
   hint: Lightbulb,

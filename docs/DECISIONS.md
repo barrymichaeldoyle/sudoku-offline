@@ -59,9 +59,18 @@ exists. Older imported/seeded summaries without a retained game remain
 read-only and are labelled “summary only.” Reset Stats continues to remove
 completed history.
 
+The filter uses a custom fixed-width select. A static trigger opens an anchored,
+fade-only menu with no scale, spring, or label-dependent sizing. This replaces
+the SwiftUI menu picker because its built-in press and selection motion felt
+unsettled beside the otherwise calm Stats UI. While a new query runs, the
+current rows soften slightly. Removed rows fade out, retained rows move into
+place, and new rows fade in using short Reduce Motion-aware transitions.
+
 **Why:** Existing `completed_games` data already supports the feature without a
 migration. Query-backed filtering gives predictable memory and render cost,
-while the cap prevents Stats becoming an unbounded archive screen.
+while the cap prevents Stats becoming an unbounded archive screen. Stable
+control geometry and restrained list transitions make filtering feel like one
+continuous interaction instead of an abrupt screen replacement.
 
 ## 2026-07-28: Fixed game geometry is the Dynamic Type exception
 
