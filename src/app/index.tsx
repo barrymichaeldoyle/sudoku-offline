@@ -55,9 +55,10 @@ export default function Home() {
   // fits without scrolling; taller phones keep the roomier layout. Wide screens
   // (iPad, ≥700pt) scale the brand mark and title up so they don't look small
   // inside the centered column.
-  const { width, height } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
   const compact = height < 720;
   const large = width >= 700;
+  const largeText = fontScale >= 1.6;
   // `daily=1` arrives from a daily-reminder notification tap (see
   // notificationService); it means "take me to today's Daily Puzzle".
   const params = useLocalSearchParams<{ daily?: string }>();
@@ -72,28 +73,46 @@ export default function Home() {
   });
   const [streak, setStreak] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [homeLoading, setHomeLoading] = useState(true);
+  const [homeLoaded, setHomeLoaded] = useState(false);
+  const [homeError, setHomeError] = useState(false);
+  const [homeReloadKey, setHomeReloadKey] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
+      void homeReloadKey;
       let cancelled = false;
       const loadHome = async () => {
-        const [byDifficulty, daily, challenge, dailyKeys] = await Promise.all([
-          getResumableGamesByDifficulty(),
-          loadDailyCard("daily"),
-          loadDailyCard("challenge"),
-          getCompletedDailyDateKeys("daily"),
-        ]);
-        if (!cancelled) {
-          setResumables(byDifficulty);
-          setDailyCards({ daily, challenge });
-          setStreak(computeStreak(dailyKeys, getLocalDateKey()).current);
+        setHomeLoading(true);
+        setHomeError(false);
+        try {
+          const [byDifficulty, daily, challenge, dailyKeys] = await Promise.all([
+            getResumableGamesByDifficulty(),
+            loadDailyCard("daily"),
+            loadDailyCard("challenge"),
+            getCompletedDailyDateKeys("daily"),
+          ]);
+          if (!cancelled) {
+            setResumables(byDifficulty);
+            setDailyCards({ daily, challenge });
+            setStreak(computeStreak(dailyKeys, getLocalDateKey()).current);
+            setHomeLoaded(true);
+          }
+        } catch {
+          if (!cancelled) {
+            setHomeError(true);
+          }
+        } finally {
+          if (!cancelled) {
+            setHomeLoading(false);
+          }
         }
       };
       void loadHome();
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [homeReloadKey]),
   );
 
   const openGame = useCallback(
@@ -110,7 +129,7 @@ export default function Home() {
       dailyTrack?: DailyTrack,
       existingGame?: GameState | null,
     ) => {
-      if (busy) return;
+      if (busy || (!homeLoaded && homeLoading) || homeError) return;
       if (
         existingGame &&
         existingGame.status !== "completed" &&
@@ -125,11 +144,13 @@ export default function Home() {
         if (game) {
           openGame(game);
         }
+      } catch {
+        Alert.alert("Couldn’t open puzzle", "Please try again.");
       } finally {
         setBusy(false);
       }
     },
-    [busy, openGame],
+    [busy, homeError, homeLoaded, homeLoading, openGame],
   );
 
   // Start a fresh (non-daily) game of the given difficulty. If that difficulty
@@ -139,7 +160,7 @@ export default function Home() {
     (difficulty: Difficulty) => {
       const existing = resumables[difficulty];
       const start = async () => {
-        if (busy) return;
+        if (busy || (!homeLoaded && homeLoading) || homeError) return;
         setBusy(true);
         try {
           if (existing) {
@@ -150,6 +171,8 @@ export default function Home() {
           if (game) {
             openGame(game);
           }
+        } catch {
+          Alert.alert("Couldn’t start puzzle", "Please try again.");
         } finally {
           setBusy(false);
         }
@@ -167,7 +190,7 @@ export default function Home() {
       }
       void start();
     },
-    [resumables, busy, openGame],
+    [resumables, busy, homeError, homeLoaded, homeLoading, openGame],
   );
 
   // Row tap: resume that difficulty's game in progress, or start a fresh one.
@@ -227,6 +250,7 @@ export default function Home() {
             <AppMark size={compact ? "sm" : large ? "lg" : "md"} />
             <View className="items-center gap-1">
               <Text
+                maxFontSizeMultiplier={2}
                 className={clsx(
                   "text-ink text-center font-bold tracking-tight",
                   compact ? "text-3xl" : large ? "text-5xl" : "text-4xl",
@@ -235,6 +259,7 @@ export default function Home() {
                 Sudoku
               </Text>
               <Text
+                maxFontSizeMultiplier={2}
                 className={clsx(
                   "text-ink-soft text-center font-medium",
                   large ? "text-lg" : "text-sm",
@@ -245,7 +270,30 @@ export default function Home() {
             </View>
           </View>
 
-          <View className="flex-row gap-3">
+          {homeError ? (
+            <View
+              accessibilityLiveRegion="polite"
+              className="border-danger/40 bg-surface items-center gap-2 rounded-2xl border px-4 py-3"
+            >
+              <Text className="text-ink text-center font-medium">
+                Couldn’t load your saved games
+              </Text>
+              <Pressable
+                onPress={() => setHomeReloadKey((key) => key + 1)}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading saved games"
+                className="px-4 py-1 active:opacity-70"
+              >
+                <Text className="text-primary font-semibold">Retry</Text>
+              </Pressable>
+            </View>
+          ) : homeLoading && !homeLoaded ? (
+            <Text accessibilityLiveRegion="polite" className="text-ink-soft text-center text-sm">
+              Loading your games…
+            </Text>
+          ) : null}
+
+          <View className={clsx("gap-3", !largeText && "flex-row")}>
             <DailyCard
               track="daily"
               title="Daily Puzzle"
@@ -253,6 +301,7 @@ export default function Home() {
               progress={dailyCards.daily}
               streak={streak}
               settings={settings}
+              disabled={(!homeLoaded && homeLoading) || homeError || busy}
               onPress={() =>
                 dailyCards.daily.completed && dailyCards.daily.game
                   ? openGame(dailyCards.daily.game)
@@ -265,6 +314,7 @@ export default function Home() {
               subtitle="A tougher grid"
               progress={dailyCards.challenge}
               settings={settings}
+              disabled={(!homeLoaded && homeLoading) || homeError || busy}
               onPress={() =>
                 dailyCards.challenge.completed && dailyCards.challenge.game
                   ? openGame(dailyCards.challenge.game)
@@ -290,6 +340,7 @@ export default function Home() {
                     game={resumables[difficulty] ?? null}
                     settings={settings}
                     large
+                    disabled={(!homeLoaded && homeLoading) || homeError || busy}
                     onPress={() => pressDifficulty(difficulty)}
                     onNewGame={() => startNewGame(difficulty)}
                   />
@@ -305,6 +356,7 @@ export default function Home() {
                     settings={settings}
                     compact={compact}
                     divider={i > 0}
+                    disabled={(!homeLoaded && homeLoading) || homeError || busy}
                     onPress={() => pressDifficulty(difficulty)}
                     onNewGame={() => startNewGame(difficulty)}
                   />
@@ -313,7 +365,7 @@ export default function Home() {
             )}
           </View>
 
-          <View className="flex-row gap-3">
+          <View className={clsx("gap-3", !largeText && "flex-row")}>
             <MiniButton label="Stats" icon="stats" onPress={() => router.push("/stats")} />
             <MiniButton label="Settings" icon="settings" onPress={() => router.push("/settings")} />
           </View>
@@ -343,6 +395,7 @@ function DifficultyRow({
   large = false,
   compact = false,
   divider = false,
+  disabled = false,
   onPress,
   onNewGame,
 }: {
@@ -352,6 +405,7 @@ function DifficultyRow({
   large?: boolean;
   compact?: boolean;
   divider?: boolean;
+  disabled?: boolean;
   onPress: () => void;
   onNewGame: () => void;
 }) {
@@ -359,19 +413,21 @@ function DifficultyRow({
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={
         game
           ? `${label}, resume game, ${completionPercent(game.values, game.givens)} percent complete`
           : label
       }
+      accessibilityState={{ disabled }}
       // The row is one accessibility element, which hides the nested New
       // pressable from screen readers; expose it as a custom action instead.
       accessibilityActions={
         game ? [{ name: "newGame", label: `Start a new ${label} game` }] : undefined
       }
       onAccessibilityAction={(e) => {
-        if (e.nativeEvent.actionName === "newGame") {
+        if (!disabled && e.nativeEvent.actionName === "newGame") {
           onNewGame();
         }
       }}
@@ -381,6 +437,7 @@ function DifficultyRow({
         large
           ? "border-line bg-surface grow rounded-2xl border px-5 py-5"
           : ["px-5", compact ? "py-3" : "py-4", divider && "border-line border-t"],
+        disabled && "opacity-50",
       )}
     >
       <View
@@ -409,15 +466,19 @@ function DifficultyRow({
       {game ? (
         <Pressable
           onPress={onNewGame}
+          disabled={disabled}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={`Start a new ${label} game`}
-          className="border-line bg-surface-muted rounded-full border px-3 py-1.5 active:opacity-70"
+          className={clsx(
+            "border-line bg-surface-muted rounded-full border px-3 py-1.5",
+            disabled ? "opacity-50" : "active:opacity-70",
+          )}
         >
           <Text className="text-ink text-xs font-semibold">New</Text>
         </Pressable>
       ) : (
-        <Text className="text-ink-soft text-xl">›</Text>
+        <SimpleIcon name="forward" tone="muted" size={20} />
       )}
     </Pressable>
   );
@@ -428,7 +489,10 @@ function StreakChip({ count }: { count: number }) {
   const large = useWindowDimensions().width >= 700;
   return (
     <View className="bg-warning/20 flex-row items-center rounded-full px-2 py-0.5">
-      <Text className={clsx("text-ink font-bold tabular-nums", large ? "text-sm" : "text-xs")}>
+      <Text
+        maxFontSizeMultiplier={1.5}
+        className={clsx("text-ink font-bold tabular-nums", large ? "text-sm" : "text-xs")}
+      >
         🔥 {count}
       </Text>
     </View>
@@ -445,7 +509,12 @@ function ExtremeChip() {
   const large = useWindowDimensions().width >= 700;
   return (
     <View className="bg-difficulty-extreme/15 flex-row items-center rounded-full px-2 py-0.5">
-      <Text className={clsx("text-ink font-bold", large ? "text-sm" : "text-xs")}>Extreme</Text>
+      <Text
+        maxFontSizeMultiplier={1.5}
+        className={clsx("text-ink font-bold", large ? "text-sm" : "text-xs")}
+      >
+        Extreme
+      </Text>
     </View>
   );
 }
@@ -457,6 +526,7 @@ function DailyCard({
   progress,
   streak = 0,
   settings,
+  disabled = false,
   onPress,
 }: {
   track: DailyTrack;
@@ -466,6 +536,7 @@ function DailyCard({
   /** Current daily streak; rendered as a flame chip when > 0. Daily track only. */
   streak?: number;
   settings: { timerEnabled: boolean; mistakeTrackingEnabled: boolean };
+  disabled?: boolean;
   onPress: () => void;
 }) {
   const large = useWindowDimensions().width >= 700;
@@ -488,14 +559,14 @@ function DailyCard({
       settings.timerEnabled && progress.game
         ? formatDuration((progress.game as GameState).elapsedSeconds)
         : null;
-    const tail = canViewResult ? "View result ›" : "Done for today";
+    const tail = canViewResult ? "View result" : "Done for today";
     const footer = solveTime ? `${solveTime} · ${tail}` : tail;
     return (
       <Pressable
         onPress={onPress}
-        disabled={!canViewResult}
+        disabled={disabled || !canViewResult}
         accessibilityRole="button"
-        accessibilityState={{ disabled: !canViewResult }}
+        accessibilityState={{ disabled: disabled || !canViewResult, busy: disabled }}
         accessibilityLabel={
           canViewResult
             ? `${a11yTitle}, completed today${streakLabel}, view result`
@@ -505,12 +576,20 @@ function DailyCard({
           "border-success/30 bg-success/10 flex-1 justify-between gap-3 rounded-2xl border",
           large ? "p-5" : "p-4",
           canViewResult ? "active:opacity-80" : "opacity-95",
+          disabled && "opacity-50",
         )}
       >
-        <View className="h-5 flex-row items-center justify-between gap-1.5">
+        <View className="min-h-5 flex-row items-center justify-between gap-1.5">
           <View className="flex-row items-center gap-1.5">
-            <Text className="text-success text-base font-bold">✓</Text>
-            <Text className="text-success text-xs font-bold tracking-widest uppercase">Solved</Text>
+            <Text maxFontSizeMultiplier={1.5} className="text-success text-base font-bold">
+              ✓
+            </Text>
+            <Text
+              maxFontSizeMultiplier={1.5}
+              className="text-success text-xs font-bold tracking-widest uppercase"
+            >
+              Solved
+            </Text>
           </View>
           {chip}
         </View>
@@ -537,16 +616,23 @@ function DailyCard({
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={`${a11yTitle}${streakLabel}`}
+      accessibilityState={{ disabled, busy: disabled }}
+      accessibilityLabel={`${a11yTitle}, ${
+        inProgress
+          ? `${completionPercent(progress.game!.values, progress.game!.givens)} percent complete, resume`
+          : "not started"
+      }${streakLabel}`}
       className={clsx(
         "bg-surface flex-1 gap-2 rounded-2xl border active:opacity-80",
         // A violet-tinted frame sets the extreme track apart from the habit one.
         track === "challenge" ? "border-difficulty-extreme/30" : "border-line",
         large ? "p-5" : "p-4",
+        disabled && "opacity-50",
       )}
     >
-      <View className="h-5 flex-row items-center justify-between gap-1.5">
+      <View className="min-h-5 flex-row items-center justify-between gap-1.5">
         <View className={clsx("h-1.5 w-8 rounded-full", accent)} />
         {chip}
       </View>
@@ -615,7 +701,10 @@ function progressDetail(
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+    <Text
+      maxFontSizeMultiplier={1.5}
+      className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+    >
       {children}
     </Text>
   );

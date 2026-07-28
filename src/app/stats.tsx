@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useWindowDimensions } from "react-native";
 
 import { DifficultyDonut } from "@/components/DifficultyDonut";
@@ -24,10 +24,11 @@ import {
 } from "@/domain/sudoku/difficultyPresentation";
 import { NEW_GAME_DIFFICULTIES, type Difficulty } from "@/domain/sudoku/types";
 import { formatDuration } from "@/domain/time";
+import { announce } from "@/services/announce";
 import { getGameStats, type GameStats } from "@/services/statsService";
 import { useGameStore } from "@/state/useGameStore";
 import { useSettingsStore } from "@/state/useSettingsStore";
-import { ScrollView, Text, View } from "@/tw";
+import { Pressable, ScrollView, Text, View } from "@/tw";
 
 // The two daily tracks, shown as their own cards so normal and daily never blend.
 const DAILY_TRACK_LABELS: Record<DailyTrack, string> = {
@@ -54,38 +55,64 @@ export default function StatsScreen() {
   const [recentLimit, setRecentLimit] = useState(RECENT_PAGE_SIZE);
   const [recentHasMore, setRecentHasMore] = useState(false);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [statsError, setStatsError] = useState(false);
+  const [recentError, setRecentError] = useState(false);
+  const [statsReloadKey, setStatsReloadKey] = useState(0);
+  const [recentReloadKey, setRecentReloadKey] = useState(0);
+  const announceFilterResults = useRef(false);
   // Wide screens (iPad) use a wider column and a single 4-across stat row so the
   // content fills the canvas instead of floating as a narrow strip.
-  const large = useWindowDimensions().width >= 700;
+  const { width, fontScale } = useWindowDimensions();
+  const large = width >= 700;
+  const largeText = fontScale >= 1.6;
+  const wideLayout = large && !largeText;
   const historyOnly = SCREENSHOT_MODE && view === "history";
 
   useFocusEffect(
     useCallback(() => {
+      void statsReloadKey;
       let cancelled = false;
-      getGameStats().then((nextStats) => {
-        if (!cancelled) setStats(nextStats);
-      });
+      setStatsError(false);
+      getGameStats()
+        .then((nextStats) => {
+          if (!cancelled) setStats(nextStats);
+        })
+        .catch(() => {
+          if (!cancelled) setStatsError(true);
+        });
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [statsReloadKey]),
   );
 
   useFocusEffect(
     useCallback(() => {
+      void recentReloadKey;
       let cancelled = false;
       setRecentLoading(true);
+      setRecentError(false);
       getRecentGames({ filter: recentFilter, limit: recentLimit + 1 })
         .then((rows) => {
           if (!cancelled) {
             setRecentHasMore(rows.length > recentLimit);
             setRecentGames(rows.slice(0, recentLimit));
+            if (announceFilterResults.current) {
+              const visibleCount = Math.min(rows.length, recentLimit);
+              const qualifier = rows.length > recentLimit ? " or more" : "";
+              announce(
+                `${visibleCount}${qualifier} ${visibleCount === 1 ? "game" : "games"} shown`,
+              );
+              announceFilterResults.current = false;
+            }
           }
         })
         .catch(() => {
           if (!cancelled) {
             setRecentHasMore(false);
             setRecentGames([]);
+            setRecentError(true);
+            announceFilterResults.current = false;
           }
         })
         .finally(() => {
@@ -94,10 +121,11 @@ export default function StatsScreen() {
       return () => {
         cancelled = true;
       };
-    }, [recentFilter, recentLimit]),
+    }, [recentFilter, recentLimit, recentReloadKey]),
   );
 
   const changeRecentFilter = useCallback((filter: RecentGameFilter) => {
+    announceFilterResults.current = true;
     setRecentFilter(filter);
     setRecentLimit(RECENT_PAGE_SIZE);
   }, []);
@@ -121,9 +149,24 @@ export default function StatsScreen() {
     <Screen className="bg-canvas flex-1">
       <ScreenHeader title="Stats" onBack={() => router.back()} />
 
-      {stats == null ? (
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-ink-soft">Loading…</Text>
+      {stats == null && statsError ? (
+        <View className="flex-1 items-center justify-center gap-3 p-8">
+          <Text accessibilityLiveRegion="polite" className="text-ink text-center font-medium">
+            Couldn’t load your stats
+          </Text>
+          <Pressable
+            onPress={() => setStatsReloadKey((key) => key + 1)}
+            accessibilityRole="button"
+            className="bg-primary rounded-xl px-5 py-3 active:opacity-80"
+          >
+            <Text className="text-on-primary font-semibold">Retry</Text>
+          </Pressable>
+        </View>
+      ) : stats == null ? (
+        <View accessibilityState={{ busy: true }} className="flex-1 items-center justify-center">
+          <Text accessibilityLiveRegion="polite" className="text-ink-soft">
+            Loading…
+          </Text>
         </View>
       ) : isStatsEmpty(stats) ? (
         <View className="flex-1 items-center justify-center gap-2 p-8">
@@ -135,14 +178,22 @@ export default function StatsScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerClassName="grow justify-center p-6">
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName={clsx(
+            "grow p-6",
+            largeText ? "justify-start" : "justify-center",
+          )}
+        >
           <View
             className={clsx("w-full gap-8 self-center", large ? "max-w-[820px]" : "max-w-[640px]")}
           >
             {/* Normal Puzzles — ordinary play, kept apart from the daily tracks. */}
             {historyOnly ? null : (
               <View className="gap-3">
-                <Text className={SECTION_LABEL_CLASS}>Normal Puzzles</Text>
+                <Text maxFontSizeMultiplier={1.5} className={SECTION_LABEL_CLASS}>
+                  Normal Puzzles
+                </Text>
 
                 {(() => {
                   const completed = (
@@ -168,27 +219,30 @@ export default function StatsScreen() {
                       label="Time played"
                       value={formatPlaytime(stats.normal.totalSeconds)}
                       icon="⏱️"
+                      fill={wideLayout}
                     />
                   ) : null;
                   // Tablet: all the headline stats sit in one row across the width.
-                  return large ? (
+                  return wideLayout ? (
                     <View className="flex-row gap-3">
                       {completed}
                       {mistakeFree}
-                      {time}
+                      {time ? <View className="flex-row">{time}</View> : null}
                     </View>
                   ) : (
                     <>
-                      <View className="flex-row gap-3">
+                      <View className={clsx("gap-3", !largeText && "flex-row")}>
                         {completed}
                         {mistakeFree}
                       </View>
-                      {time ? <View className="flex-row">{time}</View> : null}
+                      {time}
                     </>
                   );
                 })()}
 
-                <Text className={clsx(SECTION_LABEL_CLASS, "mt-1")}>By Difficulty</Text>
+                <Text maxFontSizeMultiplier={1.5} className={clsx(SECTION_LABEL_CLASS, "mt-1")}>
+                  By Difficulty
+                </Text>
                 {(() => {
                   // Share of completions at a glance; the rows double as its
                   // legend and carry the exact counts and times.
@@ -213,7 +267,7 @@ export default function StatsScreen() {
                     );
                   });
                   // Tablet: donut beside the rows; phone: donut above them.
-                  return large ? (
+                  return wideLayout ? (
                     <View className="flex-row items-center gap-8 px-2">
                       {donut}
                       <View className="flex-1 gap-3">{rows}</View>
@@ -231,8 +285,10 @@ export default function StatsScreen() {
             {/* Daily Puzzles: the streak plus each track on its own. */}
             {historyOnly ? null : (
               <View className="gap-3">
-                <Text className={SECTION_LABEL_CLASS}>Daily Puzzles</Text>
-                <View className="flex-row gap-3">
+                <Text maxFontSizeMultiplier={1.5} className={SECTION_LABEL_CLASS}>
+                  Daily Puzzles
+                </Text>
+                <View className={clsx("gap-3", !largeText && "flex-row")}>
                   <StatCard
                     label="Current streak"
                     value={String(stats.daily.streak.current)}
@@ -267,9 +323,11 @@ export default function StatsScreen() {
               filter={recentFilter}
               hasMore={recentHasMore}
               loading={recentLoading}
+              error={recentError}
               settings={settings}
               onFilterChange={changeRecentFilter}
               onShowMore={() => setRecentLimit((limit) => Math.min(100, limit + RECENT_PAGE_SIZE))}
+              onRetry={() => setRecentReloadKey((key) => key + 1)}
               onOpen={(game) => void openRecentGame(game)}
             />
 
@@ -323,7 +381,9 @@ function StatRow({
   averageSeconds: number | null;
   showTime: boolean;
 }) {
-  const large = useWindowDimensions().width >= 700;
+  const { width, fontScale } = useWindowDimensions();
+  const large = width >= 700;
+  const largeText = fontScale >= 1.6;
   const empty = completed === 0;
   return (
     <View
@@ -333,7 +393,7 @@ function StatRow({
         empty && "opacity-50",
       )}
     >
-      <View className="flex-row items-center justify-between">
+      <View className={clsx("gap-2", !largeText && "flex-row items-center justify-between")}>
         <View className="flex-row items-center gap-3">
           <View className={clsx("rounded-full", large ? "h-3 w-3" : "h-2.5 w-2.5", dot)} />
           <View>
@@ -345,7 +405,7 @@ function StatRow({
             ) : null}
           </View>
         </View>
-        <View className="items-end">
+        <View className={largeText ? "items-start pl-6" : "items-end"}>
           <Text className={clsx("text-ink tabular-nums", large ? "text-lg" : "text-base")}>
             {completed} done
           </Text>
@@ -378,17 +438,20 @@ function StatCard({
   value,
   icon,
   hint,
+  fill = true,
 }: {
   label: string;
   value: string;
   icon?: string;
   hint?: string;
+  fill?: boolean;
 }) {
   const large = useWindowDimensions().width >= 700;
   return (
     <View
       className={clsx(
-        "border-line bg-surface flex-1 gap-1 rounded-2xl border",
+        "border-line bg-surface gap-1 rounded-2xl border",
+        fill && "flex-1",
         large ? "p-5" : "p-4",
       )}
     >

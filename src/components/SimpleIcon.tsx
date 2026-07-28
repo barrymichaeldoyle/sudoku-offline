@@ -5,6 +5,7 @@ import {
   Check,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   Cog,
   Eraser,
   Eye,
@@ -33,6 +34,7 @@ export type SimpleIconName =
   | "down"
   | "erase"
   | "eye"
+  | "forward"
   | "hint"
   | "help"
   | "home"
@@ -64,6 +66,7 @@ const ICONS: Record<SimpleIconName, LucideComponent> = {
   down: ChevronDown,
   erase: Eraser,
   eye: Eye,
+  forward: ChevronRight,
   hint: Lightbulb,
   help: CircleHelp,
   home: House,

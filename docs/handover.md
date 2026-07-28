@@ -102,6 +102,11 @@ Hints remain available offline when an ad cannot load.
 - Board cells and controls expose spoken labels and important state.
 - Dynamic Type remains enabled outside fixed board/keypad geometry; game
   overlays are width-capped and scrollable for large text and iPad.
+- Home, Stats, and Settings reflow horizontal groups at accessibility text
+  sizes instead of squeezing larger labels into fixed columns.
+- Presented game overlays move screen-reader focus to their headings and support
+  the accessibility escape gesture. Recent Games announces filtered result
+  counts after its local query completes.
 - Reduce Motion suppresses confetti and the existing board/control animations
   use reduced-motion-aware helpers.
 

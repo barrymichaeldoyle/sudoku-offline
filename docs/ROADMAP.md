@@ -261,6 +261,14 @@ with assistive settings.
 - Hint overlays remain dismissible and scrollable on phone and iPad.
 - Reduce Motion suppresses nonessential celebration motion.
 
+**Implementation note (2026-07-28):** Home, Stats, and Settings now reflow
+multi-column controls at accessibility text sizes. Game overlays receive
+screen-reader focus on presentation and support the accessibility escape
+gesture. Recent Games announces the result count after a filter change.
+Home and Stats expose recoverable local-data failures, while puzzle launch,
+notification permission, purchase restore, and stats reset show guarded busy
+and error states.
+
 ## Android release program
 
 ### BF-201 — Play Console and closed-test setup

@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react";
 import { clsx } from "clsx";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { AppState, Share, Switch, useWindowDimensions } from "react-native";
+import { AppState, Share, Switch, useWindowDimensions, View as NativeView } from "react-native";
 
 import { SudokuBoard } from "@/components/Board/SudokuBoard";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
@@ -33,6 +33,7 @@ import { formatShareText } from "@/domain/shareText";
 import { completionPercent, isGivenCell } from "@/domain/sudoku/board";
 import { describeHint } from "@/domain/sudoku/hints";
 import { NEW_GAME_DIFFICULTIES, type GameState } from "@/domain/sudoku/types";
+import { useAccessibilityFocus } from "@/hooks/useAccessibilityFocus";
 import { track } from "@/services/analyticsService";
 import { launchPuzzle } from "@/services/gameLauncher";
 import {
@@ -269,12 +270,13 @@ function ResetConfirmOverlay({
   return (
     <View
       accessibilityViewIsModal
+      onAccessibilityEscape={onCancel}
       className="absolute inset-0 items-center justify-center bg-black/50 p-8"
     >
       <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
-        <Text className="text-ink text-center text-2xl font-bold">
+        <OverlayHeading className="text-ink text-center text-2xl font-bold">
           {completed ? "Restart this puzzle?" : "Restart puzzle?"}
-        </Text>
+        </OverlayHeading>
         <Text className="text-ink-soft text-center">
           {completed
             ? "This clears your finished result and starts the puzzle over from scratch. This can't be undone."
@@ -349,10 +351,13 @@ function IncorrectCompleteOverlay({
   return (
     <View
       accessibilityViewIsModal
+      onAccessibilityEscape={onKeepTrying}
       className="absolute inset-0 items-center justify-center bg-black/50 p-8"
     >
       <View className="border-line bg-surface w-full gap-2 rounded-3xl border p-6">
-        <Text className="text-ink text-center text-2xl font-bold">Not quite right</Text>
+        <OverlayHeading className="text-ink text-center text-2xl font-bold">
+          Not quite right
+        </OverlayHeading>
         <Text className="text-ink-soft text-center">
           {mistakeChecking
             ? "The board's full, but some cells don't match the solution. They're highlighted in red."
@@ -616,13 +621,13 @@ function PausedOverlay({ boardSize }: { boardSize: number }) {
   const inset = Math.round(boardSize * 0.04);
 
   return (
-    <View accessibilityViewIsModal className="absolute inset-0">
+    <View accessibilityViewIsModal onAccessibilityEscape={resume} className="absolute inset-0">
       <View className="absolute inset-0 rounded-2xl bg-black/70" />
       <View
         className="border-line bg-surface absolute items-center justify-center gap-3 rounded-3xl border p-6"
         style={{ top: inset, bottom: inset, left: inset, right: inset }}
       >
-        <Text className="text-ink text-2xl font-bold">Paused</Text>
+        <OverlayHeading className="text-ink text-2xl font-bold">Paused</OverlayHeading>
         <Text className="text-ink-soft -mt-1 text-sm">Your progress is saved</Text>
         <OverlayButton
           icon="play"
@@ -654,6 +659,7 @@ function HintExplanationCard() {
   return (
     <View
       accessibilityViewIsModal
+      onAccessibilityEscape={dismiss}
       className="border-line bg-surface z-30 w-full max-w-[560px] self-center overflow-hidden rounded-2xl border"
     >
       <ScrollView
@@ -665,9 +671,9 @@ function HintExplanationCard() {
         <View className="flex-row items-start gap-3">
           <SimpleIcon name="hint" tone="primary" size={24} />
           <View className="flex-1 gap-1">
-            <Text accessibilityRole="header" className="text-ink text-xl font-bold">
+            <OverlayHeading className="text-ink text-xl font-bold">
               {explanation.title}
-            </Text>
+            </OverlayHeading>
             <Text className="text-ink-soft text-sm">{explanation.body}</Text>
           </View>
         </View>
@@ -696,10 +702,13 @@ function HintPromptOverlay() {
     return (
       <View
         accessibilityViewIsModal
+        onAccessibilityEscape={dismissHintPrompt}
         className="absolute inset-0 items-center justify-center bg-black/50 p-8"
       >
         <View className="border-line bg-surface w-full max-w-[560px] gap-2 rounded-3xl border p-6">
-          <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
+          <OverlayHeading className="text-ink text-center text-2xl font-bold">
+            Need a hint?
+          </OverlayHeading>
           <Text className="text-ink-soft text-center">
             This reveals one correct cell and explains the candidates around it.
           </Text>
@@ -761,10 +770,13 @@ function HintPromptOverlay() {
   return (
     <View
       accessibilityViewIsModal
+      onAccessibilityEscape={dismissHintPrompt}
       className="absolute inset-0 items-center justify-center bg-black/50 p-8"
     >
       <View className="border-line bg-surface w-full max-w-[560px] gap-2 rounded-3xl border p-6">
-        <Text className="text-ink text-center text-2xl font-bold">Need a hint?</Text>
+        <OverlayHeading className="text-ink text-center text-2xl font-bold">
+          Need a hint?
+        </OverlayHeading>
         <Text className="text-ink-soft text-center">
           Watch a short ad to reveal one hint and see why it fits.
         </Text>
@@ -995,6 +1007,7 @@ function CompletionOverlay({
   return (
     <View
       accessibilityViewIsModal
+      onAccessibilityEscape={() => setViewingBoard(true)}
       // Bleed horizontally and below the content column, but start beneath the
       // header so the results card can never overlap its title or controls.
       className="absolute -inset-x-4 top-32 -bottom-4 z-10 items-center justify-start p-8"
@@ -1018,7 +1031,9 @@ function CompletionOverlay({
           bounces={false}
         >
           <Text className="text-center text-4xl">🏆</Text>
-          <Text className="text-ink text-center text-2xl font-bold">{heading}</Text>
+          <OverlayHeading className="text-ink text-center text-2xl font-bold">
+            {heading}
+          </OverlayHeading>
           <Text className="text-ink-soft text-center">
             {completionSummary(game, settings, daily?.track ?? null)}
           </Text>
@@ -1203,5 +1218,17 @@ function OverlayButton({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function OverlayHeading({ children, className }: { children: string; className: string }) {
+  const focusRef = useAccessibilityFocus();
+
+  return (
+    <NativeView ref={focusRef} accessible accessibilityRole="header" accessibilityLabel={children}>
+      <Text accessible={false} className={className}>
+        {children}
+      </Text>
+    </NativeView>
   );
 }

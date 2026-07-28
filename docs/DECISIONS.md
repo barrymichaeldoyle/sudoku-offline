@@ -3,6 +3,25 @@
 Decisions that are easy to lose when looking only at the implementation. New
 entries should explain the trade-off, not repeat the code.
 
+## 2026-07-28: Large text changes composition, not just font size
+
+**Decision:** Home, Stats, and Settings switch compact horizontal groups to
+vertical layouts when the system font scale reaches 160%. Fixed-width game
+geometry remains the narrow exception documented below. Customer-facing text
+continues to scale.
+
+Newly presented game overlays move screen-reader focus to their heading and
+support the accessibility escape gesture. Recent Games announces the number of
+results after a filter query completes. Important local-data and system actions
+show busy states, prevent duplicate input, report failures, and provide retry
+actions where the operation can be repeated safely.
+
+**Why:** Simply enlarging type inside a two-column composition causes clipping,
+uneven cards, and unpredictable controls. Reflowing the composition preserves
+the preferred text size and useful hit targets. Explicit focus, progress, and
+failure feedback also prevents an action from appearing to do nothing to
+VoiceOver users or during a slower database, purchase, or permission request.
+
 ## 2026-07-28: Hint explanations preserve board context and solve time
 
 **Decision:** After a hint reveal, a compact teaching card appears above the

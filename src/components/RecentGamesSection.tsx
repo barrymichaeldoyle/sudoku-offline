@@ -40,8 +40,10 @@ type RecentGamesSectionProps = {
   filter: RecentGameFilter;
   hasMore: boolean;
   loading: boolean;
+  error?: boolean;
   onFilterChange: (filter: RecentGameFilter) => void;
   onShowMore: () => void;
+  onRetry?: () => void;
   onOpen: (game: RecentGame) => void;
 };
 
@@ -95,8 +97,10 @@ export function RecentGamesSection({
   filter,
   hasMore,
   loading,
+  error = false,
   onFilterChange,
   onShowMore,
+  onRetry,
   onOpen,
 }: RecentGamesSectionProps) {
   const triggerRef = useRef<NativeView>(null);
@@ -299,12 +303,23 @@ export function RecentGamesSection({
             layout={ROW_LAYOUT}
           >
             <View className="border-line bg-surface items-center gap-2 rounded-2xl border px-4 py-5">
-              <Text className="text-ink-soft text-center">
+              <Text accessibilityLiveRegion="polite" className="text-ink-soft text-center">
                 {loading
                   ? "Loading recent games…"
-                  : `No ${filter === "all" ? "" : `${filter} `}games yet`}
+                  : error
+                    ? "Couldn’t load recent games"
+                    : `No ${filter === "all" ? "" : `${filter} `}games yet`}
               </Text>
-              {!loading && filter !== "all" ? (
+              {!loading && error && onRetry ? (
+                <Pressable
+                  onPress={onRetry}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry loading recent games"
+                  className="px-3 py-1 active:opacity-70"
+                >
+                  <Text className="text-primary text-base font-semibold">Retry</Text>
+                </Pressable>
+              ) : !loading && filter !== "all" ? (
                 <Pressable
                   onPress={() => changeFilter("all")}
                   accessibilityRole="button"
@@ -385,7 +400,7 @@ function RecentGameRow({
           <Text className="text-ink-dim text-xs">Previous run · summary only</Text>
         )}
       </View>
-      {game.canReopen ? <Text className="text-ink-soft text-xl">›</Text> : null}
+      {game.canReopen ? <SimpleIcon name="forward" tone="muted" size={20} /> : null}
     </Pressable>
   );
 }

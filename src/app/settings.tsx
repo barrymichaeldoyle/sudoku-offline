@@ -1,8 +1,8 @@
 import type { InputMode, NoteCleanupScope, Settings, ThemePreference } from "@/domain/settings";
 
 import { useRouter } from "expo-router";
-import { lazy, Suspense } from "react";
-import { Alert, Platform, Switch } from "react-native";
+import { lazy, Suspense, useState } from "react";
+import { Alert, Platform, Switch, useWindowDimensions } from "react-native";
 
 import { RemoveAdsButton } from "@/components/RemoveAdsButton";
 import { Screen } from "@/components/Screen";
@@ -154,25 +154,40 @@ export default function SettingsScreen() {
   const setInputMode = useGameStore((s) => s.setInputMode);
   const isPremium = useEntitlementStore((s) => s.entitlements[ENTITLEMENT_REMOVE_ADS] === true);
   const restorePurchases = useEntitlementStore((s) => s.restorePurchases);
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale >= 1.6;
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   const onToggleReminder = async (next: boolean) => {
+    if (reminderBusy) {
+      return;
+    }
     if (!next) {
       setSetting("dailyReminderEnabled", false);
       void track("daily_reminder_disabled");
       return;
     }
-    const granted = await requestDailyReminderPermission();
-    if (!granted) {
-      // Permission denied — keep the app-level setting off and point the player
-      // at system settings (we don't re-ask automatically).
-      Alert.alert(
-        "Notifications are off",
-        "To get a daily reminder, enable notifications for Sudoku in your device settings.",
-      );
-      return;
+    setReminderBusy(true);
+    try {
+      const granted = await requestDailyReminderPermission();
+      if (!granted) {
+        // Permission denied — keep the app-level setting off and point the player
+        // at system settings (we don't re-ask automatically).
+        Alert.alert(
+          "Notifications are off",
+          "To get a daily reminder, enable notifications for Sudoku in your device settings.",
+        );
+        return;
+      }
+      setSetting("dailyReminderEnabled", true);
+      void track("daily_reminder_enabled");
+    } catch {
+      Alert.alert("Couldn’t enable reminders", "Please try again.");
+    } finally {
+      setReminderBusy(false);
     }
-    setSetting("dailyReminderEnabled", true);
-    void track("daily_reminder_enabled");
   };
 
   const onChangeReminderTime = (minutes: number) => {
@@ -183,19 +198,38 @@ export default function SettingsScreen() {
   const onResetStats = () => {
     Alert.alert("Reset stats?", "This permanently clears your completed games and daily streak.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Reset", style: "destructive", onPress: () => void resetStats() },
+      {
+        text: "Reset",
+        style: "destructive",
+        onPress: () => {
+          setResetBusy(true);
+          void resetStats()
+            .catch(() => Alert.alert("Couldn’t reset stats", "Please try again."))
+            .finally(() => setResetBusy(false));
+        },
+      },
     ]);
   };
 
   const onRestore = async () => {
-    await restorePurchases();
-    const restored = useEntitlementStore.getState().entitlements[ENTITLEMENT_REMOVE_ADS] === true;
-    Alert.alert(
-      restored ? "Purchases restored" : "Nothing to restore",
-      restored
-        ? "Ads are removed. Thanks for your support."
-        : "We couldn’t find a previous purchase to restore.",
-    );
+    if (restoreBusy) {
+      return;
+    }
+    setRestoreBusy(true);
+    try {
+      await restorePurchases();
+      const restored = useEntitlementStore.getState().entitlements[ENTITLEMENT_REMOVE_ADS] === true;
+      Alert.alert(
+        restored ? "Purchases restored" : "Nothing to restore",
+        restored
+          ? "Ads are removed. Thanks for your support."
+          : "We couldn’t find a previous purchase to restore.",
+      );
+    } catch {
+      Alert.alert("Couldn’t restore purchases", "Please try again.");
+    } finally {
+      setRestoreBusy(false);
+    }
   };
 
   const renderToggle = (t: ToggleDef) => (
@@ -212,7 +246,7 @@ export default function SettingsScreen() {
         />
       </View>
       {t.key === "autoNoteCleanup" && settings.autoNoteCleanup ? (
-        <View className="flex-row gap-2">
+        <View className={largeText ? "gap-2" : "flex-row gap-2"}>
           {CLEANUP_SCOPE_OPTIONS.map((opt) => {
             const active = settings.autoNoteCleanupScope === opt.value;
             return (
@@ -253,10 +287,13 @@ export default function SettingsScreen() {
       <ScrollView contentContainerClassName="p-6">
         <View className="w-full max-w-[640px] gap-6 self-center">
           <View className="gap-3">
-            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+            <Text
+              maxFontSizeMultiplier={1.5}
+              className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+            >
               Theme
             </Text>
-            <View className="flex-row gap-2">
+            <View className={largeText ? "gap-2" : "flex-row gap-2"}>
               {THEME_OPTIONS.map((opt) => {
                 const active = settings.theme === opt.value;
                 return (
@@ -284,7 +321,10 @@ export default function SettingsScreen() {
           </View>
 
           <View className="gap-3">
-            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+            <Text
+              maxFontSizeMultiplier={1.5}
+              className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+            >
               Gameplay
             </Text>
             <View className="border-line bg-surface gap-3 rounded-2xl border px-4 py-3">
@@ -296,7 +336,7 @@ export default function SettingsScreen() {
                     : "Tap a number, then the cells to place it in."}
                 </Text>
               </View>
-              <View className="flex-row gap-2">
+              <View className={largeText ? "gap-2" : "flex-row gap-2"}>
                 {INPUT_MODE_OPTIONS.map((opt) => {
                   const active = settings.inputMode === opt.value;
                   return (
@@ -331,7 +371,10 @@ export default function SettingsScreen() {
 
           {TOGGLE_GROUPS.map((group) => (
             <View key={group.title} className="gap-3">
-              <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              <Text
+                maxFontSizeMultiplier={1.5}
+                className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+              >
                 {group.title}
               </Text>
               {group.toggles.map(renderToggle)}
@@ -340,7 +383,10 @@ export default function SettingsScreen() {
 
           {Platform.OS === "web" ? null : (
             <View className="gap-3">
-              <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              <Text
+                maxFontSizeMultiplier={1.5}
+                className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+              >
                 Reminders
               </Text>
               <View className="border-line bg-surface flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3">
@@ -354,7 +400,9 @@ export default function SettingsScreen() {
                 <Switch
                   value={settings.dailyReminderEnabled}
                   onValueChange={(v) => void onToggleReminder(v)}
+                  disabled={reminderBusy}
                   accessibilityLabel="Daily puzzle reminder"
+                  accessibilityState={{ busy: reminderBusy, disabled: reminderBusy }}
                 />
               </View>
               {settings.dailyReminderEnabled ? (
@@ -395,7 +443,10 @@ export default function SettingsScreen() {
 
           {IAP_ENABLED ? (
             <View className="gap-3">
-              <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+              <Text
+                maxFontSizeMultiplier={1.5}
+                className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+              >
                 Ads & Purchases
               </Text>
               {isPremium ? (
@@ -432,17 +483,28 @@ export default function SettingsScreen() {
               )}
               <Pressable
                 onPress={onRestore}
+                disabled={restoreBusy}
                 accessibilityRole="button"
                 accessibilityLabel="Restore purchases"
-                className="border-line bg-surface items-center rounded-2xl border py-4 active:opacity-80"
+                accessibilityState={{ busy: restoreBusy, disabled: restoreBusy }}
+                className={
+                  restoreBusy
+                    ? "border-line bg-surface items-center rounded-2xl border py-4 opacity-50"
+                    : "border-line bg-surface items-center rounded-2xl border py-4 active:opacity-80"
+                }
               >
-                <Text className="text-ink text-base font-medium">Restore Purchases</Text>
+                <Text className="text-ink text-base font-medium">
+                  {restoreBusy ? "Restoring…" : "Restore Purchases"}
+                </Text>
               </Pressable>
             </View>
           ) : null}
 
           <View className="gap-3">
-            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+            <Text
+              maxFontSizeMultiplier={1.5}
+              className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+            >
               Help
             </Text>
             <Pressable
@@ -458,21 +520,32 @@ export default function SettingsScreen() {
                   How to play, support, privacy, and app information
                 </Text>
               </View>
-              <Text className="text-ink-soft text-xl">›</Text>
+              <SimpleIcon name="forward" tone="muted" size={20} />
             </Pressable>
           </View>
 
           <View className="gap-3">
-            <Text className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase">
+            <Text
+              maxFontSizeMultiplier={1.5}
+              className="text-ink-soft px-1 text-xs font-semibold tracking-widest uppercase"
+            >
               Data
             </Text>
             <Pressable
               onPress={onResetStats}
+              disabled={resetBusy}
               accessibilityRole="button"
               accessibilityLabel="Reset stats, including recent game history and daily streak"
-              className="border-danger items-center gap-1 rounded-2xl border px-4 py-3.5 active:opacity-80"
+              accessibilityState={{ busy: resetBusy, disabled: resetBusy }}
+              className={
+                resetBusy
+                  ? "border-danger items-center gap-1 rounded-2xl border px-4 py-3.5 opacity-50"
+                  : "border-danger items-center gap-1 rounded-2xl border px-4 py-3.5 active:opacity-80"
+              }
             >
-              <Text className="text-danger text-base font-medium">Reset Stats</Text>
+              <Text className="text-danger text-base font-medium">
+                {resetBusy ? "Resetting…" : "Reset Stats"}
+              </Text>
               <Text className="text-ink-soft text-center text-sm">
                 Clears recent game history and your daily streak
               </Text>

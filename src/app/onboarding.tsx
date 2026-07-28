@@ -71,7 +71,7 @@ function ChoiceCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={`${title}. ${description}`}
       className={clsx(
         "gap-1 rounded-2xl border p-5 active:opacity-80",
         primary ? "border-primary bg-primary" : "border-line bg-surface",
